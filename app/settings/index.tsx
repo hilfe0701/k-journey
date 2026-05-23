@@ -1,0 +1,1204 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  Pressable,
+  Switch,
+  SectionList,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  AppState,
+  Linking,
+  TextInput,
+  Image,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { ChevronLeft, ChevronRight, X, Check, Mail, ExternalLink } from 'lucide-react-native';
+import { Calendar } from 'react-native-calendars';
+import { format } from 'date-fns';
+import Constants from 'expo-constants';
+
+import { Text, Button } from '../../src/components/ui';
+import { palette, space, radius, semantic, elevation } from '../../design-tokens';
+import { useAuth } from '../../src/hooks/useAuth';
+import { useProfile } from '../../src/hooks/useProfile';
+import {
+  updateUserProfile,
+  requestAccountDeletion,
+  requestDataExport,
+  metaTimestampToDate,
+  type UserProfile,
+} from '../../src/lib/firebase';
+import { UNIVERSITIES } from '../../src/data/universities';
+import { ERA_LIST } from '../../src/theme/eras';
+import { BYEONGPUNG_PANEL_IMAGES } from '../../src/components/byeongpung/motifs';
+import { calcPhase } from '../../src/hooks/usePhase';
+import {
+  getPermissionState,
+  rescheduleAllNotifications,
+  type PermissionState,
+} from '../../src/lib/notifications';
+import { useNotificationPref, type NotificationPrefKey } from '../../src/state/useNotificationSettings';
+import { showOperationError, surfaceError } from '../../src/lib/errorAlert';
+import { validateDates, validateName } from '../../src/lib/validation';
+import { emitError } from '../../src/lib/errors/host';
+import { ERROR_CATALOG } from '../../src/lib/errors/catalog';
+import { storage, KEYS } from '../../src/lib/storage';
+import { track } from '../../src/lib/posthog';
+import { hapticDestructive } from '../../src/lib/haptics';
+import { resetAhaMoment } from '../../src/components/onboarding/AhaMomentTour';
+
+type Section =
+  | { key: 'notifications'; title: string; data: 'notifications'[] }
+  | { key: 'era'; title: string; data: 'era'[] }
+  | { key: 'profile'; title: string; data: 'profile'[] }
+  | { key: 'account'; title: string; data: 'account'[] }
+  | { key: 'about'; title: string; data: 'about'[] };
+
+export default function SettingsScreen() {
+  const router = useRouter();
+  const { signOut, user } = useAuth();
+  const { profile } = useProfile();
+  const [permission, setPermission] = useState<PermissionState | null>(null);
+  const [openSheet, setOpenSheet] = useState<
+    | 'name'
+    | 'university'
+    | 'housing'
+    | 'arrival'
+    | 'departure'
+    | 'era'
+    | 'signOut'
+    | 'deleteFirst'
+    | 'deleteFinal'
+    | 'export'
+    | null
+  >(null);
+
+  useEffect(() => {
+    let mounted = true;
+    getPermissionState().then((s) => mounted && setPermission(s));
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') getPermissionState().then((s) => mounted && setPermission(s));
+    });
+    return () => {
+      mounted = false;
+      sub.remove();
+    };
+  }, []);
+
+  const sections: Section[] = useMemo(
+    () => [
+      { key: 'notifications', title: 'Notifications', data: ['notifications'] },
+      { key: 'era', title: 'Era theme', data: ['era'] },
+      { key: 'profile', title: 'Your profile', data: ['profile'] },
+      { key: 'account', title: 'Account', data: ['account'] },
+      { key: 'about', title: 'About', data: ['about'] },
+    ],
+    [],
+  );
+
+  function trackOpen(category: Section['key']) {
+    track('settings_open', { category });
+  }
+
+  return (
+    <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
+      <View style={styles.header}>
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <ChevronLeft size={24} color={palette.meok} />
+        </Pressable>
+        <Text role="h3">Settings</Text>
+        <View style={{ width: 24 }} />
+      </View>
+
+      <SectionList<string, Section>
+        sections={sections}
+        keyExtractor={(item) => item}
+        stickySectionHeadersEnabled={false}
+        contentContainerStyle={styles.body}
+        renderSectionHeader={({ section }) => (
+          <Text
+            role="badge"
+            color={palette.ash}
+            style={styles.sectionHeader}
+            accessibilityLabel={`${section.title} section`}
+          >
+            {section.title.toUpperCase()}
+          </Text>
+        )}
+        renderItem={({ section }) => {
+          switch (section.key) {
+            case 'notifications':
+              return (
+                <NotificationsSection
+                  permission={permission}
+                  onPermissionOpen={() => Linking.openSettings().catch(() => {})}
+                  onMount={() => trackOpen('notifications')}
+                />
+              );
+            case 'era':
+              return (
+                <View style={styles.card}>
+                  <SettingsRow
+                    label="Era"
+                    valueText={profile?.era ? eraLabel(profile.era) : '—'}
+                    onPress={() => {
+                      trackOpen('era');
+                      setOpenSheet('era');
+                    }}
+                  />
+                </View>
+              );
+            case 'profile':
+              return (
+                <View style={styles.card}>
+                  <SettingsRow
+                    label="Name"
+                    valueText={profile?.displayName ?? '—'}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('name');
+                    }}
+                  />
+                  <SettingsRow
+                    label="University"
+                    valueText={uniLabel(profile?.university)}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('university');
+                    }}
+                  />
+                  <SettingsRow
+                    label="Housing"
+                    valueText={housingLabel(profile?.housing)}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('housing');
+                    }}
+                  />
+                  <SettingsRow
+                    label="Arrival date"
+                    valueText={formatDate(profile?.arrivalDate)}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('arrival');
+                    }}
+                  />
+                  <SettingsRow
+                    label="Departure date"
+                    valueText={formatDate(profile?.departureDate)}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('departure');
+                    }}
+                    isLast
+                  />
+                </View>
+              );
+            case 'account':
+              return (
+                <View style={styles.card}>
+                  <SettingsRow
+                    label={user?.email ?? 'Signed in'}
+                    valueText=""
+                    readOnly
+                  />
+                  <SettingsRow
+                    label="Sign out"
+                    destructive
+                    onPress={() => {
+                      trackOpen('account');
+                      setOpenSheet('signOut');
+                    }}
+                  />
+                  <SettingsRow
+                    label="Export my data"
+                    onPress={() => {
+                      trackOpen('account');
+                      setOpenSheet('export');
+                    }}
+                  />
+                  <SettingsRow
+                    label="Delete account"
+                    destructive
+                    onPress={() => {
+                      trackOpen('account');
+                      track('account_delete_initiated', { stage: 'first-confirm' });
+                      setOpenSheet('deleteFirst');
+                    }}
+                    isLast
+                  />
+                </View>
+              );
+            case 'about':
+              return <AboutSection onMount={() => trackOpen('about')} signOut={signOut} />;
+            default:
+              return null;
+          }
+        }}
+      />
+
+      {/* Name edit sheet */}
+      <NameSheet
+        visible={openSheet === 'name'}
+        initial={profile?.displayName ?? ''}
+        onClose={() => setOpenSheet(null)}
+        onSave={async (next) => {
+          if (!user) return;
+          try {
+            await updateUserProfile(user.uid, { displayName: next });
+            track('profile_field_change', { field: 'displayName' });
+            setOpenSheet(null);
+            surfaceError('profile-updated');
+          } catch (err) {
+            showOperationError('save your name', err);
+          }
+        }}
+      />
+
+      {/* University picker */}
+      <PickerSheet
+        visible={openSheet === 'university'}
+        title="Pick your university"
+        options={UNIVERSITIES.map((u) => ({ value: u.id, label: u.shortName, hint: u.campusArea }))}
+        selected={profile?.university ?? null}
+        onClose={() => setOpenSheet(null)}
+        onSelect={async (value) => {
+          if (!user) return;
+          try {
+            await updateUserProfile(user.uid, { university: value });
+            track('profile_field_change', { field: 'university' });
+            setOpenSheet(null);
+            surfaceError('profile-updated');
+          } catch (err) {
+            showOperationError('save your university', err);
+          }
+        }}
+      />
+
+      {/* Housing picker */}
+      <PickerSheet
+        visible={openSheet === 'housing'}
+        title="Pick your housing"
+        options={[
+          { value: 'dormitory', label: 'Dormitory', hint: 'On-campus residence' },
+          { value: 'off-campus', label: 'Off-campus', hint: 'Goshiwon, sublet, or share' },
+        ]}
+        selected={profile?.housing ?? null}
+        onClose={() => setOpenSheet(null)}
+        onSelect={async (value) => {
+          if (!user) return;
+          try {
+            await updateUserProfile(user.uid, { housing: value as 'dormitory' | 'off-campus' });
+            track('profile_field_change', { field: 'housing' });
+            setOpenSheet(null);
+            surfaceError('profile-updated');
+          } catch (err) {
+            showOperationError('save your housing', err);
+          }
+        }}
+      />
+
+      {/* Arrival date */}
+      <DateSheet
+        visible={openSheet === 'arrival'}
+        kind="arrival"
+        profile={profile}
+        onClose={() => setOpenSheet(null)}
+        onSave={(next) => handleDateSave(user, profile, 'arrival', next, setOpenSheet)}
+      />
+
+      {/* Departure date */}
+      <DateSheet
+        visible={openSheet === 'departure'}
+        kind="departure"
+        profile={profile}
+        onClose={() => setOpenSheet(null)}
+        onSave={(next) => handleDateSave(user, profile, 'departure', next, setOpenSheet)}
+      />
+
+      {/* Era picker (uses existing onboarding route) */}
+      <EraSheet
+        visible={openSheet === 'era'}
+        currentEra={profile?.era ?? 'joseon'}
+        onClose={() => setOpenSheet(null)}
+        onSelect={async (value) => {
+          if (!user) return;
+          try {
+            await updateUserProfile(user.uid, { era: value });
+            track('era_switch', { from: profile?.era ?? null, to: value });
+            setOpenSheet(null);
+          } catch (err) {
+            showOperationError('save your era', err);
+          }
+        }}
+      />
+
+      {/* Sign out confirm */}
+      <ConfirmSheet
+        visible={openSheet === 'signOut'}
+        title="Sign out?"
+        body="Your byeongpung stays. You can sign back in to continue."
+        primary="Sign out"
+        primaryDestructive
+        onClose={() => setOpenSheet(null)}
+        onConfirm={async () => {
+          setOpenSheet(null);
+          try {
+            await signOut();
+          } catch (err) {
+            showOperationError('sign out', err);
+          }
+        }}
+      />
+
+      {/* Delete account — first confirm */}
+      <ConfirmSheet
+        visible={openSheet === 'deleteFirst'}
+        title="Delete your K-Journey account?"
+        body="This will remove your byeongpung, missions, buckets, and photos in 30 days. You can change your mind during that window."
+        primary="Delete account"
+        primaryDestructive
+        onClose={() => setOpenSheet(null)}
+        onConfirm={() => {
+          track('account_delete_initiated', { stage: 'second-confirm' });
+          setOpenSheet('deleteFinal');
+        }}
+      />
+
+      {/* Delete account — final confirm */}
+      <ConfirmSheet
+        visible={openSheet === 'deleteFinal'}
+        title="One last check."
+        body={'Tap "I\'m sure" to schedule deletion. We\'ll email a recovery link to your Apple ID email — open it within 30 days to undo.'}
+        primary="I'm sure"
+        primaryDestructive
+        onClose={() => {
+          track('account_delete_initiated', { stage: 'cancelled' });
+          setOpenSheet(null);
+        }}
+        onConfirm={async () => {
+          if (!user) return;
+          try {
+            await requestAccountDeletion(user.uid);
+            track('account_delete_initiated', { stage: 'committed' });
+            setOpenSheet(null);
+            surfaceError('account-deletion-scheduled');
+            await signOut();
+          } catch (err) {
+            showOperationError('delete your account', err);
+          }
+        }}
+      />
+
+      {/* Export confirm */}
+      <ConfirmSheet
+        visible={openSheet === 'export'}
+        title="Export your K-Journey data?"
+        body="We'll email a ZIP with your byeongpung images, missions, buckets, and photos. Allow up to 10 minutes."
+        primary="Send to my email"
+        onClose={() => setOpenSheet(null)}
+        onConfirm={async () => {
+          if (!user) return;
+          setOpenSheet(null);
+          const lastExport = metaTimestampToDate(profile?._meta?.exportRequestedAt);
+          if (lastExport && Date.now() - lastExport.getTime() < 24 * 60 * 60 * 1000) {
+            // ADR-0033 §B — one export per 24 h.
+            surfaceError('export-already-queued', {
+              messageOverride: `Check your email — your last export was sent at ${format(lastExport, 'h:mm a')}.`,
+            });
+            return;
+          }
+          try {
+            await requestDataExport(user.uid);
+            track('account_export_requested');
+            surfaceError('export-queued');
+          } catch (err) {
+            showOperationError('request your export', err);
+          }
+        }}
+      />
+    </SafeAreaView>
+  );
+}
+
+async function handleDateSave(
+  user: { uid: string } | null,
+  profile: UserProfile | null,
+  kind: 'arrival' | 'departure',
+  next: string,
+  setOpenSheet: (v: null) => void,
+) {
+  if (!user) return;
+  const arrival = kind === 'arrival' ? next : profile?.arrivalDate ?? null;
+  const departure = kind === 'departure' ? next : profile?.departureDate ?? null;
+  if (arrival && departure) {
+    const err = validateDates(arrival, departure);
+    if (err) {
+      const errorCode =
+        err === 'arrival_after_departure'
+          ? 'validation-arrival-after-departure'
+          : 'validation-departure-too-soon';
+      // Surface the inline-tier validation copy as a T1 toast (user is in a sheet).
+      emitError({ ...ERROR_CATALOG[errorCode], tier: 'T1', autoDismissMs: 5000 });
+      return;
+    }
+  }
+  const phaseBefore = calcPhase({
+    arrivalDate: profile?.arrivalDate ?? null,
+    departureDate: profile?.departureDate ?? null,
+  });
+  try {
+    await updateUserProfile(user.uid, {
+      [kind === 'arrival' ? 'arrivalDate' : 'departureDate']: next,
+    });
+    track('profile_field_change', { field: kind === 'arrival' ? 'arrivalDate' : 'departureDate' });
+    setOpenSheet(null);
+    if (arrival && departure) {
+      // rescheduleAllNotifications records its own failures and never throws.
+      await rescheduleAllNotifications({ arrivalDate: arrival, departureDate: departure });
+      surfaceError('dates-updated');
+      // PRD §4.7 — if the new dates move the user to an earlier phase, follow
+      // the toast with a modal so the phase shift is not a silent surprise.
+      const phaseAfter = calcPhase({ arrivalDate: arrival, departureDate: departure });
+      if (phaseAfter < phaseBefore) {
+        surfaceError('phase-changed', {
+          messageOverride: `Your new dates put you in Phase ${phaseAfter}. Existing missions stay completed.`,
+        });
+      }
+    }
+  } catch (err) {
+    showOperationError(`save your ${kind} date`, err);
+  }
+}
+
+function eraLabel(era: string): string {
+  const found = ERA_LIST.find((e) => e.key === era);
+  return found ? `${found.nameEn} (${found.nameKo})` : era;
+}
+
+function uniLabel(id: string | null | undefined): string {
+  if (!id) return '—';
+  const found = UNIVERSITIES.find((u) => u.id === id);
+  return found ? found.shortName : id;
+}
+
+function housingLabel(h: string | null | undefined): string {
+  if (h === 'dormitory') return 'Dormitory';
+  if (h === 'off-campus') return 'Off-campus';
+  return '—';
+}
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  try {
+    return format(new Date(iso), 'MMM d, yyyy');
+  } catch {
+    return iso;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reusable row + section components
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SettingsRow({
+  label,
+  valueText,
+  onPress,
+  destructive,
+  readOnly,
+  isLast,
+  right,
+}: {
+  label: string;
+  valueText?: string;
+  onPress?: () => void;
+  destructive?: boolean;
+  readOnly?: boolean;
+  isLast?: boolean;
+  right?: React.ReactNode;
+}) {
+  const labelColor = destructive ? palette.dancheong : palette.meok;
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress || readOnly}
+      accessibilityRole={readOnly ? 'text' : 'button'}
+      accessibilityLabel={`${label}${valueText ? `, ${valueText}` : ''}${destructive ? ', destructive' : ''}`}
+      style={({ pressed }) => [
+        styles.row,
+        !isLast ? styles.rowDivider : null,
+        { backgroundColor: pressed && onPress ? palette.cloud : palette.hanji },
+      ]}
+    >
+      <Text role="body" color={labelColor} style={{ flex: 1 }}>
+        {label}
+      </Text>
+      {valueText ? (
+        <Text role="sm" color={palette.ash} numberOfLines={1} style={{ maxWidth: 180, textAlign: 'right' }}>
+          {valueText}
+        </Text>
+      ) : null}
+      {right ? <View style={{ marginLeft: space[2] }}>{right}</View> : null}
+      {onPress && !readOnly ? (
+        <ChevronRight size={18} color={palette.stone} style={{ marginLeft: space[2] }} />
+      ) : null}
+    </Pressable>
+  );
+}
+
+function NotificationsSection({
+  permission,
+  onPermissionOpen,
+  onMount,
+}: {
+  permission: PermissionState | null;
+  onPermissionOpen: () => void;
+  onMount: () => void;
+}) {
+  useEffect(() => onMount(), [onMount]);
+
+  const disabled = permission !== 'granted';
+
+  return (
+    <View style={styles.card}>
+      <ToggleRow code="dDay30" label="D-30 reminder" disabled={disabled} />
+      <ToggleRow code="dDay14" label="D-14 reminder" disabled={disabled} />
+      <ToggleRow code="dDay7" label="D-7 reminder" disabled={disabled} />
+      <ToggleRow
+        code="phaseTransitions"
+        label="Phase change reminders"
+        disabled={disabled}
+      />
+      <ToggleRow
+        code="panelUnlocks"
+        label="Panel unlock celebrations"
+        disabled={disabled}
+      />
+      <View style={[styles.row, styles.rowDivider]}>
+        <View style={{ flex: 1 }}>
+          <Text role="body" color={palette.meok}>
+            OS push permission
+          </Text>
+          <Text role="sm" color={palette.ash}>
+            {permission === 'granted'
+              ? 'On'
+              : permission === 'denied'
+                ? 'Off — open Settings to enable'
+                : permission === 'undetermined'
+                  ? 'Not yet asked'
+                  : 'Checking…'}
+          </Text>
+        </View>
+        {permission === 'denied' ? (
+          <Pressable
+            onPress={onPermissionOpen}
+            accessibilityRole="button"
+            accessibilityLabel="Open Settings"
+            style={({ pressed }) => [
+              styles.linkBtn,
+              { opacity: pressed ? 0.85 : 1 },
+            ]}
+          >
+            <Text role="sm" weight="semibold" color={palette.hanji}>
+              Open Settings
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+      {disabled ? (
+        <View style={styles.disabledHint}>
+          <Text role="sm" color={palette.ash} align="center">
+            Turn on system notifications to use these.
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function ToggleRow({
+  code,
+  label,
+  disabled,
+}: {
+  code: NotificationPrefKey;
+  label: string;
+  disabled: boolean;
+}) {
+  const [value, setValue] = useNotificationPref(code);
+  return (
+    <View style={[styles.row, styles.rowDivider]}>
+      <Text role="body" color={disabled ? palette.stone : palette.meok} style={{ flex: 1 }}>
+        {label}
+      </Text>
+      <Switch
+        value={value && !disabled}
+        disabled={disabled}
+        onValueChange={(next) => {
+          setValue(next);
+          track('notification_pref_change', { code, value: next });
+        }}
+        trackColor={{ false: palette.hairline, true: palette.dancheong }}
+        thumbColor={palette.hanji}
+        accessibilityLabel={`${label}, switch, ${value && !disabled ? 'on' : 'off'}`}
+        accessibilityState={{ disabled }}
+      />
+    </View>
+  );
+}
+
+function AboutSection({
+  onMount,
+  signOut,
+}: {
+  onMount: () => void;
+  signOut: () => Promise<void>;
+}) {
+  useEffect(() => onMount(), [onMount]);
+  const version =
+    Constants.expoConfig?.version ?? Constants.manifest2?.extra?.expoClient?.version ?? '0.0.0';
+  const runtimeVersion =
+    Constants.expoConfig?.runtimeVersion?.toString?.() ?? null;
+
+  return (
+    <View style={styles.card}>
+      <SettingsRow label="Version" valueText={version} readOnly />
+      {__DEV__ && runtimeVersion ? (
+        <SettingsRow label="Build" valueText={runtimeVersion} readOnly />
+      ) : null}
+      <SettingsRow
+        label="Support"
+        onPress={() => {
+          Linking.openURL('mailto:support@kjourney.app?subject=K-Journey%20Support').catch(() => {
+            surfaceError('unknown');
+          });
+        }}
+        right={<Mail size={18} color={palette.ash} />}
+      />
+      <SettingsRow
+        label="Privacy policy"
+        onPress={() => {
+          Linking.openURL('https://kjourney.app/privacy').catch(() => {
+            surfaceError('unknown');
+          });
+        }}
+        right={<ExternalLink size={18} color={palette.ash} />}
+      />
+      <SettingsRow
+        label="Terms of service"
+        onPress={() => {
+          Linking.openURL('https://kjourney.app/terms').catch(() => {
+            surfaceError('unknown');
+          });
+        }}
+        right={<ExternalLink size={18} color={palette.ash} />}
+        isLast={!__DEV__}
+      />
+      {__DEV__ ? (
+        <>
+          <SettingsRow
+            label="[Dev] Fresh onboarding"
+            destructive
+            onPress={async () => {
+              storage.set(KEYS.devMockFreshOnboarding, true);
+              storage.delete(KEYS.profileCache);
+              storage.delete(KEYS.devMockMissions);
+              storage.delete(KEYS.devMockBuckets);
+              storage.delete(KEYS.firedPanelUnlocks);
+              storage.delete(KEYS.phaseOverride);
+              resetAhaMoment();
+              await signOut();
+            }}
+          />
+          <SettingsRow
+            label="[Dev] Skip auth"
+            valueText={storage.getBoolean(KEYS.devMockAuth) ? 'On' : 'Off'}
+            onPress={() => {
+              const current = storage.getBoolean(KEYS.devMockAuth) ?? false;
+              storage.set(KEYS.devMockAuth, !current);
+            }}
+            isLast
+          />
+        </>
+      ) : null}
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sheet components
+// ─────────────────────────────────────────────────────────────────────────────
+
+function NameSheet({
+  visible,
+  initial,
+  onClose,
+  onSave,
+}: {
+  visible: boolean;
+  initial: string;
+  onClose: () => void;
+  onSave: (next: string) => Promise<void>;
+}) {
+  const [text, setText] = useState(initial);
+  useEffect(() => {
+    if (visible) setText(initial);
+  }, [visible, initial]);
+  const valid = validateName(text) === null;
+  return (
+    <SheetFrame visible={visible} title="Edit your name" onClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={{ gap: space[3] }}>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            placeholder="Your name"
+            placeholderTextColor={palette.stone}
+            autoCapitalize="words"
+            style={styles.input}
+            accessibilityLabel="Your name"
+          />
+          <Button
+            label="Save"
+            fullWidth
+            disabled={!valid}
+            onPress={() => onSave(text.trim())}
+          />
+        </View>
+      </KeyboardAvoidingView>
+    </SheetFrame>
+  );
+}
+
+function PickerSheet({
+  visible,
+  title,
+  options,
+  selected,
+  onClose,
+  onSelect,
+}: {
+  visible: boolean;
+  title: string;
+  options: { value: string; label: string; hint?: string }[];
+  selected: string | null;
+  onClose: () => void;
+  onSelect: (value: string) => void;
+}) {
+  return (
+    <SheetFrame visible={visible} title={title} onClose={onClose}>
+      <ScrollView style={{ maxHeight: 480 }}>
+        <View style={{ gap: space[2] }}>
+          {options.map((opt) => {
+            const active = opt.value === selected;
+            return (
+              <Pressable
+                key={opt.value}
+                onPress={() => onSelect(opt.value)}
+                accessibilityRole="button"
+                accessibilityLabel={`${opt.label}${active ? ', selected' : ''}`}
+                accessibilityState={{ selected: active }}
+                style={({ pressed }) => [
+                  styles.pickerRow,
+                  {
+                    borderColor: active ? palette.dancheong : palette.hairline,
+                    borderWidth: active ? 2 : 1,
+                    backgroundColor: pressed ? palette.cloud : palette.hanji,
+                  },
+                ]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text role="body" weight="semibold">
+                    {opt.label}
+                  </Text>
+                  {opt.hint ? (
+                    <Text role="sm" color={palette.ash}>
+                      {opt.hint}
+                    </Text>
+                  ) : null}
+                </View>
+                {active ? <Check size={20} color={palette.dancheong} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      </ScrollView>
+    </SheetFrame>
+  );
+}
+
+function DateSheet({
+  visible,
+  kind,
+  profile,
+  onClose,
+  onSave,
+}: {
+  visible: boolean;
+  kind: 'arrival' | 'departure';
+  profile: UserProfile | null;
+  onClose: () => void;
+  onSave: (date: string) => Promise<void> | void;
+}) {
+  const initial =
+    (kind === 'arrival' ? profile?.arrivalDate : profile?.departureDate) ?? null;
+  const [selected, setSelected] = useState<string | null>(initial);
+  useEffect(() => {
+    if (visible) setSelected(initial);
+  }, [visible, initial]);
+
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const minDate = kind === 'departure'
+    ? profile?.arrivalDate ?? today
+    : today;
+
+  return (
+    <SheetFrame
+      visible={visible}
+      title={kind === 'arrival' ? 'Edit arrival date' : 'Edit departure date'}
+      onClose={onClose}
+    >
+      <View style={{ gap: space[3] }}>
+        <View style={styles.calendarWrap}>
+          <Calendar
+            current={selected ?? today}
+            minDate={minDate}
+            markedDates={selected ? { [selected]: { selected: true, selectedColor: palette.dancheong } } : {}}
+            onDayPress={(d: { dateString: string }) => setSelected(d.dateString)}
+            theme={{
+              calendarBackground: palette.hanji,
+              monthTextColor: palette.meok,
+              textMonthFontWeight: '700',
+              dayTextColor: palette.meok,
+              todayTextColor: palette.dancheong,
+              arrowColor: palette.meok,
+              textSectionTitleColor: palette.ash,
+            }}
+          />
+        </View>
+        <View style={styles.confirmCard}>
+          <Text role="body" weight="semibold">
+            Update your journey dates?
+          </Text>
+          <Text role="sm" color={palette.ash}>
+            Your phase, missions, and reminders will be recalculated.
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: space[3] }}>
+          <View style={{ flex: 1 }}>
+            <Button label="Cancel" variant="secondary" fullWidth onPress={onClose} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="Update"
+              fullWidth
+              disabled={!selected || selected === initial}
+              onPress={() => selected && onSave(selected)}
+            />
+          </View>
+        </View>
+      </View>
+    </SheetFrame>
+  );
+}
+
+function EraSheet({
+  visible,
+  currentEra,
+  onClose,
+  onSelect,
+}: {
+  visible: boolean;
+  currentEra: 'joseon' | 'silla' | 'goryeo';
+  onClose: () => void;
+  onSelect: (value: 'joseon' | 'silla' | 'goryeo') => void;
+}) {
+  const [pending, setPending] = useState<'joseon' | 'silla' | 'goryeo'>(currentEra);
+  useEffect(() => {
+    if (visible) setPending(currentEra);
+  }, [visible, currentEra]);
+
+  return (
+    <SheetFrame visible={visible} title="Choose your era" onClose={onClose}>
+      <Text role="sm" color={palette.ash}>
+        Your byeongpung swaps to the new theme. Your progress stays.
+      </Text>
+      <View style={{ gap: space[3], marginTop: space[3] }}>
+        {ERA_LIST.map((era) => {
+          const active = era.key === pending;
+          return (
+            <Pressable
+              key={era.key}
+              onPress={() => setPending(era.key)}
+              accessibilityRole="button"
+              accessibilityLabel={`${era.nameEn}${active ? ', selected' : ''}`}
+              accessibilityState={{ selected: active }}
+              style={({ pressed }) => [
+                styles.eraCard,
+                {
+                  borderColor: active ? era.primary : palette.hairline,
+                  borderWidth: active ? 2 : 1,
+                  backgroundColor: pressed ? palette.cloud : palette.hanji,
+                },
+                active ? elevation.s1 : null,
+              ]}
+            >
+              <Image
+                source={BYEONGPUNG_PANEL_IMAGES[era.key][0]}
+                style={styles.eraSwatch}
+                resizeMode="cover"
+              />
+              <View style={{ flex: 1 }}>
+                <Text role="h4">{era.nameEn}</Text>
+                <Text role="sm" color={palette.ash}>
+                  {era.tagline}
+                </Text>
+              </View>
+              {active ? <Check size={20} color={era.primary} /> : null}
+            </Pressable>
+          );
+        })}
+        <Button label="Use this era" fullWidth onPress={() => onSelect(pending)} />
+      </View>
+    </SheetFrame>
+  );
+}
+
+function ConfirmSheet({
+  visible,
+  title,
+  body,
+  primary,
+  primaryDestructive,
+  onClose,
+  onConfirm,
+}: {
+  visible: boolean;
+  title: string;
+  body: string;
+  primary: string;
+  primaryDestructive?: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <SheetFrame visible={visible} title={title} onClose={onClose}>
+      <Text role="body" color={palette.meokMid}>
+        {body}
+      </Text>
+      <View style={{ flexDirection: 'row', gap: space[3], marginTop: space[4] }}>
+        <Pressable
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel"
+          style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.85 : 1 }]}
+        >
+          <Text role="body" weight="semibold" color={palette.meok}>
+            Cancel
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            // ADR-0030: a Warning haptic on every destructive confirm tap.
+            if (primaryDestructive) hapticDestructive();
+            onConfirm();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={primary}
+          style={({ pressed }) => [
+            styles.confirmBtn,
+            {
+              backgroundColor: primaryDestructive ? palette.dancheong : palette.meok,
+              opacity: pressed ? 0.85 : 1,
+            },
+          ]}
+        >
+          <Text role="body" weight="semibold" color={palette.hanji}>
+            {primary}
+          </Text>
+        </Pressable>
+      </View>
+    </SheetFrame>
+  );
+}
+
+function SheetFrame({
+  visible,
+  title,
+  onClose,
+  children,
+}: {
+  visible: boolean;
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.sheetBackdrop}>
+        <SafeAreaView edges={['bottom']} style={styles.sheet}>
+          <View style={styles.sheetHeader}>
+            <Text role="h4" style={{ flex: 1 }}>
+              {title}
+            </Text>
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              hitSlop={8}
+            >
+              <X size={22} color={palette.meok} />
+            </Pressable>
+          </View>
+          <View style={styles.sheetBody}>{children}</View>
+        </SafeAreaView>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: palette.cloud },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: space[5],
+    paddingVertical: space[4],
+    backgroundColor: palette.hanji,
+    borderBottomWidth: 1,
+    borderBottomColor: semantic.border.hairline,
+  },
+  body: {
+    paddingBottom: space[12],
+    paddingTop: space[3],
+    gap: space[2],
+  },
+  sectionHeader: {
+    paddingHorizontal: space[5],
+    paddingTop: space[4],
+    paddingBottom: space[2],
+  },
+  card: {
+    marginHorizontal: space[4],
+    borderRadius: radius.card,
+    backgroundColor: palette.hanji,
+    overflow: 'hidden',
+  },
+  row: {
+    minHeight: 56,
+    paddingHorizontal: space[4],
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: semantic.border.hairline,
+  },
+  linkBtn: {
+    paddingHorizontal: space[3],
+    paddingVertical: space[2],
+    borderRadius: radius.pill,
+    backgroundColor: palette.meok,
+  },
+  disabledHint: {
+    paddingHorizontal: space[5],
+    paddingVertical: space[3],
+    backgroundColor: palette.cloud,
+  },
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: palette.meok + '8C',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: palette.hanji,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: space[5],
+    paddingVertical: space[4],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: semantic.border.hairline,
+  },
+  sheetBody: {
+    paddingHorizontal: space[5],
+    paddingTop: space[4],
+    paddingBottom: space[4],
+    gap: space[3],
+  },
+  input: {
+    minHeight: 52,
+    paddingHorizontal: space[4],
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: semantic.border.hairline,
+    backgroundColor: palette.hanji,
+    color: palette.meok,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  pickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: space[4],
+    paddingVertical: space[3],
+    borderRadius: radius.card,
+    gap: space[3],
+  },
+  calendarWrap: {
+    borderRadius: radius.card,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: palette.hairline,
+  },
+  confirmCard: {
+    padding: space[3],
+    backgroundColor: palette.cloud,
+    borderRadius: radius.md,
+    gap: 4,
+  },
+  eraCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[3],
+    padding: space[3],
+    borderRadius: radius.card,
+  },
+  eraSwatch: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: palette.hairline,
+    backgroundColor: palette.cloud,
+  },
+  cancelBtn: {
+    flex: 1,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    backgroundColor: palette.cloud,
+  },
+  confirmBtn: {
+    flex: 1,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+  },
+});

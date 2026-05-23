@@ -1,0 +1,99 @@
+{
+  "expo": {
+    "name": "K-Journey",
+    "slug": "k-journey",
+    "version": "0.1.0",
+    "scheme": "kjourney",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "icon": "./assets/images/icon.png",
+    "web": {
+      "favicon": "./assets/images/favicon.png"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.kjourney.app",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Take photos of your K-Journey memories.",
+        "NSPhotoLibraryUsageDescription": "Save your completed byeongpung to your photo library.",
+        "NSPhotoLibraryAddUsageDescription": "Save your completed byeongpung to your photo library.",
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      }
+    },
+    "android": {
+      "package": "com.kjourney.app",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#FDFAF3"
+      },
+      "permissions": [
+        "NOTIFICATIONS",
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-apple-authentication",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#FDFAF3"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          },
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35
+          }
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-firebase/crashlytics",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#C5302A",
+          "defaultChannel": "default"
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Save your completed byeongpung to your photo library.",
+          "savePhotosPermission": "Save your completed byeongpung to your photo library.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a87d65e7-5b8f-4643-a62f-71a76f638d31"
+      },
+      "router": {
+        "origin": false
+      }
+    },
+    "owner": "k-journey"
+  }
+}

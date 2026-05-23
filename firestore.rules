@@ -1,0 +1,118 @@
+// K-Journey Firestore Security Rules
+//
+// Decision authority: docs/adr/0021-firestore-rules-acl-model.md
+// Spec: reference/K-Journey_PRD_v1_1_KR.md §11.5
+//
+// Threat model:
+//   - Authenticated user reads another user's progress  ──▶ DENY (isOwner)
+//   - Anonymous client reads/writes user data           ──▶ DENY (isSignedIn rejects anonymous)
+//   - Authenticated user writes the public catalogue    ──▶ DENY (catalogues are admin-only)
+//   - Unsigned-in client reads emergency guide          ──▶ ALLOW (CLAUDE.md MUST #9 spirit)
+//
+// Test runner: `firebase emulators:start --only firestore`
+//              + @firebase/rules-unit-testing scenarios in docs/TESTING.md §Firestore Rules
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helpers ──────────────────────────────────────────────
+
+    // Signed-in via Apple or Google (ADR-0013, ADR-0014: no anonymous).
+    function isSignedIn() {
+      return request.auth != null
+          && request.auth.token.firebase.sign_in_provider in ['apple.com', 'google.com'];
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // True when the user's account is in the 30-day soft-delete window
+    // (ADR-0033). Once pending, the only permitted write is the one that
+    // clears the marker — the recovery / cancel-deletion flow.
+    function deletionPending(data) {
+      return data.keys().hasAny(['_meta'])
+          && data._meta.keys().hasAny(['deletionRequestedAt'])
+          && data._meta.deletionRequestedAt != null;
+    }
+
+    // Limits to defend against runaway writes.
+    function hasReasonableSize() {
+      return request.resource.size() < 1024 * 100; // 100 KB
+    }
+
+    // ─── User-scoped (read/write by owner only) ───────────────
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      // ADR-0033 §A + §C: once soft-deletion is pending, the only write the
+      // user may make is one that clears `_meta.deletionRequestedAt`. A brand
+      // new doc (resource == null) and any non-pending account write freely.
+      allow write: if isOwner(uid) && hasReasonableSize()
+                   && ( resource == null
+                        || !deletionPending(resource.data)
+                        || !deletionPending(request.resource.data) );
+
+      // Completed Have-To missions.
+      match /missions/{missionId} {
+        allow read, write: if isOwner(uid) && hasReasonableSize();
+      }
+
+      // Want-To buckets and their items.
+      match /buckets/{bucketId} {
+        allow read, write: if isOwner(uid) && hasReasonableSize();
+
+        match /items/{itemId} {
+          allow read, write: if isOwner(uid) && hasReasonableSize();
+        }
+      }
+
+      // Saved/shared byeongpung exports (image metadata; binaries live in Storage).
+      match /exports/{exportId} {
+        allow read, write: if isOwner(uid) && hasReasonableSize();
+      }
+    }
+
+    // ─── Public catalogues (read-only for signed-in users) ────
+
+    // 9 supported Seoul universities (PRD §8).
+    match /universities/{universityId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Admin updates via Firebase Console only.
+    }
+
+    // Reserve for V1.1+ if missions move out of the bundle.
+    match /missions_catalog/{missionId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ─── Emergency guide (open read, intentionally) ──────────
+    //
+    // CLAUDE.md MUST #9 spirit: "Emergency guide is reachable from every
+    // screen, every phase." Stretching that: an emergency-info doc should
+    // be reachable even by a user who has not yet signed in (e.g. a friend
+    // borrowing the phone in a real emergency).
+
+    match /emergency/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ─── Admin-only audit logs (ADR-0033 §C) ─────────────────
+    //
+    // Deletion + export audit trails written by Cloud Functions with admin
+    // credentials. No client read or write, ever.
+
+    match /_admin/{document=**} {
+      allow read, write: if false;
+    }
+
+    // ─── Default deny ─────────────────────────────────────────
+    //
+    // Anything not matched above is denied implicitly by Firestore.
+    // This explicit comment is reminder, not code.
+  }
+}

@@ -1,0 +1,2357 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K-Journey Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; overflow: hidden; background: #1A1208; }
+  body { display: flex; align-items: center; justify-content: center; }
+
+  /* iPhone 15 frame */
+  .phone-frame {
+    position: relative;
+    width: 393px;
+    height: 852px;
+    background: #1A1208;
+    border-radius: 54px;
+    box-shadow:
+      0 0 0 2px #3A3A3A,
+      0 0 0 6px #1A1A1A,
+      0 30px 80px rgba(0,0,0,0.7),
+      0 10px 30px rgba(0,0,0,0.5);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  /* Screen area */
+  .screen {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #FDFAF3;
+    border-radius: 54px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Dynamic Island */
+  .dynamic-island {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 126px;
+    height: 37px;
+    background: #000;
+    border-radius: 20px;
+    z-index: 100;
+  }
+
+  /* Status bar */
+  .status-bar {
+    height: 59px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 28px 10px;
+    font-family: 'Pretendard Variable', 'Pretendard', -apple-system, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: #2C2416;
+    flex-shrink: 0;
+    background: #FDFAF3;
+    position: relative;
+    z-index: 50;
+  }
+  .status-bar.dark {
+    color: #F5E8C0;
+    background: #1A1208;
+  }
+
+  .status-icons { display: flex; align-items: center; gap: 6px; }
+
+  /* App content */
+  #root {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* Global scrollbar hide */
+  * { scrollbar-width: none; -ms-overflow-style: none; }
+  *::-webkit-scrollbar { display: none; }
+
+  /* Global typography defaults */
+  button { font-family: 'Pretendard Variable', 'Pretendard', -apple-system, sans-serif; }
+  input, textarea { font-family: 'Pretendard Variable', 'Pretendard', -apple-system, sans-serif; }
+
+  /* Smooth transitions */
+  * { -webkit-tap-highlight-color: transparent; }
+
+  /* Background grain texture hint */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  /* Design canvas label */
+  .frame-label {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Pretendard Variable', sans-serif;
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  /* Home indicator */
+  .home-indicator {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 134px;
+    height: 5px;
+    background: rgba(44,36,22,0.3);
+    border-radius: 3px;
+    z-index: 200;
+    pointer-events: none;
+  }
+
+  /* Era hint label */
+  .era-hint {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    font-family: 'Pretendard Variable', sans-serif;
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.03em;
+    text-align: right;
+    pointer-events: none;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+  <div class="screen">
+    <!-- Dynamic Island -->
+    <div class="dynamic-island"></div>
+
+    <!-- Status bar -->
+    <div class="status-bar" id="statusBar">
+      <span>9:41</span>
+      <div class="status-icons">
+        <!-- Signal -->
+        <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor">
+          <rect x="0" y="5" width="3" height="7" rx="1"/>
+          <rect x="4.5" y="3" width="3" height="9" rx="1"/>
+          <rect x="9" y="1" width="3" height="11" rx="1"/>
+          <rect x="13.5" y="0" width="3" height="12" rx="1" opacity="0.3"/>
+        </svg>
+        <!-- WiFi -->
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor">
+          <path d="M8 9.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3z"/>
+          <path d="M4.5 6.5a5 5 0 017 0" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+          <path d="M2 4a8 8 0 0112 0" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+        </svg>
+        <!-- Battery -->
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="none">
+          <rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="currentColor" strokeOpacity="0.35"/>
+          <rect x="2" y="2" width="17" height="8" rx="2" fill="currentColor"/>
+          <path d="M23 4v4a2 2 0 000-4z" fill="currentColor" fillOpacity="0.4"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- React root -->
+    <div id="root"></div>
+
+    <!-- Home indicator -->
+    <div class="home-indicator"></div>
+  </div>
+</div>
+
+<div class="frame-label">K-Journey Prototype · v1.0 MVP</div>
+<div class="era-hint">조선 / Silla / 고려<br/>테마 전환 가능</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     KJComponents.jsx — Design tokens + shared UI components
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<script type="text/babel">
+// KJComponents.jsx — Design tokens + shared UI components
+
+const { useState, useEffect, useRef, useCallback } = React;
+
+// Design tokens
+const KJ = {
+  colors: {
+    dancheong: '#C5302A', dancheongDeep: '#8B1A14',
+    cheong: '#1A3A7A', hwanggeum: '#C4952A',
+    hanji: '#FDFAF3', hwangto: '#F0E6CE',
+    meok: '#2C2416', jade: '#3D6B3A',
+    lotus: '#D4758A', ash: '#6E6458',
+    hairline: '#DDD5C4', cloud: '#F5EFE3',
+  },
+  font: {
+    display: '"Noto Serif KR", Georgia, serif',
+    ui: '"Pretendard Variable", "Pretendard", "Apple SD Gothic Neo", -apple-system, sans-serif',
+  },
+  radius: { xs: 4, sm: 8, card: 12, lg: 20, pill: 9999 },
+  shadow: {
+    s1: 'rgba(44,36,22,0.06) 0 2px 8px',
+    s2: 'rgba(44,36,22,0.04) 0 0 0 1px, rgba(44,36,22,0.08) 0 4px 12px',
+    s3: 'rgba(44,36,22,0.04) 0 0 0 1px, rgba(44,36,22,0.06) 0 4px 8px, rgba(44,36,22,0.12) 0 8px 24px',
+  },
+};
+
+const ERA_THEMES = {
+  joseon: {
+    name: '조선', nameEn: 'Joseon',
+    subtitle: '궁중장식화 · 민화',
+    description: '조선의 민화와 궁중장식화.\n한옥의 질감과 수묵의 고요함.',
+    primary: '#C5302A', accent: '#C4952A', secondary: '#1A3A7A',
+    bgTint: '#FDFAF3', panelBg: '#F5E8C8',
+    panelColors: ['#C5302A','#D4758A','#C4952A','#1A3A7A','#3D6B3A','#D4758A','#2C2416','#C4952A'],
+    artStyle: 'minhwa',
+  },
+  silla: {
+    name: '신라', nameEn: 'Silla',
+    subtitle: '사신수 · 금동',
+    description: '사방을 수호하는 사신수.\n경주의 금동 문양과 청·적의 힘.',
+    primary: '#C4952A', accent: '#C5302A', secondary: '#1A3A7A',
+    bgTint: '#FDF8EE', panelBg: '#F0E0A0',
+    panelColors: ['#1A3A7A','#3D9BE8','#C5302A','#E8563A','#E8E8E8','#C8C8C8','#2C2416','#C4952A'],
+    artStyle: 'sashisu',
+  },
+  goryeo: {
+    name: '고려', nameEn: 'Goryeo',
+    subtitle: '불화 · 비색 청자',
+    description: '극락을 담은 불화의 세계.\n비색 청자의 고요하고 깊은 빛.',
+    primary: '#1A3A7A', accent: '#3D6B3A', secondary: '#C4952A',
+    bgTint: '#F5F8F3', panelBg: '#D8E8D0',
+    panelColors: ['#3D6B3A','#5A9A6A','#1A3A7A','#2A5AAA','#C4952A','#D4A840','#D4758A','#C4952A'],
+    artStyle: 'buddhist',
+  },
+};
+
+const PHASE_INFO = {
+  1: { name: '입국 전', nameEn: 'Pre-arrival', color: '#1A3A7A', icon: 'M5 12h14M12 5l7 7-7 7' },
+  2: { name: '첫 주', nameEn: 'First week', color: '#C4952A', icon: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' },
+  3: { name: '거주', nameEn: 'Living', color: '#3D6B3A', icon: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z' },
+  4: { name: '출국 전', nameEn: 'Pre-departure', color: '#C5302A', icon: 'M5 12h14M12 5l7 7-7 7' },
+};
+
+const CATEGORY_STYLES = {
+  settle: { color: '#1A3A7A', label: '생활 정착', labelEn: 'Settling in' },
+  food:   { color: '#C5302A', label: '음식 & 식도락', labelEn: 'Food & dining' },
+  activity: { color: '#3D6B3A', label: '여행 & 액티비티', labelEn: 'Activities' },
+  culture: { color: '#C4952A', label: '문화 체험', labelEn: 'Culture' },
+};
+
+const ALL_MISSIONS = [
+  // Phase 1
+  { id:'p1_1', phase:1, cat:'settle', ko:'짐 체크리스트 완료', en:'Pack your bags', lucide:'package' },
+  { id:'p1_2', phase:1, cat:'settle', ko:'비자 및 서류 준비', en:'Prepare visa documents', lucide:'file-text' },
+  { id:'p1_3', phase:1, cat:'settle', ko:'공항 교통편 확인', en:'Check airport transport', lucide:'map-pin' },
+  { id:'p1_4', phase:1, cat:'culture', ko:'한국어 기본 인사말', en:'Learn 3 Korean greetings', lucide:'message-circle' },
+  { id:'p1_5', phase:1, cat:'settle', ko:'필수 앱 다운로드', en:'Download essential apps', lucide:'smartphone' },
+  { id:'p1_6', phase:1, cat:'settle', ko:'날씨 확인 및 옷 준비', en:'Pack for the weather', lucide:'cloud' },
+  // Phase 2
+  { id:'p2_1', phase:2, cat:'settle', ko:'T-money 교통카드 구매', en:'Get a T-money card', lucide:'credit-card' },
+  { id:'p2_2', phase:2, cat:'settle', ko:'유심 / eSIM 개통', en:'Get a SIM card', lucide:'wifi' },
+  { id:'p2_3', phase:2, cat:'settle', ko:'외국인등록증 신청', en:'Apply for ARC', lucide:'id-card' },
+  { id:'p2_4', phase:2, cat:'settle', ko:'은행 계좌 개설', en:'Open a bank account', lucide:'building-2' },
+  { id:'p2_5', phase:2, cat:'food', ko:'학교 주변 첫 맛집 방문', en:'Try a local restaurant', lucide:'utensils' },
+  { id:'p2_6', phase:2, cat:'settle', ko:'배달 앱 설치', en:'Install a delivery app', lucide:'package' },
+  // Phase 3
+  { id:'p3_1', phase:3, cat:'food', ko:'전통시장 방문', en:'Visit a traditional market', lucide:'shopping-bag' },
+  { id:'p3_2', phase:3, cat:'activity', ko:'한강 피크닉 & 치맥', en:'Han River picnic + chimaek', lucide:'sun' },
+  { id:'p3_3', phase:3, cat:'culture', ko:'한복 입고 궁궐 방문', en:'Visit a palace in Hanbok', lucide:'landmark' },
+  { id:'p3_4', phase:3, cat:'activity', ko:'KTX 주말 여행', en:'Weekend trip by KTX', lucide:'train' },
+  { id:'p3_5', phase:3, cat:'food', ko:'길거리 음식 도전', en:'Try Korean street food', lucide:'flame' },
+  { id:'p3_6', phase:3, cat:'culture', ko:'찜질방 체험', en:'Try a jjimjilbang', lucide:'thermometer' },
+  { id:'p3_7', phase:3, cat:'activity', ko:'노래방 가기', en:'Go to noraebang', lucide:'mic' },
+  { id:'p3_8', phase:3, cat:'culture', ko:'국립중앙박물관 방문', en:'Visit National Museum', lucide:'columns' },
+  { id:'p3_9', phase:3, cat:'food', ko:'삼겹살 구워 먹기', en:'Grill samgyeopsal', lucide:'users' },
+  { id:'p3_10', phase:3, cat:'settle', ko:'스터디 카페 체험', en:'Study at a Korean cafe', lucide:'coffee' },
+  { id:'p3_11', phase:3, cat:'activity', ko:'서울 산 등산', en:'Hike a Seoul mountain', lucide:'mountain' },
+  { id:'p3_12', phase:3, cat:'food', ko:'전통 찻집 방문', en:'Visit a traditional teahouse', lucide:'coffee' },
+  // Phase 4
+  { id:'p4_1', phase:4, cat:'settle', ko:'귀국 세관 신고 확인', en:'Check customs rules', lucide:'file-check' },
+  { id:'p4_2', phase:4, cat:'culture', ko:'선물 쇼핑 완료', en:'Finish souvenir shopping', lucide:'gift' },
+  { id:'p4_3', phase:4, cat:'settle', ko:'기숙사 퇴실 절차', en:'Complete dorm check-out', lucide:'home' },
+  { id:'p4_4', phase:4, cat:'culture', ko:'한국 친구들 작별 인사', en:'Say goodbye to friends', lucide:'heart' },
+  { id:'p4_5', phase:4, cat:'food', ko:'마지막 한국 음식 먹기', en:'Have one last Korean meal', lucide:'utensils' },
+];
+
+// Minhwa decorative SVG motifs
+function MotifPeony({ size = 40, alpha = 1 }) {
+  const a = alpha;
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="18" r="5" fill="#C5302A" opacity={0.9 * a} />
+      {[0,45,90,135,180,225,270,315].map((deg, i) => (
+        <ellipse key={i}
+          cx={20 + Math.cos(deg*Math.PI/180)*10}
+          cy={18 + Math.sin(deg*Math.PI/180)*10}
+          rx="5" ry="3.2"
+          fill={i%2===0?'#D4758A':'#C5302A'}
+          opacity={0.7*a}
+          transform={`rotate(${deg},${20+Math.cos(deg*Math.PI/180)*10},${18+Math.sin(deg*Math.PI/180)*10})`}
+        />
+      ))}
+      {[0,72,144,216,288].map((deg, i) => (
+        <circle key={i}
+          cx={20 + Math.cos(deg*Math.PI/180)*3}
+          cy={18 + Math.sin(deg*Math.PI/180)*3}
+          r="1.2" fill="#C4952A" opacity={0.9*a}
+        />
+      ))}
+      <ellipse cx="13" cy="32" rx="6" ry="3.5" fill="#3D6B3A" opacity={0.7*a} transform="rotate(-25,13,32)" />
+      <ellipse cx="27" cy="32" rx="6" ry="3.5" fill="#3D6B3A" opacity={0.7*a} transform="rotate(25,27,32)" />
+      <line x1="20" y1="23" x2="20" y2="35" stroke="#2C2416" strokeWidth="1.5" opacity={0.5*a} />
+    </svg>
+  );
+}
+
+function MotifCrane({ size = 40, alpha = 1 }) {
+  const a = alpha;
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
+      <ellipse cx="20" cy="24" rx="8" ry="5" fill="white" opacity={0.9*a} />
+      <ellipse cx="20" cy="24" rx="8" ry="5" stroke={KJ.colors.hairline} strokeWidth="0.5" opacity={0.5*a} />
+      <path d="M12 24 Q4 16 8 10 Q12 18 18 21Z" fill="white" opacity={0.85*a} />
+      <path d="M28 24 Q36 16 32 10 Q28 18 22 21Z" fill="white" opacity={0.85*a} />
+      <path d="M10 22 Q5 20 8 14" stroke="#2C2416" strokeWidth="1.2" opacity={0.4*a} fill="none" />
+      <path d="M30 22 Q35 20 32 14" stroke="#2C2416" strokeWidth="1.2" opacity={0.4*a} fill="none" />
+      <path d="M20 19 Q19 11 20 5" stroke="white" strokeWidth="2.5" strokeLinecap="round" opacity={0.9*a} />
+      <circle cx="20" cy="5" r="2.5" fill="white" opacity={0.9*a} />
+      <circle cx="20" cy="4" r="1.5" fill="#C5302A" opacity={a} />
+      <path d="M22 29 Q26 34 24 38" stroke="#2C2416" strokeWidth="2" opacity={0.5*a} fill="none" />
+      <path d="M18 30 Q15 35 14 38" stroke="#C4952A" strokeWidth="1.2" opacity={0.6*a} fill="none" />
+      <path d="M22 30 Q24 35 26 37" stroke="#C4952A" strokeWidth="1.2" opacity={0.6*a} fill="none" />
+    </svg>
+  );
+}
+
+function MotifTiger({ size = 40, alpha = 1 }) {
+  const a = alpha;
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
+      <ellipse cx="20" cy="26" rx="9" ry="7" fill="#D4831A" opacity={0.85*a} />
+      {[-1,0.5,2].map((x, i) => (
+        <line key={i} x1={13+i*3.5} y1="20" x2={12+i*3.5} y2="33" stroke="#2C2416" strokeWidth="1.8" opacity={0.6*a} />
+      ))}
+      <circle cx="20" cy="13" r="6" fill="#D4831A" opacity={0.85*a} />
+      <circle cx="17" cy="12" r="1.5" fill="#2C2416" opacity={0.9*a} />
+      <circle cx="23" cy="12" r="1.5" fill="#2C2416" opacity={0.9*a} />
+      <circle cx="17.5" cy="12.3" r="0.6" fill="white" opacity={0.8*a} />
+      <circle cx="23.5" cy="12.3" r="0.6" fill="white" opacity={0.8*a} />
+      <circle cx="20" cy="14.5" r="1" fill="#C5302A" opacity={0.9*a} />
+      <path d="M16 16 Q14 17 13 15" stroke="#2C2416" strokeWidth="0.8" opacity={0.7*a} fill="none" />
+      <path d="M24 16 Q26 17 27 15" stroke="#2C2416" strokeWidth="0.8" opacity={0.7*a} fill="none" />
+      <polygon points="14,8 11,4 16,7" fill="#D4831A" opacity={0.9*a} />
+      <polygon points="26,8 29,4 24,7" fill="#D4831A" opacity={0.9*a} />
+      <path d="M29 26 Q37 22 35 30 Q33 34 29 32" stroke="#D4831A" strokeWidth="2.5" fill="none" opacity={0.8*a} />
+      <line x1="14" y1="8" x2="12" y2="6" stroke="#2C2416" strokeWidth="1" opacity={0.5*a} />
+      <line x1="26" y1="8" x2="28" y2="6" stroke="#2C2416" strokeWidth="1" opacity={0.5*a} />
+    </svg>
+  );
+}
+
+function MotifLotus({ size = 40, alpha = 1 }) {
+  const a = alpha;
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
+      <ellipse cx="20" cy="35" rx="16" ry="4" fill="#3D6B3A" opacity={0.5*a} />
+      <ellipse cx="20" cy="33" rx="12" ry="6" fill="#3D6B3A" opacity={0.6*a} />
+      <line x1="20" y1="33" x2="20" y2="22" stroke="#3D6B3A" strokeWidth="1.5" opacity={0.6*a} />
+      <circle cx="20" cy="17" r="4" fill="#C4952A" opacity={0.85*a} />
+      {[0,51.4,102.8,154.2,205.7,257.1,308.6].map((deg, i) => (
+        <ellipse key={i}
+          cx={20+Math.cos(deg*Math.PI/180)*8} cy={17+Math.sin(deg*Math.PI/180)*8}
+          rx="4" ry="2.5" fill={i%2===0?'#D4758A':'#E8A0B5'}
+          opacity={0.8*a}
+          transform={`rotate(${deg},${20+Math.cos(deg*Math.PI/180)*8},${17+Math.sin(deg*Math.PI/180)*8})`}
+        />
+      ))}
+      {[25.7,77.1,128.5,180,231.5,282.9,334.3].map((deg, i) => (
+        <ellipse key={i}
+          cx={20+Math.cos(deg*Math.PI/180)*12} cy={17+Math.sin(deg*Math.PI/180)*12}
+          rx="3.5" ry="2" fill="#F0B8C8"
+          opacity={0.6*a}
+          transform={`rotate(${deg},${20+Math.cos(deg*Math.PI/180)*12},${17+Math.sin(deg*Math.PI/180)*12})`}
+        />
+      ))}
+      {[0,1,2,3,4,5].map((i) => (
+        <circle key={i}
+          cx={20+Math.cos(i*60*Math.PI/180)*2} cy={17+Math.sin(i*60*Math.PI/180)*2}
+          r="0.8" fill="white" opacity={0.9*a}
+        />
+      ))}
+    </svg>
+  );
+}
+
+// UI Components
+function PrimaryButton({ children, onClick, disabled, style, small }) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <button onClick={onClick} disabled={disabled}
+      onPointerDown={() => setPressed(true)} onPointerUp={() => setPressed(false)} onPointerLeave={() => setPressed(false)}
+      style={{
+        background: pressed ? KJ.colors.dancheongDeep : KJ.colors.dancheong,
+        color: 'white', border: 'none', borderRadius: KJ.radius.pill,
+        padding: small ? '10px 20px' : '15px 28px',
+        fontFamily: KJ.font.ui, fontWeight: 600, fontSize: small ? 14 : 16,
+        cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.45 : 1,
+        transition: 'background 150ms ease-out, transform 100ms ease-out',
+        transform: pressed ? 'scale(0.97)' : 'scale(1)',
+        width: style?.width !== undefined ? undefined : '100%',
+        letterSpacing: '-0.01em', ...style,
+      }}>
+      {children}
+    </button>
+  );
+}
+
+function GhostButton({ children, onClick, style }) {
+  return (
+    <button onClick={onClick} style={{
+      background: 'transparent', color: KJ.colors.meok,
+      border: `1.5px solid ${KJ.colors.hairline}`, borderRadius: KJ.radius.pill,
+      padding: '14px 28px', fontFamily: KJ.font.ui, fontWeight: 500, fontSize: 15,
+      cursor: 'pointer', width: '100%', transition: 'border-color 150ms', ...style,
+    }}>
+      {children}
+    </button>
+  );
+}
+
+function TextButton({ children, onClick, style }) {
+  return (
+    <button onClick={onClick} style={{
+      background: 'none', border: 'none', cursor: 'pointer',
+      fontFamily: KJ.font.ui, fontWeight: 500, fontSize: 14,
+      color: KJ.colors.ash, padding: '8px 4px', ...style,
+    }}>
+      {children}
+    </button>
+  );
+}
+
+function CategoryBadge({ cat, small }) {
+  const s = CATEGORY_STYLES[cat] || CATEGORY_STYLES.settle;
+  return (
+    <span style={{
+      display: 'inline-block', padding: small ? '2px 7px' : '3px 9px',
+      borderRadius: KJ.radius.xs, background: s.color + '1A',
+      color: s.color, fontFamily: KJ.font.ui, fontWeight: 600,
+      fontSize: small ? 9 : 10, letterSpacing: '0.04em', textTransform: 'uppercase',
+    }}>
+      {s.label}
+    </span>
+  );
+}
+
+function PageHeader({ title, subtitle, onBack, right, noBorder }) {
+  return (
+    <div style={{
+      padding: '10px 20px 10px', borderBottom: noBorder ? 'none' : `1px solid ${KJ.colors.hairline}`,
+      background: KJ.colors.hanji, display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
+    }}>
+      {onBack && (
+        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', color: KJ.colors.meok, display: 'flex', alignItems: 'center' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 5l-7 7 7 7" />
+          </svg>
+        </button>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: KJ.font.display, fontSize: 17, fontWeight: 700, color: KJ.colors.meok, letterSpacing: '-0.025em', lineHeight: 1.2, textWrap: 'pretty' }}>
+          {title}
+        </div>
+        {subtitle && <div style={{ fontFamily: KJ.font.ui, fontSize: 11, color: KJ.colors.ash, marginTop: 2 }}>{subtitle}</div>}
+      </div>
+      {right && <div style={{ flexShrink: 0 }}>{right}</div>}
+    </div>
+  );
+}
+
+function BottomNav({ activeTab, onTabChange, era }) {
+  const theme = ERA_THEMES[era] || ERA_THEMES.joseon;
+  const tabs = [
+    { id: 'home', ko: '여정', path: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z' },
+    { id: 'byeongpung', ko: '병풍', path: 'M4 2h4v20H4zM10 2h4v20h-4zM16 2h4v20h-4z' },
+    { id: 'wantto', ko: '버킷', path: 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z' },
+    { id: 'more', ko: '더보기', path: 'M4 6h16M4 12h16M4 18h16' },
+  ];
+  return (
+    <div style={{
+      display: 'flex', borderTop: `1px solid ${KJ.colors.hairline}`,
+      background: KJ.colors.hanji, flexShrink: 0,
+    }}>
+      {tabs.map(tab => {
+        const active = activeTab === tab.id;
+        return (
+          <button key={tab.id} onClick={() => onTabChange(tab.id)} style={{
+            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            padding: '10px 4px 12px', background: 'none', border: 'none', cursor: 'pointer',
+            color: active ? theme.primary : KJ.colors.ash, transition: 'color 150ms',
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round">
+              <path d={tab.path} />
+            </svg>
+            <span style={{ fontFamily: KJ.font.ui, fontSize: 10, fontWeight: active ? 700 : 500 }}>{tab.ko}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ByeongpungStrip({ completedCount, era, onClick, animatingPanel }) {
+  const theme = ERA_THEMES[era] || ERA_THEMES.joseon;
+  const panelReveal = (i) => Math.min(1, Math.max(0, (completedCount - i * 6) / 6));
+
+  return (
+    <button onClick={onClick} style={{
+      display: 'flex', width: '100%', height: 52, cursor: 'pointer',
+      background: 'none', border: 'none', padding: 0, position: 'relative',
+      overflow: 'hidden', flexShrink: 0,
+    }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${KJ.colors.hwanggeum}88, ${KJ.colors.hwanggeum}44, ${KJ.colors.hwanggeum}88)`, zIndex: 2 }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${KJ.colors.hwanggeum}88, ${KJ.colors.hwanggeum}44, ${KJ.colors.hwanggeum}88)`, zIndex: 2 }} />
+      {Array.from({ length: 8 }).map((_, i) => {
+        const rev = panelReveal(i);
+        const isAnimating = animatingPanel === i;
+        return (
+          <div key={i} style={{
+            flex: 1, position: 'relative', overflow: 'hidden',
+            borderRight: i < 7 ? `1px solid ${KJ.colors.hwanggeum}55` : 'none',
+          }}>
+            <div style={{
+              position: 'absolute', inset: '3px 0',
+              background: theme.panelColors[i],
+              opacity: rev * 0.75,
+              transition: isAnimating ? 'opacity 800ms ease-out' : 'opacity 600ms ease-out',
+            }} />
+            <div style={{
+              position: 'absolute', inset: '3px 0',
+              background: theme.panelBg,
+              opacity: Math.max(0, 1 - rev),
+              transition: isAnimating ? 'opacity 800ms ease-out' : 'opacity 600ms ease-out',
+            }} />
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end',
+              justifyContent: 'center', paddingBottom: 5,
+            }}>
+              <span style={{
+                fontFamily: KJ.font.ui, fontSize: 8, fontWeight: 700,
+                color: rev > 0.5 ? 'rgba(255,255,255,0.65)' : KJ.colors.ash,
+              }}>{i + 1}</span>
+            </div>
+          </div>
+        );
+      })}
+      <div style={{
+        position: 'absolute', bottom: 5, right: 10,
+        background: 'rgba(253,250,243,0.9)', padding: '1px 8px',
+        borderRadius: KJ.radius.pill, backdropFilter: 'blur(4px)',
+        border: `1px solid ${KJ.colors.hairline}`,
+      }}>
+        <span style={{ fontFamily: KJ.font.ui, fontSize: 9, fontWeight: 600, color: KJ.colors.ash }}>
+          {Math.floor(completedCount / 6)}/8폭 완성
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function Icon({ name, size = 20, color, strokeWidth = 1.5 }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current && window.lucide) {
+      ref.current.innerHTML = '';
+      const icon = window.lucide.createElement(name.replace(/-([a-z])/g, (_, c) => c.toUpperCase()));
+      if (icon) {
+        icon.setAttribute('width', size);
+        icon.setAttribute('height', size);
+        icon.setAttribute('stroke', color || 'currentColor');
+        icon.setAttribute('stroke-width', strokeWidth);
+        icon.setAttribute('fill', 'none');
+        icon.setAttribute('stroke-linecap', 'round');
+        icon.setAttribute('stroke-linejoin', 'round');
+        ref.current.appendChild(icon);
+      }
+    }
+  }, [name, size, color, strokeWidth]);
+  return <span ref={ref} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} />;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KJByeongpung — 8-panel folding screen artwork + reveal animation
+// ═══════════════════════════════════════════════════════════════════════════
+
+function PanelJoseon1() {
+  return (
+    <svg viewBox="0 0 120 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+      <rect width="120" height="200" fill="#F5E8C8"/>
+      <text x="60" y="188" textAnchor="middle" fontFamily="serif" fontSize="9" fill="#C4952A" opacity="0.6">一</text>
+      <ellipse cx="60" cy="168" rx="22" ry="8" fill="#1A3A7A" opacity="0.8"/>
+      <path d="M38 168 Q38 180 60 182 Q82 180 82 168Z" fill="#1A3A7A" opacity="0.8"/>
+      <path d="M42 168 Q40 145 60 140 Q80 145 78 168Z" fill="#2A5AAA" opacity="0.8"/>
+      <ellipse cx="60" cy="155" rx="12" ry="10" fill="none" stroke="white" strokeWidth="0.8" opacity="0.5"/>
+      <path d="M55 152 Q60 148 65 152 Q60 158 55 152Z" fill="white" opacity="0.5"/>
+      <path d="M60 140 Q58 120 55 100 Q52 80 50 60" stroke="#3D6B3A" strokeWidth="2" fill="none"/>
+      <path d="M60 140 Q62 118 64 98 Q66 78 68 58" stroke="#3D6B3A" strokeWidth="1.5" fill="none"/>
+      <ellipse cx="45" cy="115" rx="16" ry="7" fill="#3D6B3A" opacity="0.85" transform="rotate(-40,45,115)"/>
+      <ellipse cx="72" cy="95" rx="16" ry="7" fill="#4A7A45" opacity="0.85" transform="rotate(35,72,95)"/>
+      <ellipse cx="42" cy="78" rx="14" ry="6" fill="#3D6B3A" opacity="0.8" transform="rotate(-30,42,78)"/>
+      <g transform="translate(55,55)">
+        <circle cx="0" cy="0" r="7" fill="#C5302A" opacity="0.9"/>
+        {[0,40,80,120,160,200,240,280,320].map((d,i)=>(
+          <ellipse key={i} cx={Math.cos(d*Math.PI/180)*12} cy={Math.sin(d*Math.PI/180)*12} rx="7" ry="4.5"
+            fill={i%2===0?'#D4758A':'#C5302A'} opacity="0.85"
+            transform={`rotate(${d},${Math.cos(d*Math.PI/180)*12},${Math.sin(d*Math.PI/180)*12})`}/>
+        ))}
+        {[20,60,100,140,180,220,260,300,340].map((d,i)=>(
+          <circle key={i} cx={Math.cos(d*Math.PI/180)*4} cy={Math.sin(d*Math.PI/180)*4} r="1.2" fill="#C4952A" opacity="0.9"/>
+        ))}
+      </g>
+      <g transform="translate(70,90)">
+        <circle cx="0" cy="0" r="5.5" fill="#C5302A" opacity="0.85"/>
+        {[0,45,90,135,180,225,270,315].map((d,i)=>(
+          <ellipse key={i} cx={Math.cos(d*Math.PI/180)*9} cy={Math.sin(d*Math.PI/180)*9} rx="5.5" ry="3.5"
+            fill={i%2===0?'#D4758A':'#E8909A'} opacity="0.8"
+            transform={`rotate(${d},${Math.cos(d*Math.PI/180)*9},${Math.sin(d*Math.PI/180)*9})`}/>
+        ))}
+      </g>
+      <ellipse cx="48" cy="62" rx="5" ry="8" fill="#D4758A" opacity="0.8" transform="rotate(-10,48,62)"/>
+      <path d="M46 55 Q48 50 50 55" stroke="#3D6B3A" strokeWidth="1.2" fill="none"/>
+    </svg>
+  );
+}
+
+function PanelJoseon2() {
+  return (
+    <svg viewBox="0 0 120 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+      <rect width="120" height="200" fill="#EEF2F8"/>
+      <text x="60" y="188" textAnchor="middle" fontFamily="serif" fontSize="9" fill="#1A3A7A" opacity="0.5">二</text>
+      <path d="M0 160 Q40 140 80 120 Q100 110 120 105" stroke="#2C3A1A" strokeWidth="3" fill="none"/>
+      <path d="M40 140 Q35 125 45 110 Q50 125 40 140Z" fill="#3D6B3A" opacity="0.7"/>
+      <path d="M60 128 Q55 112 65 98 Q70 112 60 128Z" fill="#3D6B3A" opacity="0.7"/>
+      <path d="M80 118 Q75 103 85 89 Q90 103 80 118Z" fill="#3D6B3A" opacity="0.7"/>
+      <ellipse cx="70" cy="75" rx="18" ry="10" fill="white" opacity="0.95"/>
+      <ellipse cx="70" cy="75" rx="18" ry="10" stroke="#DDD5C4" strokeWidth="0.5" fill="none"/>
+      <path d="M52 75 Q30 55 20 35 Q35 55 56 72Z" fill="white" opacity="0.92"/>
+      <path d="M52 75 Q28 58 22 40" stroke="#C8C0B0" strokeWidth="0.8" fill="none"/>
+      <path d="M88 75 Q110 55 100 30 Q95 52 84 72Z" fill="white" opacity="0.92"/>
+      <path d="M88 75 Q112 58 102 32" stroke="#C8C0B0" strokeWidth="0.8" fill="none"/>
+      <path d="M22 38 Q18 30 25 28 Q28 36 22 38Z" fill="#2C2416" opacity="0.7"/>
+      <path d="M100 30 Q104 22 108 26 Q106 33 100 30Z" fill="#2C2416" opacity="0.7"/>
+      <path d="M68 65 Q66 50 67 35 Q68 20 70 10" stroke="white" strokeWidth="5" strokeLinecap="round"/>
+      <path d="M68 65 Q66 50 67 35 Q68 20 70 10" stroke="#E8E0D0" strokeWidth="3" strokeLinecap="round"/>
+      <circle cx="70" cy="10" r="5" fill="white"/>
+      <circle cx="70" cy="10" r="5" stroke="#DDD5C4" strokeWidth="0.5" fill="none"/>
+      <ellipse cx="70" cy="7" rx="4" ry="2.5" fill="#C5302A"/>
+      <circle cx="72" cy="10" r="1.2" fill="#2C2416"/>
+      <path d="M73 10 L80 8 L73 11Z" fill="#C4952A"/>
+      <path d="M65 85 Q63 105 60 118" stroke="#C4952A" strokeWidth="1.8" strokeLinecap="round"/>
+      <path d="M75 85 Q77 105 80 118" stroke="#C4952A" strokeWidth="1.8" strokeLinecap="round"/>
+      <path d="M60 118 Q55 122 52 120 M60 118 Q60 124 58 126" stroke="#C4952A" strokeWidth="1.2"/>
+      <path d="M80 118 Q85 122 88 120 M80 118 Q80 124 82 126" stroke="#C4952A" strokeWidth="1.2"/>
+      <ellipse cx="60" cy="135" rx="40" ry="8" fill="white" opacity="0.4"/>
+      <ellipse cx="40" cy="130" rx="25" ry="6" fill="white" opacity="0.3"/>
+      <ellipse cx="85" cy="132" rx="22" ry="5" fill="white" opacity="0.3"/>
+    </svg>
+  );
+}
+
+function PanelJoseon3() {
+  return (
+    <svg viewBox="0 0 120 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+      <rect width="120" height="200" fill="#F8F0E0"/>
+      <text x="60" y="188" textAnchor="middle" fontFamily="serif" fontSize="9" fill="#C4952A" opacity="0.5">三</text>
+      <ellipse cx="60" cy="185" rx="55" ry="12" fill="#C8B898" opacity="0.5"/>
+      <path d="M5 180 Q20 172 40 175 Q60 178 80 173 Q100 168 115 175 L115 192 L5 192Z" fill="#B8A888" opacity="0.5"/>
+      <path d="M15 180 Q16 140 14 100 Q15 60 16 20" stroke="#3D6B3A" strokeWidth="3" fill="none"/>
+      <path d="M22 180 Q23 145 21 105 Q22 65 23 25" stroke="#4A7A45" strokeWidth="2" fill="none"/>
+      {[30,60,90,120,150].map((y,i)=>(
+        <path key={i} d={`M${i%2===0?14:22} ${y} Q${i%2===0?-2:35} ${y-8} ${i%2===0?-5:38} ${y-18}`}
+          stroke="#3D6B3A" strokeWidth="1.5" fill="none"/>
+      ))}
+      <ellipse cx="72" cy="155" rx="28" ry="20" fill="#D4831A" opacity="0.9"/>
+      {[-8,-2,4,10].map((x,i)=>(
+        <path key={i} d={`M${72+x} 135 Q${70+x} 148 ${68+x} 175`} stroke="#1A1008" strokeWidth="2.5" opacity="0.5" fill="none"/>
+      ))}
+      <circle cx="88" cy="125" r="18" fill="#D4831A" opacity="0.9"/>
+      <path d="M80 118 Q85 115 90 118" stroke="#1A1008" strokeWidth="1.5" fill="none" opacity="0.6"/>
+      <path d="M88 120 Q90 116 95 118" stroke="#1A1008" strokeWidth="1.5" fill="none" opacity="0.6"/>
+      <circle cx="82" cy="122" r="4" fill="white"/>
+      <circle cx="82" cy="122" r="2.5" fill="#2C2416"/>
+      <circle cx="83" cy="121" r="0.8" fill="white"/>
+      <circle cx="94" cy="122" r="4" fill="white"/>
+      <circle cx="94" cy="122" r="2.5" fill="#2C2416"/>
+      <circle cx="95" cy="121" r="0.8" fill="white"/>
+      <path d="M86 127 Q88 130 90 127" fill="#C5302A" stroke="#C5302A" strokeWidth="0.5"/>
+      <line x1="70" y1="127" x2="82" y2="128" stroke="#1A1008" strokeWidth="0.8" opacity="0.7"/>
+      <line x1="70" y1="130" x2="82" y2="129" stroke="#1A1008" strokeWidth="0.8" opacity="0.7"/>
+      <line x1="100" y1="127" x2="96" y2="128" stroke="#1A1008" strokeWidth="0.8" opacity="0.7"/>
+      <polygon points="78,110 73,103 84,108" fill="#D4831A"/>
+      <polygon points="97,110 102,103 91,108" fill="#D4831A"/>
+      <path d="M44 155 Q30 145 25 130 Q22 118 30 112 Q38 108 42 118" stroke="#D4831A" strokeWidth="4" fill="none" strokeLinecap="round"/>
+      <ellipse cx="20" cy="65" rx="6" ry="4" fill="#2C2416"/>
+      <ellipse cx="18" cy="62" rx="3.5" ry="3" fill="white"/>
+      <circle cx="17" cy="60" r="2.5" fill="#2C2416"/>
+      <path d="M19 60 L24 59 L20 61Z" fill="#C4952A"/>
+      <path d="M22 66 Q26 70 24 75" stroke="#2C2416" strokeWidth="2" fill="none"/>
+    </svg>
+  );
+}
+
+function PanelJoseon4() {
+  return (
+    <svg viewBox="0 0 120 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+      <rect width="120" height="200" fill="#F2EAD8"/>
+      <text x="60" y="188" textAnchor="middle" fontFamily="serif" fontSize="9" fill="#1A3A7A" opacity="0.5">四</text>
+      <rect x="5" y="148" width="110" height="5" rx="1" fill="#8B6A3A" opacity="0.7"/>
+      <rect x="5" y="88" width="110" height="4" rx="1" fill="#8B6A3A" opacity="0.6"/>
+      <rect x="10" y="105" width="14" height="43" rx="1" fill="#C5302A" opacity="0.85"/>
+      <rect x="11" y="106" width="12" height="41" rx="1" fill="none" stroke="white" strokeWidth="0.5" opacity="0.4"/>
+      <rect x="24" y="110" width="13" height="38" rx="1" fill="#1A3A7A" opacity="0.85"/>
+      <rect x="37" y="108" width="11" height="40" rx="1" fill="#3D6B3A" opacity="0.8"/>
+      <rect x="48" y="112" width="10" height="36" rx="1" fill="#C4952A" opacity="0.8"/>
+      <path d="M68 148 Q64 130 65 115 Q66 100 72 95 Q78 100 79 115 Q80 130 76 148Z" fill="#E8F0F8" opacity="0.95"/>
+      <path d="M68 148 Q64 130 65 115 Q66 100 72 95 Q78 100 79 115 Q80 130 76 148Z" stroke="#1A3A7A" strokeWidth="0.8" fill="none" opacity="0.6"/>
+      <path d="M67 120 Q72 115 77 120 Q72 128 67 120Z" fill="none" stroke="#1A3A7A" strokeWidth="0.8" opacity="0.7"/>
+      <circle cx="72" cy="120" r="4" fill="none" stroke="#1A3A7A" strokeWidth="0.7" opacity="0.5"/>
+      <path d="M66 132 Q72 128 78 132" stroke="#1A3A7A" strokeWidth="0.6" fill="none" opacity="0.5"/>
+      <rect x="69" y="90" width="6" height="5" rx="1" fill="#E8F0F8" opacity="0.9"/>
+      <rect x="66" y="88" width="12" height="3" rx="1.5" fill="#D0DCE8"/>
+      <circle cx="96" cy="132" r="12" fill="#D4A85A" opacity="0.85"/>
+      <circle cx="96" cy="132" r="10" fill="none" stroke="#8B6A20" strokeWidth="0.8" opacity="0.6"/>
+      <ellipse cx="96" cy="122" rx="5" ry="2" fill="#C49040" opacity="0.8"/>
+      <path d="M15 95 Q30 70 45 95Z" fill="#D4758A" opacity="0.6"/>
+      <path d="M15 95 Q22 68 30 95" stroke="#C5302A" strokeWidth="0.5" fill="none" opacity="0.5"/>
+      <path d="M15 95 Q30 68 40 95" stroke="#C5302A" strokeWidth="0.5" fill="none" opacity="0.5"/>
+      <line x1="100" y1="88" x2="105" y2="148" stroke="#8B6A3A" strokeWidth="2"/>
+      <ellipse cx="102" cy="90" rx="3" ry="5" fill="#2C2416" opacity="0.8"/>
+      <line x1="110" y1="88" x2="112" y2="148" stroke="#6A4A2A" strokeWidth="1.5"/>
+      <ellipse cx="111" cy="90" rx="2" ry="4" fill="#2C2416" opacity="0.7"/>
+    </svg>
+  );
+}
+
+function PanelJoseon5() {
+  return (
+    <svg viewBox="0 0 120 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+      <rect width="120" height="200" fill="#ECE8E0"/>
+      <text x="60" y="188" textAnchor="middle" fontFamily="serif" fontSize="9" fill="#6E6458" opacity="0.5">五</text>
+      <path d="M0 130 Q20 90 40 110 Q60 85 80 105 Q100 80 120 100 L120 200 L0 200Z" fill="#C8C0B0" opacity="0.4"/>
+      <path d="M0 150 Q15 105 35 125 Q55 95 70 118 Q90 90 110 112 Q115 108 120 110 L120 200 L0 200Z" fill="#A09080" opacity="0.55"/>
+      <path d="M0 175 Q10 148 25 158 Q40 138 55 155 Q70 130 85 150 Q100 132 115 148 Q118 144 120 145 L120 200 L0 200Z" fill="#706050" opacity="0.7"/>
+      <rect x="0" y="118" width="120" height="12" fill="white" opacity="0.35"/>
+      <rect x="0" y="138" width="120" height="8" fill="white" opacity="0.3"/>
+      <rect x="0" y="158" width="120" height="6" fill="white" opacity="0.25"/>
+      <path d="M8 175 L8 185 M5 175 L11 175 M4 168 L12 168 M6 162 L10 162" stroke="#2C2416" strokeWidth="1.5" fill="none"/>
+      <polygon points="8,155 3,175 13,175" fill="#2C2416" opacity="0.8"/>
+      <polygon points="8,160 4,172 12,172" fill="#3D4A28" opacity="0.7"/>
+      <path d="M108 175 L108 185 M105 175 L111 175 M104 168 L112 168" stroke="#2C2416" strokeWidth="1.5" fill="none"/>
+      <polygon points="108,155 103,175 113,175" fill="#2C2416" opacity="0.8"/>
+      <circle cx="85" cy="30" r="18" fill="white" opacity="0.7"/>
+      <circle cx="85" cy="30" r="18" stroke="#D0C8B8" strokeWidth="0.5"/>
+      <path d="M45 118 L60 108 L75 118Z" fill="#8B5A2A" opacity="0.6"/>
+      <rect x="48" y="118" width="24" height="10" fill="#A06A38" opacity="0.6"/>
+    </svg>
+  );
+}
+
+function PanelJoseon6() {
+  return (
+    <svg viewBox="0 0 120 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+      <rect width="120" height="200" fill="#EAF0E8"/>
+      <text x="60" y="188" textAnchor="middle" fontFamily="serif" fontSize="9" fill="#3D6B3A" opacity="0.5">六</text>
+      <rect x="0" y="140" width="120" height="60" fill="#B8D0C8" opacity="0.5"/>
+      {[145,155,165,175].map((y,i)=>(
+        <path key={i} d={`M${i*8} ${y} Q30 ${y-3} 60 ${y} Q90 ${y+3} 120 ${y}`} stroke="#8AAAA0" strokeWidth="0.8" fill="none" opacity="0.5"/>
+      ))}
+      <ellipse cx="30" cy="145" rx="18" ry="10" fill="#3D6B3A" opacity="0.7"/>
+      <ellipse cx="75" cy="148" rx="22" ry="11" fill="#4A7A45" opacity="0.7"/>
+      <ellipse cx="100" cy="143" rx="14" ry="8" fill="#3D6B3A" opacity="0.65"/>
+      <path d="M30 135 L30 145" stroke="#3D6B3A" strokeWidth="1.5"/>
+      <path d="M75 137 L75 148" stroke="#3D6B3A" strokeWidth="1.5"/>
+      <g transform="translate(30, 118)">
+        <circle cx="0" cy="0" r="5" fill="#C4952A"/>
+        {[0,51,103,154,206,257,309].map((d,i)=>(
+          <ellipse key={i} cx={Math.cos(d*Math.PI/180)*10} cy={Math.sin(d*Math.PI/180)*10}
+            rx="6" ry="3.5" fill={i%2===0?'#D4758A':'#E8A0B5'} opacity="0.85"
+            transform={`rotate(${d},${Math.cos(d*Math.PI/180)*10},${Math.sin(d*Math.PI/180)*10})`}/>
+        ))}
+        {[26,77,129,180,232,283,334].map((d,i)=>(
+          <ellipse key={i} cx={Math.cos(d*Math.PI/180)*15} cy={Math.sin(d*Math.PI/180)*15}
+            rx="5.5" ry="3" fill="#F0B8C8" opacity="0.7"
+            transform={`rotate(${d},${Math.cos(d*Math.PI/180)*15},${Math.sin(d*Math.PI/180)*15})`}/>
+        ))}
+      </g>
+      <g transform="translate(75, 115)">
+        <circle cx="0" cy="0" r="6" fill="#C4952A"/>
+        {[0,40,80,120,160,200,240,280,320].map((d,i)=>(
+          <ellipse key={i} cx={Math.cos(d*Math.PI/180)*12} cy={Math.sin(d*Math.PI/180)*12}
+            rx="7" ry="4" fill={i%2===0?'#D4758A':'#C5302A'} opacity="0.8"
+            transform={`rotate(${d},${Math.cos(d*Math.PI/180)*12},${Math.sin(d*Math.PI/180)*12})`}/>
+        ))}
+      </g>
+      <ellipse cx="100" cy="125" rx="6" ry="12" fill="#D4758A" opacity="0.85"/>
+      <path d="M97 114 Q100 108 103 114" stroke="#3D6B3A" strokeWidth="1.2" fill="none"/>
+      <path d="M100 125 L100 143" stroke="#3D6B3A" strokeWidth="1.5"/>
+      <ellipse cx="55" cy="100" rx="3" ry="8" fill="#1A3A7A" opacity="0.6"/>
+      <ellipse cx="48" cy="97" rx="10" ry="3" fill="#3D9BE8" opacity="0.5"/>
+      <ellipse cx="62" cy="97" rx="10" ry="3" fill="#3D9BE8" opacity="0.5"/>
+      <line x1="10" y1="200" x2="12" y2="90" stroke="#5A7A3A" strokeWidth="2"/>
+      <ellipse cx="12" cy="90" rx="3" ry="12" fill="#8B6A3A" opacity="0.7"/>
+      <line x1="18" y1="200" x2="20" y2="100" stroke="#5A7A3A" strokeWidth="1.5"/>
+      <ellipse cx="20" cy="100" rx="2.5" ry="10" fill="#8B6A3A" opacity="0.6"/>
+    </svg>
+  );
+}
+
+function PanelJoseon7() {
+  return (
+    <svg viewBox="0 0 120 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+      <rect width="120" height="200" fill="#1A2535"/>
+      <text x="60" y="188" textAnchor="middle" fontFamily="serif" fontSize="9" fill="#C4952A" opacity="0.6">七</text>
+      <defs>
+        <linearGradient id="sky7" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#0A1525"/>
+          <stop offset="100%" stopColor="#2A3545"/>
+        </linearGradient>
+      </defs>
+      <rect width="120" height="200" fill="url(#sky7)"/>
+      {[[20,20],[45,12],[70,25],[95,10],[15,45],[100,38],[30,55],[85,50],[110,25]].map(([x,y],i)=>(
+        <circle key={i} cx={x} cy={y} r={i%3===0?1.5:0.8} fill="white" opacity={0.4+i*0.05}/>
+      ))}
+      <circle cx="80" cy="45" r="28" fill="#F5F0E0" opacity="0.9"/>
+      <circle cx="80" cy="45" r="28" fill="none" stroke="#E0D8C0" strokeWidth="0.5"/>
+      <circle cx="72" cy="38" r="6" fill="#E8E0C8" opacity="0.4"/>
+      <circle cx="86" cy="52" r="4" fill="#E8E0C8" opacity="0.3"/>
+      <path d="M25 200 Q26 170 24 140 Q25 110 23 80 Q24 50 25 20" stroke="#1A2A10" strokeWidth="6" fill="none" strokeLinecap="round"/>
+      <path d="M25 30 Q5 20 -5 10" stroke="#1A2A10" strokeWidth="3" fill="none"/>
+      <path d="M25 55 Q0 48 -10 40" stroke="#1A2A10" strokeWidth="3.5" fill="none"/>
+      <path d="M25 80 Q8 75 0 65" stroke="#1A2A10" strokeWidth="3"/>
+      <path d="M25 100 Q45 88 58 78" stroke="#1A2A10" strokeWidth="3"/>
+      <path d="M25 125 Q5 118 -5 110" stroke="#1A2A10" strokeWidth="3.5"/>
+      <path d="M25 145 Q48 138 58 128" stroke="#1A2A10" strokeWidth="3"/>
+      {[[5,18],[-2,38],[3,63],[50,75],[-2,108],[50,125]].map(([x,y],i)=>(
+        <ellipse key={i} cx={x} cy={y} rx="12" ry="5" fill="#2C3A18" opacity="0.85" transform={`rotate(${i%2===0?-15:15},${x},${y})`}/>
+      ))}
+      <path d="M5 18 Q2 16 5 14 Q8 16 5 18Z" fill="white" opacity="0.6"/>
+      <path d="M-2 38 Q-5 36 -2 34 Q1 36 -2 38Z" fill="white" opacity="0.5"/>
+      <rect x="0" y="175" width="120" height="25" fill="#0E1E30" opacity="0.8"/>
+      <circle cx="80" cy="195" r="12" fill="#F5F0E0" opacity="0.2"/>
+      {[178,182,186].map((y,i)=>(
+        <path key={i} d={`M20 ${y} Q60 ${y+2} 100 ${y}`} stroke="#F5F0E0" strokeWidth="0.5" fill="none" opacity="0.15"/>
+      ))}
+    </svg>
+  );
+}
+
+function PanelJoseon8() {
+  return (
+    <svg viewBox="0 0 120 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <radialGradient id="goldBg8" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#F5E8B0"/>
+          <stop offset="100%" stopColor="#E8D890"/>
+        </radialGradient>
+      </defs>
+      <rect width="120" height="200" fill="url(#goldBg8)"/>
+      <text x="60" y="188" textAnchor="middle" fontFamily="serif" fontSize="9" fill="#8B6A20" opacity="0.7">八</text>
+      <rect x="6" y="6" width="108" height="188" rx="2" fill="none" stroke="#C4952A" strokeWidth="1.5" opacity="0.5"/>
+      <rect x="10" y="10" width="100" height="180" rx="1" fill="none" stroke="#C4952A" strokeWidth="0.5" opacity="0.3"/>
+      {[[10,10],[110,10],[10,190],[110,190]].map(([x,y],i)=>(
+        <g key={i} transform={`translate(${x},${y}) rotate(${i*90})`}>
+          <path d="M0 0 Q8 0 8 8" stroke="#C4952A" strokeWidth="1.5" fill="none"/>
+          <circle cx="3" cy="3" r="1.5" fill="#C4952A" opacity="0.7"/>
+        </g>
+      ))}
+      <circle cx="60" cy="95" r="40" fill="#C5302A" opacity="0.9"/>
+      <circle cx="60" cy="95" r="40" stroke="#8B1A14" strokeWidth="1.5" fill="none"/>
+      <circle cx="60" cy="95" r="36" fill="none" stroke="#FF8080" strokeWidth="0.5" opacity="0.4"/>
+      <text x="60" y="88" textAnchor="middle" fontFamily="serif" fontSize="22" fill="white" opacity="0.95" fontWeight="bold">여</text>
+      <text x="60" y="112" textAnchor="middle" fontFamily="serif" fontSize="22" fill="white" opacity="0.95" fontWeight="bold">정</text>
+      <line x1="60" y1="30" x2="60" y2="55" stroke="#C4952A" strokeWidth="2" opacity="0.6"/>
+      <line x1="60" y1="135" x2="60" y2="160" stroke="#C4952A" strokeWidth="2" opacity="0.6"/>
+      {['#1A3A7A','#C5302A','#F5F0E0','#2C2416','#3D6B3A'].map((c,i)=>(
+        <rect key={i} x={10+i*20} y={164} width="20" height="10" fill={c} opacity="0.7"/>
+      ))}
+      {['K','여','정','K','J','O','U','R'].map((ch,i)=>(
+        <text key={i}
+          x={60 + Math.cos((i*45-90)*Math.PI/180)*50}
+          y={95 + Math.sin((i*45-90)*Math.PI/180)*50 + 4}
+          textAnchor="middle" fontFamily="serif" fontSize="9" fill="#8B6A20" opacity="0.5">{ch}</text>
+      ))}
+    </svg>
+  );
+}
+
+const JOSEON_PANELS = [PanelJoseon1, PanelJoseon2, PanelJoseon3, PanelJoseon4, PanelJoseon5, PanelJoseon6, PanelJoseon7, PanelJoseon8];
+
+function PanelSilla({ index }) {
+  const colors = [['#1A3A7A','#3D9BE8'],['#0A2560','#2A7AC8'],['#C5302A','#E8563A'],['#8B1A14','#C5302A'],['#E8E8E0','#C0C0B0'],['#D0D0C0','#A8A8A0'],['#1A1008','#2C2416'],['#C4952A','#D4A840']];
+  const [bg1, bg2] = colors[index] || colors[0];
+  const beasts = ['청룡 Blue Dragon','청룡 Blue Dragon','주작 Red Phoenix','주작 Red Phoenix','백호 White Tiger','백호 White Tiger','현무 Black Tortoise','낙관 Seal'];
+  return (
+    <svg viewBox="0 0 120 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <linearGradient id={`sillaGrad${index}`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor={bg1}/>
+          <stop offset="100%" stopColor={bg2}/>
+        </linearGradient>
+      </defs>
+      <rect width="120" height="200" fill={`url(#sillaGrad${index})`}/>
+      <rect x="5" y="5" width="110" height="190" rx="2" fill="none" stroke="#C4952A" strokeWidth="1.5" opacity="0.7"/>
+      {Array.from({length:6}).map((_,i)=>(
+        <path key={i} d={`M${20+i*15} 20 L${20+i*15} 180`} stroke="#C4952A" strokeWidth="0.4" opacity="0.2"/>
+      ))}
+      {Array.from({length:9}).map((_,i)=>(
+        <path key={i} d={`M10 ${20+i*20} L110 ${20+i*20}`} stroke="#C4952A" strokeWidth="0.4" opacity="0.2"/>
+      ))}
+      <text x="60" y="90" textAnchor="middle" fontFamily="serif" fontSize="28" fill="#C4952A" opacity="0.8">
+        {['龍','龍','朱','朱','虎','虎','玄','印'][index]}
+      </text>
+      <text x="60" y="115" textAnchor="middle" fontFamily="serif" fontSize="11" fill="white" opacity="0.7">
+        {beasts[index].split(' ')[0]}
+      </text>
+      <text x="60" y="130" textAnchor="middle" fontFamily="serif" fontSize="10" fill="white" opacity="0.5">
+        {beasts[index].split(' ').slice(1).join(' ')}
+      </text>
+      <text x="60" y="188" textAnchor="middle" fontFamily="serif" fontSize="9" fill="#C4952A" opacity="0.6">
+        {['一','二','三','四','五','六','七','八'][index]}
+      </text>
+      {[[15,15],[105,15],[15,185],[105,185]].map(([x,y],i)=>(
+        <polygon key={i} points={`${x},${y-5} ${x+5},${y} ${x},${y+5} ${x-5},${y}`} fill="#C4952A" opacity="0.6"/>
+      ))}
+    </svg>
+  );
+}
+
+function PanelGoryeo({ index }) {
+  const bgColors = ['#2A4A3A','#2A4A3A','#1A2A5A','#1A2A5A','#4A3A1A','#4A3A1A','#3A2A4A','#1A2A1A'];
+  const bg = bgColors[index];
+  const motifs = ['연꽃 Lotus','연꽃 Lotus','관세음 Bodhisattva','관세음 Bodhisattva','비천 Apsara','비천 Apsara','극락 Paradise','낙관 Seal'];
+  const chars = ['蓮','蓮','觀','觀','飛','飛','極','印'];
+  return (
+    <svg viewBox="0 0 120 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+      <rect width="120" height="200" fill={bg}/>
+      <rect width="120" height="200" fill="#A0C8B0" opacity="0.15"/>
+      <rect x="5" y="5" width="110" height="190" rx="2" fill="none" stroke="#C4952A" strokeWidth="1.5" opacity="0.6"/>
+      {Array.from({length:5}).map((_,i)=>(
+        <circle key={i} cx={20+i*20} cy={30+i*30%100} r="8" fill="none" stroke="#3D6B3A" strokeWidth="0.5" opacity="0.3"/>
+      ))}
+      <text x="60" y="92" textAnchor="middle" fontFamily="serif" fontSize="30" fill="#C4952A" opacity="0.85">
+        {chars[index]}
+      </text>
+      <text x="60" y="115" textAnchor="middle" fontFamily="serif" fontSize="11" fill="white" opacity="0.7">
+        {motifs[index].split(' ')[0]}
+      </text>
+      <text x="60" y="130" textAnchor="middle" fontFamily="serif" fontSize="10" fill="white" opacity="0.5">
+        {motifs[index].split(' ').slice(1).join(' ')}
+      </text>
+      <circle cx="60" cy="100" r="38" fill="none" stroke="#C4952A" strokeWidth="0.5" opacity="0.4"/>
+      <circle cx="60" cy="100" r="45" fill="none" stroke="#3D6B3A" strokeWidth="0.4" opacity="0.3"/>
+      <text x="60" y="188" textAnchor="middle" fontFamily="serif" fontSize="9" fill="#C4952A" opacity="0.5">
+        {['一','二','三','四','五','六','七','八'][index]}
+      </text>
+    </svg>
+  );
+}
+
+function ByeongpungPanel({ index, era, revealProgress, isAnimating, width, height }) {
+  const theme = ERA_THEMES[era] || ERA_THEMES.joseon;
+  const PanelArt = era === 'joseon' ? JOSEON_PANELS[index] : null;
+
+  return (
+    <div style={{
+      position: 'relative', width: width || '100%', height: height || '100%',
+      overflow: 'hidden', borderRight: '1px solid rgba(196,149,42,0.3)',
+      flexShrink: 0,
+    }}>
+      <div style={{ position: 'absolute', inset: 0 }}>
+        {era === 'joseon' && PanelArt && <PanelArt />}
+        {era === 'silla' && <PanelSilla index={index} />}
+        {era === 'goryeo' && <PanelGoryeo index={index} />}
+      </div>
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: theme.panelBg,
+        opacity: Math.max(0, 1 - revealProgress),
+        transition: isAnimating ? 'opacity 1000ms ease-out' : 'none',
+        pointerEvents: 'none',
+      }} />
+      {revealProgress > 0 && revealProgress < 1 && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: `linear-gradient(to right, transparent ${revealProgress * 100 - 15}%, ${theme.panelBg} ${revealProgress * 100}%)`,
+          pointerEvents: 'none',
+        }} />
+      )}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 6,
+        background: `linear-gradient(180deg, #8B6A3A, #6A4A2A)`, opacity: 0.9,
+      }} />
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: 6,
+        background: `linear-gradient(0deg, #8B6A3A, #6A4A2A)`, opacity: 0.9,
+      }} />
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KJScreens-Onboarding — Splash, Sign In, Profile, Era Selection
+// ═══════════════════════════════════════════════════════════════════════════
+
+function SplashScreen({ onDone }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const t1 = setTimeout(() => setVisible(true), 100);
+    const t2 = setTimeout(() => onDone(), 2200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      height: '100%', background: KJ.colors.meok, overflow: 'hidden', position: 'relative',
+    }}>
+      <div style={{
+        position: 'absolute', inset: 0,
+        backgroundImage: `radial-gradient(circle at 20% 20%, rgba(196,149,42,0.08) 0%, transparent 50%),
+          radial-gradient(circle at 80% 80%, rgba(197,48,42,0.08) 0%, transparent 50%)`,
+      }}/>
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 4,
+        background: 'linear-gradient(90deg, #1A3A7A, #C5302A, #F5F0E8, #2C2416, #3D6B3A)',
+      }}/>
+
+      <div style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'scale(1)' : 'scale(0.85)',
+        transition: 'opacity 700ms ease-out, transform 700ms ease-out',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24,
+      }}>
+        <div style={{ display: 'flex', gap: 3 }}>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} style={{
+              width: 8, height: 56, borderRadius: 2,
+              background: ['#1A3A7A','#C5302A','#C4952A','#3D6B3A','#D4758A','#1A3A7A','#3D6B3A','#C4952A'][i],
+              opacity: 0.7 + i * 0.03,
+              animation: `panelRise 600ms ${i * 80}ms ease-out both`,
+            }}/>
+          ))}
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            fontFamily: KJ.font.display, fontSize: 32, fontWeight: 700,
+            color: KJ.colors.hanji, letterSpacing: '-0.04em', lineHeight: 1,
+          }}>K-Journey</div>
+          <div style={{
+            fontFamily: KJ.font.display, fontSize: 14, color: KJ.colors.hwanggeum,
+            marginTop: 8, letterSpacing: '0.02em',
+          }}>한국 여정 큐레이션</div>
+          <div style={{
+            fontFamily: KJ.font.ui, fontSize: 12, color: KJ.colors.ash,
+            marginTop: 4, letterSpacing: '0.01em',
+          }}>Curated Korean Experiences</div>
+        </div>
+      </div>
+
+      <div style={{
+        position: 'absolute', bottom: 40, left: 0, right: 0,
+        display: 'flex', justifyContent: 'center',
+        opacity: visible ? 0.5 : 0, transition: 'opacity 800ms 600ms',
+      }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {[0,1,2].map(i => (
+            <div key={i} style={{
+              width: 5, height: 5, borderRadius: '50%', background: KJ.colors.hwanggeum,
+              animation: `dotPulse 1.2s ${i * 200}ms ease-in-out infinite`,
+            }}/>
+          ))}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes panelRise { from { transform: scaleY(0); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+        @keyframes dotPulse { 0%,100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
+      `}</style>
+    </div>
+  );
+}
+
+function SignInScreen({ onSignIn }) {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', height: '100%',
+      background: KJ.colors.hanji, overflow: 'hidden',
+    }}>
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', padding: '0 32px',
+        background: `linear-gradient(180deg, ${KJ.colors.hwangto} 0%, ${KJ.colors.hanji} 100%)`,
+        position: 'relative', overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', top: 20, left: 0, right: 0, display: 'flex', gap: 2, opacity: 0.12, height: 140 }}>
+          {['#C5302A','#1A3A7A','#C4952A','#3D6B3A','#D4758A','#C5302A','#1A3A7A','#C4952A'].map((c, i) => (
+            <div key={i} style={{ flex: 1, background: c, borderRadius: 2 }} />
+          ))}
+        </div>
+
+        <div style={{ position: 'absolute', top: 20, left: 20, opacity: 0.2 }}>
+          <MotifCrane size={60} alpha={1} />
+        </div>
+        <div style={{ position: 'absolute', top: 30, right: 24, opacity: 0.18 }}>
+          <MotifPeony size={56} alpha={1} />
+        </div>
+
+        <div style={{ textAlign: 'center', marginBottom: 8, position: 'relative' }}>
+          <div style={{ display: 'flex', gap: 2.5, justifyContent: 'center', marginBottom: 16 }}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} style={{
+                width: 7, height: 44, borderRadius: 1.5,
+                background: ['#1A3A7A','#C5302A','#C4952A','#3D6B3A','#D4758A','#1A3A7A','#3D6B3A','#C4952A'][i],
+                opacity: 0.75,
+              }}/>
+            ))}
+          </div>
+          <div style={{ fontFamily: KJ.font.display, fontSize: 28, fontWeight: 700, color: KJ.colors.meok, letterSpacing: '-0.04em' }}>
+            K-Journey
+          </div>
+          <div style={{ fontFamily: KJ.font.display, fontSize: 13, color: KJ.colors.hwanggeum, marginTop: 4 }}>
+            한국 여정 큐레이션
+          </div>
+        </div>
+
+        <div style={{
+          marginTop: 24, textAlign: 'center', maxWidth: 260,
+          fontFamily: KJ.font.ui, fontSize: 14, color: KJ.colors.ash, lineHeight: 1.6,
+        }}>
+          교환학생의 한 학기를<br />
+          <span style={{ color: KJ.colors.meok, fontWeight: 600 }}>인생을 정의하는 문화적 여정</span>으로
+        </div>
+      </div>
+
+      <div style={{ padding: '28px 28px 40px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <button onClick={onSignIn} style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          padding: '14px 20px', background: 'white', border: `1.5px solid ${KJ.colors.hairline}`,
+          borderRadius: KJ.radius.pill, cursor: 'pointer', fontFamily: KJ.font.ui,
+          fontWeight: 600, fontSize: 15, color: KJ.colors.meok, boxShadow: KJ.shadow.s1,
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          Google로 계속하기
+        </button>
+
+        <button onClick={onSignIn} style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          padding: '14px 20px', background: '#000', border: 'none',
+          borderRadius: KJ.radius.pill, cursor: 'pointer', fontFamily: KJ.font.ui,
+          fontWeight: 600, fontSize: 15, color: 'white',
+        }}>
+          <svg width="16" height="20" viewBox="0 0 170 200" fill="white">
+            <path d="M150 0c-16.8 18.2-25 38.8-24 62 24.7 1.8 42-12.7 52-43C164 6.5 154 0 150 0zM43 200c12 0 18-8 34-8s24 8 38 8c20 0 35-25 48-50-30-16-36-60-6-78-12-14-28-22-42-22-18 0-28 8-42 8s-26-8-40-8C14 50 0 78 0 110c0 50 28 90 43 90z"/>
+          </svg>
+          Apple로 계속하기
+        </button>
+
+        <div style={{ textAlign: 'center', marginTop: 8 }}>
+          <span style={{ fontFamily: KJ.font.ui, fontSize: 11, color: KJ.colors.ash }}>
+            계속하면 이용약관 및 개인정보처리방침에 동의합니다
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfileScreen({ onDone }) {
+  const [step, setStep] = useState(0);
+  const [name, setName] = useState('');
+  const [university, setUniversity] = useState('');
+  const [stayType, setStayType] = useState('');
+  const [housing, setHousing] = useState('');
+
+  const universities = ['연세대학교 Yonsei', '고려대학교 Korea', '서울대학교 SNU', '성균관대학교 Sungkyunkwan', '한양대학교 Hanyang', '이화여자대학교 Ewha', '서강대학교 Sogang', '중앙대학교 Chung-Ang', '외국어대학교 HUFS'];
+  const stayTypes = [
+    { id: 'exchange-1', ko: '교환학생 1학기', en: 'Exchange — 1 semester' },
+    { id: 'exchange-2', ko: '교환학생 2학기', en: 'Exchange — 2 semesters' },
+    { id: 'language', ko: '어학연수', en: 'Language program' },
+    { id: 'working', ko: '워킹홀리데이', en: 'Working holiday' },
+  ];
+
+  const steps = [
+    { title: '이름을 알려주세요', subtitle: 'What should we call you?', done: name.length > 0 },
+    { title: '대학교를 선택하세요', subtitle: 'Select your university', done: university !== '' },
+    { title: '체류 유형을 선택하세요', subtitle: 'How long are you staying?', done: stayType !== '' },
+    { title: '어디서 생활하시나요?', subtitle: 'Where will you be living?', done: housing !== '' },
+  ];
+
+  const canProceed = steps[step].done;
+
+  const handleNext = () => {
+    if (step < 3) setStep(step + 1);
+    else onDone({ name, university, stayType, housing });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: KJ.colors.hanji }}>
+      <div style={{ padding: '16px 24px 0' }}>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+          {steps.map((_, i) => (
+            <div key={i} style={{
+              flex: 1, height: 3, borderRadius: 2,
+              background: i <= step ? KJ.colors.dancheong : KJ.colors.hairline,
+              transition: 'background 300ms',
+            }}/>
+          ))}
+        </div>
+        <div style={{ fontFamily: KJ.font.ui, fontSize: 11, color: KJ.colors.ash, marginBottom: 6 }}>
+          {step + 1} / {steps.length}
+        </div>
+        <div style={{ fontFamily: KJ.font.display, fontSize: 22, fontWeight: 700, color: KJ.colors.meok, letterSpacing: '-0.03em', lineHeight: 1.25 }}>
+          {steps[step].title}
+        </div>
+        <div style={{ fontFamily: KJ.font.ui, fontSize: 13, color: KJ.colors.ash, marginTop: 4 }}>
+          {steps[step].subtitle}
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 24px 0' }}>
+        {step === 0 && (
+          <div>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="이름 / Your name" autoFocus
+              style={{
+                width: '100%', padding: '14px 16px', fontFamily: KJ.font.ui,
+                fontSize: 16, color: KJ.colors.meok, background: KJ.colors.cloud,
+                border: `1.5px solid ${name ? KJ.colors.dancheong : KJ.colors.hairline}`,
+                borderRadius: KJ.radius.sm, outline: 'none', boxSizing: 'border-box',
+                transition: 'border-color 200ms',
+              }} />
+            <div style={{ marginTop: 12, fontFamily: KJ.font.ui, fontSize: 12, color: KJ.colors.ash }}>
+              앱 내 표시 이름으로 사용됩니다
+            </div>
+          </div>
+        )}
+
+        {step === 1 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {universities.map(u => (
+              <button key={u} onClick={() => setUniversity(u)} style={{
+                padding: '13px 16px', borderRadius: KJ.radius.sm,
+                background: university === u ? KJ.colors.dancheong + '12' : KJ.colors.cloud,
+                border: `1.5px solid ${university === u ? KJ.colors.dancheong : 'transparent'}`,
+                cursor: 'pointer', fontFamily: KJ.font.ui, fontSize: 14, color: KJ.colors.meok,
+                textAlign: 'left', transition: 'all 150ms',
+              }}>
+                {u}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {step === 2 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {stayTypes.map(s => (
+              <button key={s.id} onClick={() => setStayType(s.id)} style={{
+                padding: '16px', borderRadius: KJ.radius.sm,
+                background: stayType === s.id ? KJ.colors.dancheong + '12' : KJ.colors.cloud,
+                border: `1.5px solid ${stayType === s.id ? KJ.colors.dancheong : 'transparent'}`,
+                cursor: 'pointer', textAlign: 'left', transition: 'all 150ms',
+              }}>
+                <div style={{ fontFamily: KJ.font.ui, fontWeight: 600, fontSize: 15, color: KJ.colors.meok }}>{s.ko}</div>
+                <div style={{ fontFamily: KJ.font.ui, fontSize: 12, color: KJ.colors.ash, marginTop: 2 }}>{s.en}</div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {step === 3 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[
+              { id: 'dormitory', ko: '기숙사', en: 'Dormitory', desc: '캠퍼스 내 기숙사 생활' },
+              { id: 'offcampus', ko: '자취 / 하숙', en: 'Off-campus housing', desc: '원룸, 게스트하우스 등' },
+            ].map(h => (
+              <button key={h.id} onClick={() => setHousing(h.id)} style={{
+                padding: '20px 16px', borderRadius: KJ.radius.card,
+                background: housing === h.id ? KJ.colors.dancheong + '10' : KJ.colors.cloud,
+                border: `1.5px solid ${housing === h.id ? KJ.colors.dancheong : 'transparent'}`,
+                cursor: 'pointer', textAlign: 'left', transition: 'all 150ms',
+              }}>
+                <div style={{ marginBottom: 8 }}>
+                  {h.id === 'dormitory' ? (
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={KJ.colors.cheong} strokeWidth="1.5" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                  ) : (
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={KJ.colors.jade} strokeWidth="1.5" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                  )}
+                </div>
+                <div style={{ fontFamily: KJ.font.ui, fontWeight: 700, fontSize: 16, color: KJ.colors.meok }}>{h.ko}</div>
+                <div style={{ fontFamily: KJ.font.ui, fontSize: 12, color: KJ.colors.ash, marginTop: 3 }}>{h.en}</div>
+                <div style={{ fontFamily: KJ.font.ui, fontSize: 11, color: KJ.colors.ash, marginTop: 4 }}>{h.desc}</div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ padding: '20px 24px 32px', display: 'flex', gap: 10, flexShrink: 0 }}>
+        {step > 0 && (
+          <GhostButton onClick={() => setStep(step - 1)} style={{ width: 'auto', padding: '14px 20px', flex: 1 }}>
+            이전
+          </GhostButton>
+        )}
+        <PrimaryButton onClick={handleNext} disabled={!canProceed} style={{ flex: step > 0 ? 2 : 1 }}>
+          {step < 3 ? '다음' : '여정 시작하기'}
+        </PrimaryButton>
+      </div>
+    </div>
+  );
+}
+
+function EraSelectionScreen({ onSelect }) {
+  const [hoveredEra, setHoveredEra] = useState(null);
+  const [selectedEra, setSelectedEra] = useState(null);
+  const [confirming, setConfirming] = useState(false);
+
+  const eras = [
+    {
+      id: 'joseon',
+      panel: (
+        <svg viewBox="0 0 80 120" width="80" height="120">
+          <rect width="80" height="120" fill="#F5E8C8"/>
+          <circle cx="40" cy="45" r="8" fill="#C5302A" opacity="0.85"/>
+          {[0,45,90,135,180,225,270,315].map((d,i)=>(
+            <ellipse key={i} cx={40+Math.cos(d*Math.PI/180)*14} cy={45+Math.sin(d*Math.PI/180)*14}
+              rx="8" ry="5" fill={i%2===0?'#D4758A':'#C5302A'} opacity="0.7"
+              transform={`rotate(${d},${40+Math.cos(d*Math.PI/180)*14},${45+Math.sin(d*Math.PI/180)*14})`}/>
+          ))}
+          <line x1="40" y1="53" x2="40" y2="75" stroke="#3D6B3A" strokeWidth="2"/>
+          <ellipse cx="28" cy="68" rx="10" ry="4" fill="#3D6B3A" opacity="0.7" transform="rotate(-30,28,68)"/>
+          <ellipse cx="52" cy="72" rx="10" ry="4" fill="#3D6B3A" opacity="0.7" transform="rotate(30,52,72)"/>
+          <path d="M28 95 Q28 105 40 108 Q52 105 52 95Z" fill="#1A3A7A" opacity="0.7"/>
+          <path d="M30 95 Q30 82 40 78 Q50 82 50 95Z" fill="#2A5AAA" opacity="0.7"/>
+          {['#1A3A7A','#C5302A','#C4952A','#3D6B3A','#D4758A'].map((c,i)=>(
+            <rect key={i} x={8+i*13} y="112" width="13" height="5" fill={c} opacity="0.65"/>
+          ))}
+        </svg>
+      ),
+    },
+    {
+      id: 'silla',
+      panel: (
+        <svg viewBox="0 0 80 120" width="80" height="120">
+          <defs>
+            <linearGradient id="sillaCardBg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#1A3A7A"/>
+              <stop offset="100%" stopColor="#0A2560"/>
+            </linearGradient>
+          </defs>
+          <rect width="80" height="120" fill="url(#sillaCardBg)"/>
+          <rect x="4" y="4" width="72" height="112" rx="1" fill="none" stroke="#C4952A" strokeWidth="1" opacity="0.5"/>
+          <path d="M20 80 Q30 60 40 50 Q50 40 60 30 Q65 25 70 20" stroke="#3D9BE8" strokeWidth="3" fill="none" strokeLinecap="round"/>
+          <path d="M20 80 Q18 70 22 65" stroke="#3D9BE8" strokeWidth="2" fill="none"/>
+          {[0,1,2,3].map(i=>(
+            <ellipse key={i} cx={20+i*14} cy={80-i*15} rx="5" ry="3" fill="#1A6AAA" opacity="0.8" transform={`rotate(-45,${20+i*14},${80-i*15})`}/>
+          ))}
+          <circle cx="70" cy="20" r="5" fill="#C4952A" opacity="0.9"/>
+          <text x="40" y="108" textAnchor="middle" fontFamily="serif" fontSize="10" fill="#C4952A" opacity="0.7">龍</text>
+          {[[10,20],[70,80],[15,95],[65,15]].map(([x,y],i)=>(
+            <circle key={i} cx={x} cy={y} r="2" fill="#C4952A" opacity="0.5"/>
+          ))}
+        </svg>
+      ),
+    },
+    {
+      id: 'goryeo',
+      panel: (
+        <svg viewBox="0 0 80 120" width="80" height="120">
+          <rect width="80" height="120" fill="#2A4A3A"/>
+          <rect width="80" height="120" fill="#A0C8B0" opacity="0.15"/>
+          <rect x="4" y="4" width="72" height="112" rx="1" fill="none" stroke="#C4952A" strokeWidth="1" opacity="0.5"/>
+          <line x1="40" y1="90" x2="40" y2="60" stroke="#3D6B3A" strokeWidth="2"/>
+          <ellipse cx="40" cy="90" rx="20" ry="10" fill="#3D6B3A" opacity="0.6"/>
+          <circle cx="40" cy="55" r="7" fill="#C4952A" opacity="0.85"/>
+          {[0,51,103,154,206,257,309].map((d,i)=>(
+            <ellipse key={i} cx={40+Math.cos(d*Math.PI/180)*13} cy={55+Math.sin(d*Math.PI/180)*13}
+              rx="7" ry="4" fill={i%2===0?'#D4758A':'#E8A0B5'} opacity="0.8"
+              transform={`rotate(${d},${40+Math.cos(d*Math.PI/180)*13},${55+Math.sin(d*Math.PI/180)*13})`}/>
+          ))}
+          <circle cx="40" cy="55" r="5" fill="#C4952A" opacity="0.9"/>
+          <text x="40" y="108" textAnchor="middle" fontFamily="serif" fontSize="10" fill="#C4952A" opacity="0.7">蓮</text>
+          <circle cx="40" cy="30" r="16" fill="none" stroke="#C4952A" strokeWidth="1" opacity="0.4"/>
+          <circle cx="40" cy="30" r="12" fill="#C4952A" opacity="0.2"/>
+        </svg>
+      ),
+    },
+  ];
+
+  const handleSelect = (eraId) => {
+    setSelectedEra(eraId);
+    setConfirming(true);
+    setTimeout(() => onSelect(eraId), 600);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: KJ.colors.hanji, overflow: 'hidden' }}>
+      <div style={{ padding: '24px 24px 0', flexShrink: 0 }}>
+        <div style={{ fontFamily: KJ.font.ui, fontSize: 11, color: KJ.colors.ash, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>시대 테마 선택</div>
+        <div style={{ fontFamily: KJ.font.display, fontSize: 22, fontWeight: 700, color: KJ.colors.meok, letterSpacing: '-0.03em', lineHeight: 1.3 }}>
+          나만의 병풍 스타일을<br/>선택하세요
+        </div>
+        <div style={{ fontFamily: KJ.font.ui, fontSize: 13, color: KJ.colors.ash, marginTop: 8, lineHeight: 1.6 }}>
+          선택한 시대의 전통 회화가 여정의 시각적 언어가 됩니다.<br/>미션을 완료할수록 그림이 완성됩니다.
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {eras.map(era => {
+          const theme = ERA_THEMES[era.id];
+          const isSelected = selectedEra === era.id;
+          const isHovered = hoveredEra === era.id;
+          return (
+            <button key={era.id} onClick={() => handleSelect(era.id)}
+              onMouseEnter={() => setHoveredEra(era.id)} onMouseLeave={() => setHoveredEra(null)}
+              style={{
+                display: 'flex', gap: 16, padding: '16px',
+                background: isSelected ? theme.primary + '12' : isHovered ? KJ.colors.cloud : KJ.colors.hwangto + '60',
+                border: `2px solid ${isSelected ? theme.primary : 'transparent'}`,
+                borderRadius: KJ.radius.card, cursor: 'pointer', textAlign: 'left',
+                transition: 'all 200ms ease-out', alignItems: 'center',
+                transform: isHovered && !isSelected ? 'translateY(-2px)' : 'none',
+                boxShadow: isHovered ? KJ.shadow.s1 : 'none',
+              }}
+            >
+              <div style={{ borderRadius: 8, overflow: 'hidden', flexShrink: 0, boxShadow: '2px 2px 8px rgba(44,36,22,0.15)', border: `3px solid ${KJ.colors.hwanggeum}66` }}>
+                {era.panel}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontFamily: KJ.font.display, fontSize: 20, fontWeight: 700, color: theme.primary, letterSpacing: '-0.02em' }}>
+                    {theme.name}
+                  </span>
+                  <span style={{ fontFamily: KJ.font.ui, fontSize: 13, color: KJ.colors.ash }}>{theme.nameEn}</span>
+                </div>
+                <div style={{ fontFamily: KJ.font.ui, fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>
+                  {theme.subtitle}
+                </div>
+                <div style={{ fontFamily: KJ.font.ui, fontSize: 12, color: KJ.colors.ash, lineHeight: 1.55, whiteSpace: 'pre-line' }}>
+                  {theme.description}
+                </div>
+              </div>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={isSelected ? theme.primary : KJ.colors.hairline} strokeWidth="2" strokeLinecap="round">
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+            </button>
+          );
+        })}
+      </div>
+
+      {confirming && (
+        <div style={{
+          position: 'absolute', inset: 0, background: 'rgba(253,250,243,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(4px)', zIndex: 10, animation: 'fadeIn 200ms ease-out',
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontFamily: KJ.font.display, fontSize: 20, color: (ERA_THEMES[selectedEra] || ERA_THEMES.joseon).primary, letterSpacing: '-0.02em' }}>
+              {(ERA_THEMES[selectedEra] || ERA_THEMES.joseon).name} 여정을 시작합니다
+            </div>
+          </div>
+        </div>
+      )}
+      <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KJScreens-Main — Home screen + Byeongpung tab
+// ═══════════════════════════════════════════════════════════════════════════
+
+function MissionCard({ mission, completed, onComplete, onSelect, era }) {
+  const theme = ERA_THEMES[era] || ERA_THEMES.joseon;
+  const catStyle = CATEGORY_STYLES[mission.cat] || CATEGORY_STYLES.settle;
+  const [pressing, setPressing] = useState(false);
+
+  const motifMap = {
+    settle: <MotifCrane size={22} alpha={0.55} />,
+    food: <MotifPeony size={22} alpha={0.55} />,
+    activity: <MotifTiger size={22} alpha={0.55} />,
+    culture: <MotifLotus size={22} alpha={0.55} />,
+  };
+
+  return (
+    <div onClick={() => !completed && onSelect && onSelect(mission)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px',
+        background: completed ? KJ.colors.cloud : 'white', borderRadius: KJ.radius.card,
+        border: `1px solid ${KJ.colors.hairline}`,
+        cursor: completed ? 'default' : 'pointer',
+        transition: 'transform 200ms ease-out, box-shadow 200ms ease-out, background 300ms',
+        transform: pressing ? 'scale(0.98)' : 'scale(1)',
+        boxShadow: completed ? 'none' : KJ.shadow.s1,
+        opacity: completed ? 0.7 : 1, position: 'relative', overflow: 'hidden',
+      }}
+      onPointerDown={() => !completed && setPressing(true)}
+      onPointerUp={() => setPressing(false)}
+      onPointerLeave={() => setPressing(false)}
+    >
+      {completed && (
+        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${catStyle.color}08 0%, transparent 60%)`, pointerEvents: 'none' }} />
+      )}
+      <div style={{
+        width: 40, height: 40, borderRadius: KJ.radius.sm,
+        background: catStyle.color + '12',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0, position: 'relative',
+      }}>
+        {motifMap[mission.cat]}
+        {completed && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: catStyle.color + '22', borderRadius: KJ.radius.sm }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={catStyle.color} strokeWidth="2.5" strokeLinecap="round">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+          </div>
+        )}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: KJ.font.ui, fontWeight: 600, fontSize: 14,
+          color: completed ? KJ.colors.ash : KJ.colors.meok,
+          letterSpacing: '-0.01em', lineHeight: 1.3,
+          textDecoration: completed ? 'line-through' : 'none',
+          textDecorationColor: KJ.colors.hairline,
+        }}>{mission.ko}</div>
+        <div style={{ fontFamily: KJ.font.ui, fontSize: 11, color: KJ.colors.ash, marginTop: 2 }}>{mission.en}</div>
+        <div style={{ marginTop: 5 }}><CategoryBadge cat={mission.cat} small /></div>
+      </div>
+      {!completed ? (
+        <button onClick={e => { e.stopPropagation(); onComplete(mission); }}
+          style={{
+            flexShrink: 0, padding: '6px 12px', borderRadius: KJ.radius.pill,
+            background: theme.primary, color: 'white', border: 'none', cursor: 'pointer',
+            fontFamily: KJ.font.ui, fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap',
+          }}>완료</button>
+      ) : (
+        <div style={{ flexShrink: 0, width: 28, height: 28, borderRadius: '50%', background: catStyle.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={catStyle.color} strokeWidth="2.5" strokeLinecap="round">
+            <path d="M20 6L9 17l-5-5"/>
+          </svg>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DDayBanner({ daysLeft, completedCount, phase, era }) {
+  const theme = ERA_THEMES[era] || ERA_THEMES.joseon;
+  const phaseInfo = PHASE_INFO[phase] || PHASE_INFO[3];
+
+  return (
+    <div style={{
+      margin: '12px 16px 0', padding: '14px 16px',
+      background: daysLeft < 14 ? KJ.colors.dancheong + '1E' : KJ.colors.hwangto,
+      borderRadius: KJ.radius.card, border: `1px solid ${KJ.colors.hairline}`,
+      position: 'relative', overflow: 'hidden',
+    }}>
+      <div style={{ position: 'absolute', right: -8, top: -8, opacity: 0.06 }}><MotifCrane size={80} alpha={1}/></div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', position: 'relative' }}>
+        <div>
+          <div style={{ fontFamily: KJ.font.ui, fontSize: 10, color: KJ.colors.ash, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 4 }}>
+            {theme.name} 여정 · {phaseInfo.name}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+            <span style={{ fontFamily: KJ.font.display, fontSize: 32, fontWeight: 700, color: daysLeft < 14 ? KJ.colors.dancheong : KJ.colors.meok, letterSpacing: '-0.04em' }}>
+              D-{daysLeft}
+            </span>
+            <span style={{ fontFamily: KJ.font.ui, fontSize: 12, color: KJ.colors.ash }}>출국까지</span>
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontFamily: KJ.font.display, fontSize: 22, fontWeight: 700, color: theme.accent, letterSpacing: '-0.03em' }}>
+            {completedCount}<span style={{ fontSize: 14, color: KJ.colors.ash }}>/50</span>
+          </div>
+          <div style={{ fontFamily: KJ.font.ui, fontSize: 11, color: KJ.colors.ash }}>미션 완료</div>
+        </div>
+      </div>
+      <div style={{ marginTop: 10, height: 3, background: KJ.colors.hairline, borderRadius: 2, overflow: 'hidden' }}>
+        <div style={{ height: '100%', borderRadius: 2, background: theme.primary, width: `${(completedCount / 50) * 100}%`, transition: 'width 600ms ease-out' }} />
+      </div>
+    </div>
+  );
+}
+
+function PhaseTabs({ activePhase, onSelect, completedIds, era }) {
+  const theme = ERA_THEMES[era] || ERA_THEMES.joseon;
+  const phases = [1, 2, 3, 4];
+  const phaseLabels = { 1: '입국 전', 2: '첫 주', 3: '거주', 4: '출국 전' };
+  const phaseMissionCounts = {};
+  ALL_MISSIONS.forEach(m => { phaseMissionCounts[m.phase] = (phaseMissionCounts[m.phase] || 0) + 1; });
+  const phaseCompletedCounts = {};
+  ALL_MISSIONS.forEach(m => { if (completedIds.has(m.id)) phaseCompletedCounts[m.phase] = (phaseCompletedCounts[m.phase] || 0) + 1; });
+
+  return (
+    <div style={{ display: 'flex', gap: 0, padding: '12px 16px 0', overflowX: 'auto', flexShrink: 0 }}>
+      {phases.map(ph => {
+        const active = activePhase === ph;
+        const done = phaseCompletedCounts[ph] || 0;
+        const total = phaseMissionCounts[ph] || 0;
+        const allDone = done === total;
+        return (
+          <button key={ph} onClick={() => onSelect(ph)} style={{
+            flexShrink: 0, padding: '8px 14px',
+            background: active ? KJ.colors.meok : 'transparent',
+            color: active ? KJ.colors.hanji : KJ.colors.ash,
+            border: 'none', cursor: 'pointer', borderRadius: KJ.radius.pill,
+            fontFamily: KJ.font.ui, fontWeight: 600, fontSize: 12,
+            transition: 'all 150ms', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+          }}>
+            <span>{ph}페이즈 · {phaseLabels[ph]}</span>
+            <span style={{ fontSize: 10, opacity: 0.7, color: active ? KJ.colors.cloud : (allDone ? theme.primary : KJ.colors.ash) }}>
+              {done}/{total}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function HomeScreen({ appState, onComplete, onMissionSelect, onByeongpungOpen }) {
+  const { era, phase, completedMissions, daysLeft, profile, animatingPanel } = appState;
+  const theme = ERA_THEMES[era] || ERA_THEMES.joseon;
+  const [viewPhase, setViewPhase] = useState(phase);
+  const completedIds = completedMissions;
+  const phaseMissions = ALL_MISSIONS.filter(m => m.phase === viewPhase);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: KJ.colors.hanji, overflow: 'hidden' }}>
+      <div style={{ padding: '12px 20px 10px', flexShrink: 0, borderBottom: `1px solid ${KJ.colors.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: KJ.colors.hanji }}>
+        <div>
+          <div style={{ fontFamily: KJ.font.display, fontSize: 20, fontWeight: 700, color: KJ.colors.meok, letterSpacing: '-0.04em' }}>K-Journey</div>
+          <div style={{ fontFamily: KJ.font.ui, fontSize: 11, color: KJ.colors.ash }}>{profile?.name ? `안녕하세요, ${profile.name}` : '여정을 시작하세요'}</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => appState.onNavMore && appState.onNavMore('emergency')}
+            style={{ width: 34, height: 34, borderRadius: '50%', background: KJ.colors.dancheong + '12', border: `1px solid ${KJ.colors.dancheong}44`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: KJ.colors.dancheong }}
+            title="긴급 가이드">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </button>
+          <button style={{ width: 34, height: 34, borderRadius: '50%', background: KJ.colors.cloud, border: `1px solid ${KJ.colors.hairline}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: KJ.colors.ash }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <ByeongpungStrip completedCount={completedMissions.size} era={era} animatingPanel={animatingPanel} onClick={onByeongpungOpen} />
+      <DDayBanner daysLeft={daysLeft} completedCount={completedMissions.size} phase={phase} era={era} />
+      <PhaseTabs activePhase={viewPhase} onSelect={setViewPhase} completedIds={completedIds} era={era} />
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {['settle', 'food', 'activity', 'culture'].map(cat => {
+          const catMissions = phaseMissions.filter(m => m.cat === cat);
+          if (catMissions.length === 0) return null;
+          const catStyle = CATEGORY_STYLES[cat];
+          return (
+            <div key={cat}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, marginTop: 4 }}>
+                <div style={{ height: 1, flex: 1, background: KJ.colors.hairline }} />
+                <span style={{ fontFamily: KJ.font.ui, fontSize: 10, fontWeight: 600, color: catStyle.color, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{catStyle.label}</span>
+                <div style={{ height: 1, flex: 1, background: KJ.colors.hairline }} />
+              </div>
+              {catMissions.map(m => (
+                <div key={m.id} style={{ marginBottom: 8 }}>
+                  <MissionCard mission={m} completed={completedIds.has(m.id)} onComplete={onComplete} onSelect={onMissionSelect} era={era} />
+                </div>
+              ))}
+            </div>
+          );
+        })}
+        {phaseMissions.every(m => completedIds.has(m.id)) && (
+          <div style={{ padding: '20px 16px', textAlign: 'center', background: KJ.colors.hwangto, borderRadius: KJ.radius.card, border: `1px solid ${KJ.colors.hairline}` }}>
+            <div style={{ fontFamily: KJ.font.display, fontSize: 16, color: KJ.colors.hwanggeum, letterSpacing: '-0.02em' }}>{viewPhase}페이즈 완성</div>
+            <div style={{ fontFamily: KJ.font.ui, fontSize: 12, color: KJ.colors.ash, marginTop: 4 }}>다음 페이즈로 이어가세요</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ByeongpungTabScreen({ appState }) {
+  const { era, completedMissions, animatingPanel } = appState;
+  const theme = ERA_THEMES[era] || ERA_THEMES.joseon;
+  const panelReveal = (i) => Math.min(1, Math.max(0, (completedMissions.size - i * 6) / 6));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#1A1208', overflow: 'hidden' }}>
+      <PageHeader title="나의 병풍" subtitle={`${theme.name} ${theme.nameEn} · ${theme.subtitle}`} noBorder />
+      <div style={{ padding: '10px 20px', display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+        <span style={{ padding: '4px 12px', borderRadius: KJ.radius.pill, background: theme.primary + '25', color: theme.primary, fontFamily: KJ.font.ui, fontWeight: 600, fontSize: 12, border: `1px solid ${theme.primary}44` }}>
+          {Math.floor(completedMissions.size / 6)}/8폭 완성
+        </span>
+        <span style={{ padding: '4px 12px', borderRadius: KJ.radius.pill, background: KJ.colors.hwanggeum + '22', color: KJ.colors.hwanggeum, fontFamily: KJ.font.ui, fontWeight: 600, fontSize: 12, border: `1px solid ${KJ.colors.hwanggeum}44` }}>
+          {completedMissions.size}/50 미션
+        </span>
+      </div>
+      <div style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden', display: 'flex', padding: '8px 16px 8px', gap: 0, minHeight: 0 }}>
+        <div style={{ width: 10, background: 'linear-gradient(180deg, #A08050, #6A4820)', flexShrink: 0, borderRadius: '4px 0 0 4px' }} />
+        {Array.from({ length: 8 }).map((_, i) => (
+          <ByeongpungPanel key={i} index={i} era={era} revealProgress={panelReveal(i)} isAnimating={animatingPanel === i} width={110} height="100%" />
+        ))}
+        <div style={{ width: 10, background: 'linear-gradient(180deg, #A08050, #6A4820)', flexShrink: 0, borderRadius: '0 4px 4px 0' }} />
+      </div>
+      <div style={{ padding: '12px 16px', background: 'rgba(26,18,8,0.95)', borderTop: '1px solid rgba(196,149,42,0.2)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 10 }}>
+          {Array.from({ length: 8 }).map((_, i) => {
+            const rev = panelReveal(i);
+            return (
+              <div key={i} style={{ flexShrink: 0, textAlign: 'center', opacity: rev > 0 ? 1 : 0.35 }}>
+                <div style={{ width: 32, height: 4, borderRadius: 2, marginBottom: 4, background: rev > 0 ? theme.panelColors[i] : '#3A2A1A', transition: 'background 500ms' }} />
+                <div style={{ fontFamily: KJ.font.ui, fontSize: 9, color: rev > 0 ? '#C4952A' : '#5A4A3A' }}>{i + 1}폭</div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ fontFamily: KJ.font.display, fontSize: 13, color: '#C4952A', letterSpacing: '-0.01em', textAlign: 'center' }}>
+          {completedMissions.size < 6 ? '첫 번째 폭을 완성해보세요' :
+           completedMissions.size < 48 ? `앞으로 ${8 - Math.floor(completedMissions.size / 6)}폭이 남았습니다` :
+           '여정이 완성되었습니다 · The journey is complete'}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KJScreens-Mission — Mission Detail + Ink Completion Animation
+// ═══════════════════════════════════════════════════════════════════════════
+
+function MissionDetailScreen({ mission, completed, era, onComplete, onBack }) {
+  const theme = ERA_THEMES[era] || ERA_THEMES.joseon;
+  const catStyle = CATEGORY_STYLES[mission.cat] || CATEGORY_STYLES.settle;
+  const tips = {
+    p1_1: ['계절에 맞는 옷을 꼭 챙기세요. 한국 여름은 매우 덥고 습합니다.', '변환 플러그(220V)를 준비하세요.', '여행자 보험 가입을 권장합니다.'],
+    p1_4: ['안녕하세요 (Annyeonghaseyo) — Hello', '감사합니다 (Gamsahamnida) — Thank you', '죄송합니다 (Joesonghamnida) — I\'m sorry'],
+    p2_1: ['지하철역 자동판매기나 편의점에서 구매 가능합니다.', '기본 충전금 5,000원으로 시작하세요.', '버스, 지하철, 택시 모두 사용 가능합니다.'],
+    p3_2: ['치킨 + 맥주 조합을 "치맥"이라 합니다.', '한강공원 편의점에서 배달 가능!', '돗자리(피크닉 매트)를 챙기면 좋아요.'],
+    p3_3: ['경복궁, 창덕궁에서 한복 착용 시 무료 입장!', '인근 한복 대여점에서 1~2만원에 빌릴 수 있습니다.', '평일이 훨씬 덜 붐빕니다.'],
+  };
+  const missionTips = tips[mission.id] || [
+    '완료 버튼을 탭하면 병풍의 다음 폭이 드러납니다.',
+    '각 미션은 한국 교환학생 생활의 필수 경험으로 큐레이션되었습니다.',
+    '미션 완료는 자유롭게 — 사진 인증 없이도 OK.',
+  ];
+  const mapHints = { p3_1: '광장시장, 남대문시장, 통인시장', p3_2: '여의도, 뚝섬, 반포 한강공원', p3_3: '경복궁역 3번 출구 인근 한복 대여', p3_4: 'KTX 서울역 → 부산 2시간 30분', p2_1: 'T-money — 편의점 (GS25, CU, 세븐일레븐)' };
+  const phaseLabels = { 1: '입국 전', 2: '첫 주', 3: '거주', 4: '출국 전' };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: KJ.colors.hanji, overflow: 'hidden' }}>
+      <PageHeader title={mission.ko} subtitle={mission.en} onBack={onBack} />
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ background: catStyle.color + '10', padding: '28px 24px', display: 'flex', alignItems: 'center', gap: 20, borderBottom: `1px solid ${KJ.colors.hairline}`, position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', right: -10, top: -10, opacity: 0.08 }}>
+            {mission.cat === 'food' && <MotifPeony size={120} alpha={1}/>}
+            {mission.cat === 'culture' && <MotifLotus size={120} alpha={1}/>}
+            {mission.cat === 'activity' && <MotifTiger size={120} alpha={1}/>}
+            {mission.cat === 'settle' && <MotifCrane size={120} alpha={1}/>}
+          </div>
+          <div style={{ width: 72, height: 72, borderRadius: KJ.radius.card, background: catStyle.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: `1.5px solid ${catStyle.color}30` }}>
+            {mission.cat === 'food' && <MotifPeony size={48} alpha={0.9}/>}
+            {mission.cat === 'culture' && <MotifLotus size={48} alpha={0.9}/>}
+            {mission.cat === 'activity' && <MotifTiger size={48} alpha={0.9}/>}
+            {mission.cat === 'settle' && <MotifCrane size={48} alpha={0.9}/>}
+          </div>
+          <div>
+            <div style={{ marginBottom: 8 }}><CategoryBadge cat={mission.cat} /></div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: KJ.radius.xs, background: KJ.colors.meok + '0E', marginTop: 6 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={KJ.colors.ash} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span style={{ fontFamily: KJ.font.ui, fontSize: 11, color: KJ.colors.ash }}>{mission.phase}페이즈 · {phaseLabels[mission.phase]}</span>
+            </div>
+          </div>
+        </div>
+        <div style={{ padding: '20px 20px 0' }}>
+          <div style={{ fontFamily: KJ.font.display, fontSize: 14, fontWeight: 700, color: KJ.colors.meok, letterSpacing: '-0.02em', marginBottom: 12 }}>알아두면 좋은 것들</div>
+          {missionTips.map((tip, i) => (
+            <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 0', borderBottom: i < missionTips.length - 1 ? `1px solid ${KJ.colors.hairline}` : 'none' }}>
+              <div style={{ width: 22, height: 22, borderRadius: '50%', background: catStyle.color + '18', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: KJ.font.display, fontSize: 11, color: catStyle.color, fontWeight: 700, marginTop: 1 }}>{i + 1}</div>
+              <div style={{ fontFamily: KJ.font.ui, fontSize: 14, color: KJ.colors.meok, lineHeight: 1.6, flex: 1 }}>{tip}</div>
+            </div>
+          ))}
+        </div>
+        {mapHints[mission.id] && (
+          <div style={{ margin: '16px 20px 0', padding: '14px 16px', background: KJ.colors.cloud, borderRadius: KJ.radius.card, border: `1px solid ${KJ.colors.hairline}`, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={KJ.colors.cheong} strokeWidth="1.8" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+            </svg>
+            <div>
+              <div style={{ fontFamily: KJ.font.ui, fontWeight: 600, fontSize: 12, color: KJ.colors.cheong, marginBottom: 2 }}>어디서?</div>
+              <div style={{ fontFamily: KJ.font.ui, fontSize: 13, color: KJ.colors.meok }}>{mapHints[mission.id]}</div>
+            </div>
+          </div>
+        )}
+        <div style={{ margin: '16px 20px 0', padding: '14px 16px', background: KJ.colors.hwangto, borderRadius: KJ.radius.card, border: `1px solid ${KJ.colors.hairline}` }}>
+          <div style={{ fontFamily: KJ.font.ui, fontWeight: 600, fontSize: 12, color: KJ.colors.ash, marginBottom: 6 }}>완료하면 병풍에</div>
+          <div style={{ fontFamily: KJ.font.display, fontSize: 14, color: KJ.colors.meok, letterSpacing: '-0.01em', lineHeight: 1.5 }}>
+            이 미션을 완료하면 나의 병풍이 한 걸음 더 완성됩니다. 할 일을 수행하는 것이 곧 그림을 그리는 것입니다.
+          </div>
+        </div>
+        <div style={{ height: 120 }} />
+      </div>
+      <div style={{ padding: '16px 20px 28px', flexShrink: 0, background: KJ.colors.hanji, borderTop: `1px solid ${KJ.colors.hairline}` }}>
+        {completed ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '15px', borderRadius: KJ.radius.pill, background: KJ.colors.cloud, border: `1px solid ${KJ.colors.hairline}` }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={catStyle.color} strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+            <span style={{ fontFamily: KJ.font.ui, fontWeight: 600, fontSize: 15, color: KJ.colors.ash }}>완료한 미션입니다</span>
+          </div>
+        ) : (
+          <PrimaryButton onClick={() => onComplete(mission)}>완료 — 병풍에 새기기</PrimaryButton>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MissionCompleteScreen({ mission, era, newPanelUnlocked, panelIndex, onContinue }) {
+  const theme = ERA_THEMES[era] || ERA_THEMES.joseon;
+  const catStyle = CATEGORY_STYLES[mission?.cat] || CATEGORY_STYLES.settle;
+  const [animPhase, setAnimPhase] = useState('card-fade');
+  const PanelArt = era === 'joseon' ? JOSEON_PANELS[panelIndex] : null;
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setAnimPhase('ink-spread'), 400);
+    const t2 = setTimeout(() => setAnimPhase('panel-reveal'), 900);
+    const t3 = setTimeout(() => setAnimPhase('done'), 2200);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, []);
+
+  const inkSize = animPhase === 'ink-spread' || animPhase === 'panel-reveal' || animPhase === 'done' ? '200%' : '0%';
+  const fogOpacity = animPhase === 'panel-reveal' || animPhase === 'done' ? 0 : 1;
+  const showText = animPhase === 'done';
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', background: theme.panelBg, overflow: 'hidden' }}>
+      {animPhase === 'card-fade' && mission && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: KJ.colors.hanji, animation: 'cardSink 400ms ease-in forwards', zIndex: 2 }}>
+          <div style={{ width: '100%', padding: '20px', borderRadius: KJ.radius.card, background: 'white', boxShadow: KJ.shadow.s3, display: 'flex', gap: 14, alignItems: 'center' }}>
+            <div style={{ width: 48, height: 48, borderRadius: KJ.radius.sm, background: catStyle.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MotifPeony size={30} alpha={0.8}/></div>
+            <div>
+              <div style={{ fontFamily: KJ.font.ui, fontWeight: 600, fontSize: 15, color: KJ.colors.meok }}>{mission.ko}</div>
+              <div style={{ fontFamily: KJ.font.ui, fontSize: 12, color: KJ.colors.ash, marginTop: 2 }}>완료 중...</div>
+            </div>
+          </div>
+        </div>
+      )}
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 3 }}>
+        {(animPhase === 'ink-spread' || animPhase === 'panel-reveal') && [0,1,2,3].map(i => (
+          <div key={i} style={{ position: 'absolute', width: `${80 + i * 40}%`, height: `${80 + i * 40}%`, borderRadius: '50%', border: `${3 - i * 0.5}px solid rgba(44,36,22,${0.18 - i * 0.04})`, animation: `inkRingOut 1s ${i * 120}ms ease-out forwards` }}/>
+        ))}
+      </div>
+      <div style={{ position: 'absolute', inset: 0, clipPath: `circle(${inkSize} at 50% 50%)`, transition: 'clip-path 800ms cubic-bezier(0.25, 0.46, 0.45, 0.94)', zIndex: 1 }}>
+        <div style={{ width: '100%', height: '100%' }}>
+          {era === 'joseon' && PanelArt && <PanelArt />}
+          {era === 'silla' && <PanelSilla index={panelIndex} />}
+          {era === 'goryeo' && <PanelGoryeo index={panelIndex} />}
+        </div>
+      </div>
+      <div style={{ position: 'absolute', inset: 0, background: theme.panelBg, opacity: fogOpacity, transition: 'opacity 500ms ease-out', zIndex: 2, pointerEvents: 'none' }} />
+      {showText && (
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '24px 24px 40px', background: 'linear-gradient(0deg, rgba(253,250,243,0.95) 60%, transparent)', zIndex: 10, animation: 'fadeUpIn 500ms ease-out' }}>
+          {newPanelUnlocked ? (
+            <>
+              <div style={{ fontFamily: KJ.font.ui, fontSize: 11, color: KJ.colors.ash, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 6 }}>병풍 {panelIndex + 1}폭 완성</div>
+              <div style={{ fontFamily: KJ.font.display, fontSize: 22, fontWeight: 700, color: KJ.colors.meok, letterSpacing: '-0.03em', lineHeight: 1.25, marginBottom: 16 }}>그림 한 폭이<br />조용히 드러났습니다</div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontFamily: KJ.font.ui, fontSize: 11, color: KJ.colors.ash, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 6 }}>미션 완료</div>
+              <div style={{ fontFamily: KJ.font.display, fontSize: 22, fontWeight: 700, color: KJ.colors.meok, letterSpacing: '-0.03em', lineHeight: 1.25, marginBottom: 16 }}>{mission?.ko}</div>
+            </>
+          )}
+          <PrimaryButton onClick={onContinue}>여정으로 돌아가기</PrimaryButton>
+        </div>
+      )}
+      <style>{`
+        @keyframes cardSink { 0%{opacity:1;transform:scale(1) translateY(0);} 100%{opacity:0;transform:scale(0.92) translateY(20px);} }
+        @keyframes inkRingOut { 0%{transform:scale(0.2);opacity:0.7;} 100%{transform:scale(2);opacity:0;} }
+        @keyframes fadeUpIn { from{opacity:0;transform:translateY(20px);} to{opacity:1;transform:translateY(0);} }
+      `}</style>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KJScreens-Extra — Want To, Emergency, More, Gallery
+// ═══════════════════════════════════════════════════════════════════════════
+
+function WantToScreen({ era }) {
+  const theme = ERA_THEMES[era] || ERA_THEMES.joseon;
+  const [lists, setLists] = useState([
+    { id: 'wt1', theme: '카페 탐방', color: '#D4758A', items: ['연남동 감성 카페', '성수동 공장 카페', '북촌 한옥 카페', '이태원 루프탑', '부암동 숲속 카페'], completed: [true, true, false, false, false], motif: 'lotus' },
+    { id: 'wt2', theme: '지방여행', color: '#3D6B3A', items: ['부산 해운대·광안리', '경주 불국사·첨성대', '전주 한옥마을', '강릉 커피 거리'], completed: [true, false, false, false], motif: 'tiger' },
+    { id: 'wt3', theme: '한국 영화 보기', color: '#1A3A7A', items: ['기생충', '올드보이', '벌새', '남한산성'], completed: [true, true, false, false], motif: 'crane' },
+  ]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newTheme, setNewTheme] = useState('');
+
+  const toggleItem = (listId, idx) => {
+    setLists(prev => prev.map(l => {
+      if (l.id !== listId) return l;
+      const c = [...l.completed]; c[idx] = !c[idx];
+      return { ...l, completed: c };
+    }));
+  };
+
+  const addList = () => {
+    if (!newTheme.trim()) return;
+    setLists(prev => [...prev, { id: 'wt' + Date.now(), theme: newTheme.trim(), color: ['#C5302A','#C4952A','#D4758A','#3D6B3A','#1A3A7A'][Math.floor(Math.random()*5)], items: [], completed: [], motif: 'peony' }]);
+    setNewTheme(''); setShowAdd(false);
+  };
+
+  const motifMap = {
+    peony: <MotifPeony size={28} alpha={0.7}/>,
+    crane: <MotifCrane size={28} alpha={0.7}/>,
+    tiger: <MotifTiger size={28} alpha={0.7}/>,
+    lotus: <MotifLotus size={28} alpha={0.7}/>,
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: KJ.colors.hanji, overflow: 'hidden' }}>
+      <PageHeader title="나의 버킷리스트" subtitle="Want To 미션 · 직접 만드는 여정" />
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 100px' }}>
+        <div style={{ padding: '12px 14px', marginBottom: 16, background: KJ.colors.hwangto, borderRadius: KJ.radius.card, border: `1px solid ${KJ.colors.hairline}` }}>
+          <div style={{ fontFamily: KJ.font.ui, fontSize: 13, color: KJ.colors.ash, lineHeight: 1.6 }}>나만의 테마를 만들어 완성해가세요. 버킷리스트도 병풍 완성에 반영됩니다.</div>
+        </div>
+        {lists.map(list => {
+          const doneCount = list.completed.filter(Boolean).length;
+          const total = list.items.length;
+          const progress = total > 0 ? doneCount / total : 0;
+          return (
+            <div key={list.id} style={{ marginBottom: 16, borderRadius: KJ.radius.card, border: `1px solid ${KJ.colors.hairline}`, background: 'white', overflow: 'hidden', boxShadow: KJ.shadow.s1 }}>
+              <div style={{ padding: '14px 16px 10px', background: list.color + '12', borderBottom: `1px solid ${KJ.colors.hairline}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: KJ.radius.sm, background: list.color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{motifMap[list.motif] || motifMap.peony}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: KJ.font.ui, fontWeight: 700, fontSize: 15, color: KJ.colors.meok }}>{list.theme}</div>
+                    <div style={{ fontFamily: KJ.font.ui, fontSize: 11, color: KJ.colors.ash, marginTop: 1 }}>{doneCount}/{total} 완료</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontFamily: KJ.font.display, fontSize: 18, fontWeight: 700, color: list.color }}>{Math.round(progress * 100)}<span style={{ fontSize: 12 }}>%</span></div>
+                  </div>
+                </div>
+                <div style={{ marginTop: 8, height: 3, background: KJ.colors.hairline, borderRadius: 2 }}>
+                  <div style={{ height: '100%', borderRadius: 2, background: list.color, width: `${progress * 100}%`, transition: 'width 400ms ease-out' }}/>
+                </div>
+              </div>
+              <div style={{ padding: '8px 0' }}>
+                {list.items.map((item, idx) => (
+                  <button key={idx} onClick={() => toggleItem(list.id, idx)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: idx < list.items.length - 1 ? `1px solid ${KJ.colors.cloud}` : 'none' }}>
+                    <div style={{ width: 20, height: 20, borderRadius: 4, border: `1.5px solid ${list.completed[idx] ? list.color : KJ.colors.hairline}`, background: list.completed[idx] ? list.color + '18' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 150ms' }}>
+                      {list.completed[idx] && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={list.color} strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>}
+                    </div>
+                    <span style={{ fontFamily: KJ.font.ui, fontSize: 13, color: list.completed[idx] ? KJ.colors.ash : KJ.colors.meok, textDecoration: list.completed[idx] ? 'line-through' : 'none', textDecorationColor: KJ.colors.hairline, flex: 1 }}>{item}</span>
+                  </button>
+                ))}
+                {list.items.length === 0 && <div style={{ padding: '16px', textAlign: 'center', color: KJ.colors.ash, fontFamily: KJ.font.ui, fontSize: 13 }}>항목을 추가해보세요</div>}
+              </div>
+            </div>
+          );
+        })}
+        {showAdd ? (
+          <div style={{ padding: '16px', background: KJ.colors.cloud, borderRadius: KJ.radius.card, border: `1px solid ${KJ.colors.hairline}` }}>
+            <input value={newTheme} onChange={e => setNewTheme(e.target.value)} placeholder="새 테마 이름 (예: 콘서트 투어)" autoFocus
+              style={{ width: '100%', padding: '12px 14px', fontFamily: KJ.font.ui, fontSize: 14, background: 'white', border: `1.5px solid ${KJ.colors.hairline}`, borderRadius: KJ.radius.sm, outline: 'none', boxSizing: 'border-box', color: KJ.colors.meok, marginBottom: 10 }} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <GhostButton onClick={() => setShowAdd(false)} style={{ flex: 1, padding: '10px' }}>취소</GhostButton>
+              <PrimaryButton onClick={addList} style={{ flex: 2 }} small>만들기</PrimaryButton>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setShowAdd(true)} style={{ width: '100%', padding: '14px', borderRadius: KJ.radius.card, background: 'transparent', border: `1.5px dashed ${KJ.colors.hairline}`, cursor: 'pointer', fontFamily: KJ.font.ui, fontSize: 13, color: KJ.colors.ash, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            새 버킷리스트 테마 추가
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmergencyScreen({ onBack }) {
+  const [openId, setOpenId] = useState(null);
+  const sections = [
+    { id: 'emergency', title: '긴급 전화번호', color: KJ.colors.dancheong, items: [
+      { q: '경찰 Police', a: '112\n24시간, 영어 통역 가능 (옵션 선택)' },
+      { q: '소방 / 구급 Fire & Ambulance', a: '119\n화재, 응급의료 모두 119로' },
+      { q: '외국인 상담 Foreigner Helpline', a: '1345\n출입국·체류·생활 상담 (영어 가능)' },
+      { q: '관광 경찰 Tourist Police', a: '1330\n관광 불편 신고, 영어·중·일 가능' },
+    ]},
+    { id: 'hospital', title: '영어 가능 병원', color: KJ.colors.cheong, items: [
+      { q: '세브란스 병원 Severance Hospital', a: '서울 신촌 · 국제진료센터 운영\n+82-2-2228-5800' },
+      { q: '서울아산병원 Asan Medical Center', a: '서울 송파 · 외국인진료센터\n+82-2-3010-5001' },
+      { q: '가까운 약국 Local pharmacy', a: '간단한 약은 처방전 없이 구매 가능\n영어 가능 약국: Naver 지도에서 "약국 영어" 검색' },
+    ]},
+    { id: 'lost', title: '분실물 / 도난', color: KJ.colors.jade, items: [
+      { q: '지갑·여권 분실', a: '1. 가까운 경찰서(파출소) 방문\n2. 경찰청 유실물 통합 포털: lost112.go.kr\n3. 지하철: 각 역사 유실물센터' },
+      { q: '여권 분실', a: '1. 가까운 경찰서에서 분실 신고\n2. 한국 내 자국 대사관에 임시여권 신청\n3. 학교 국제처에도 반드시 알릴 것' },
+      { q: '휴대폰 분실', a: 'IMEI 잠금: 통신사(SKT/KT/LG) 고객센터\n카카오페이·네이버페이 즉시 잠금\nGoogle/Apple Find My 활용' },
+    ]},
+    { id: 'korean', title: '긴급 한국어', color: KJ.colors.hwanggeum, items: [
+      { q: '도와주세요!', a: '도와주세요! (Dowajuseyo!)\n"Help me!"' },
+      { q: '병원에 가고 싶어요', a: '병원에 가고 싶어요. (Byeongwone gago sipeoyo)\n"I want to go to a hospital."' },
+      { q: '경찰을 불러주세요', a: '경찰을 불러주세요. (Gyeongchareul bulleojuseyo)\n"Please call the police."' },
+      { q: '영어 할 줄 아세요?', a: '영어 할 줄 아세요? (Yeongeo hal jul aseyo?)\n"Do you speak English?"' },
+    ]},
+    { id: 'embassy', title: '대사관 연락처', color: KJ.colors.ash, items: [
+      { q: '미국 대사관', a: '서울 종로구 세종대로 188\n+82-2-397-4114' },
+      { q: '영국 대사관', a: '서울 중구 태평로2가 4\n+82-2-3210-5500' },
+      { q: '그 외 국가', a: '외교부 해외안전여행 앱에서\n모든 국가 대사관 연락처 확인 가능' },
+    ]},
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: KJ.colors.hanji, overflow: 'hidden' }}>
+      <PageHeader title="긴급 상황 가이드" subtitle="Emergency Guide · 모든 화면에서 접근 가능" onBack={onBack} />
+      <div style={{ margin: '12px 16px 0', padding: '12px 14px', background: KJ.colors.dancheong + '12', borderRadius: KJ.radius.card, border: `1px solid ${KJ.colors.dancheong}30`, display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={KJ.colors.dancheong} strokeWidth="2" strokeLinecap="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01"/>
+        </svg>
+        <div style={{ fontFamily: KJ.font.ui, fontSize: 13, color: KJ.colors.meok, lineHeight: 1.5 }}>
+          <strong>오프라인 사용 가능</strong> — 인터넷 없이도 이 가이드는 항상 볼 수 있습니다.
+        </div>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 24px' }}>
+        {sections.map(section => (
+          <div key={section.id} style={{ marginBottom: 12 }}>
+            <div onClick={() => setOpenId(openId === section.id ? null : section.id)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 16px', borderRadius: openId === section.id ? `${KJ.radius.card}px ${KJ.radius.card}px 0 0` : KJ.radius.card,
+                background: openId === section.id ? section.color + '14' : KJ.colors.cloud,
+                border: `1px solid ${openId === section.id ? section.color + '40' : KJ.colors.hairline}`,
+                cursor: 'pointer', transition: 'all 150ms',
+              }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: section.color, flexShrink: 0 }}/>
+                <span style={{ fontFamily: KJ.font.ui, fontWeight: 700, fontSize: 14, color: KJ.colors.meok }}>{section.title}</span>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={KJ.colors.ash} strokeWidth="2" strokeLinecap="round"
+                style={{ transform: openId === section.id ? 'rotate(180deg)' : 'none', transition: 'transform 200ms' }}>
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </div>
+            {openId === section.id && (
+              <div style={{ border: `1px solid ${section.color + '40'}`, borderTop: 'none', borderRadius: `0 0 ${KJ.radius.card}px ${KJ.radius.card}px`, overflow: 'hidden' }}>
+                {section.items.map((item, idx) => (
+                  <div key={idx} style={{ padding: '14px 16px', borderBottom: idx < section.items.length - 1 ? `1px solid ${KJ.colors.hairline}` : 'none', background: 'white' }}>
+                    <div style={{ fontFamily: KJ.font.ui, fontWeight: 600, fontSize: 13, color: section.color, marginBottom: 6 }}>{item.q}</div>
+                    <div style={{ fontFamily: KJ.font.ui, fontSize: 13, color: KJ.colors.meok, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{item.a}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MoreScreen({ onNavigate, era, completedMissions }) {
+  const theme = ERA_THEMES[era] || ERA_THEMES.joseon;
+  const panelReveal = (i) => Math.min(1, Math.max(0, (completedMissions.size - i * 6) / 6));
+  const completedList = ALL_MISSIONS.filter(m => completedMissions.has(m.id));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: KJ.colors.hanji, overflow: 'hidden' }}>
+      <PageHeader title="더보기" subtitle="My Journey · Gallery & Settings" />
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 24px' }}>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontFamily: KJ.font.ui, fontSize: 10, fontWeight: 600, color: KJ.colors.ash, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>완료한 여정</div>
+          <div style={{ background: '#1A1208', borderRadius: KJ.radius.card, overflow: 'hidden', boxShadow: KJ.shadow.s2 }}>
+            <div style={{ display: 'flex', height: 60 }}>
+              <div style={{ width: 8, background: 'linear-gradient(180deg, #A08050, #6A4820)' }}/>
+              {Array.from({ length: 8 }).map((_, i) => {
+                const rev = panelReveal(i);
+                return (
+                  <div key={i} style={{ flex: 1, position: 'relative', borderRight: i < 7 ? '1px solid rgba(196,149,42,0.3)' : 'none', background: theme.panelBg, overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', inset: 0, background: theme.panelColors[i], opacity: rev * 0.7 }}/>
+                    <div style={{ position: 'absolute', inset: 0, background: theme.panelBg, opacity: 1 - rev }}/>
+                  </div>
+                );
+              })}
+              <div style={{ width: 8, background: 'linear-gradient(180deg, #A08050, #6A4820)' }}/>
+            </div>
+            <div style={{ padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontFamily: KJ.font.display, fontSize: 13, color: '#F5E8C0' }}>{theme.name} 병풍 · {Math.floor(completedMissions.size / 6)}/8폭</div>
+                <div style={{ fontFamily: KJ.font.ui, fontSize: 11, color: '#A89070', marginTop: 2 }}>{completedMissions.size}개 미션 완료</div>
+              </div>
+              <button onClick={() => onNavigate('byeongpung')} style={{ padding: '6px 14px', borderRadius: KJ.radius.pill, background: theme.accent + '30', color: theme.accent, border: `1px solid ${theme.accent}50`, cursor: 'pointer', fontFamily: KJ.font.ui, fontSize: 12, fontWeight: 600 }}>전체보기</button>
+            </div>
+          </div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontFamily: KJ.font.ui, fontSize: 10, fontWeight: 600, color: KJ.colors.ash, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>미션 타임라인</div>
+          <div style={{ position: 'relative', paddingLeft: 24 }}>
+            <div style={{ position: 'absolute', left: 7, top: 0, bottom: 0, width: 1, background: KJ.colors.hairline }}/>
+            {completedList.length === 0 ? (
+              <div style={{ fontFamily: KJ.font.ui, fontSize: 13, color: KJ.colors.ash, padding: '12px 0' }}>완료한 미션이 없습니다</div>
+            ) : completedList.slice(0, 8).map((m, idx) => {
+              const catStyle = CATEGORY_STYLES[m.cat] || CATEGORY_STYLES.settle;
+              return (
+                <div key={m.id} style={{ display: 'flex', gap: 12, marginBottom: 14, position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: -24, top: 4, width: 14, height: 14, borderRadius: '50%', background: catStyle.color + '20', border: `2px solid ${catStyle.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: catStyle.color }}/>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: KJ.font.ui, fontWeight: 600, fontSize: 13, color: KJ.colors.meok }}>{m.ko}</div>
+                    <div style={{ fontFamily: KJ.font.ui, fontSize: 11, color: KJ.colors.ash, marginTop: 1 }}>{m.en} · {m.phase}페이즈</div>
+                  </div>
+                </div>
+              );
+            })}
+            {completedList.length > 8 && <div style={{ fontFamily: KJ.font.ui, fontSize: 12, color: KJ.colors.ash }}>+{completedList.length - 8}개 더</div>}
+          </div>
+        </div>
+        <div>
+          <div style={{ fontFamily: KJ.font.ui, fontSize: 10, fontWeight: 600, color: KJ.colors.ash, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>빠른 메뉴</div>
+          {[
+            { label: '긴급 상황 가이드', sub: 'Emergency guide · 오프라인 가능', color: KJ.colors.dancheong, action: 'emergency' },
+            { label: '출국 후 갤러리', sub: 'Post-departure gallery', color: KJ.colors.cheong, action: 'gallery' },
+            { label: '시대 테마 변경', sub: 'Change era theme', color: KJ.colors.hwanggeum, action: 'era' },
+          ].map(item => (
+            <button key={item.action} onClick={() => onNavigate(item.action)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', marginBottom: 8, background: 'white', border: `1px solid ${KJ.colors.hairline}`, borderRadius: KJ.radius.card, cursor: 'pointer', textAlign: 'left', boxShadow: KJ.shadow.s1 }}>
+              <div>
+                <div style={{ fontFamily: KJ.font.ui, fontWeight: 600, fontSize: 14, color: KJ.colors.meok }}>{item.label}</div>
+                <div style={{ fontFamily: KJ.font.ui, fontSize: 11, color: KJ.colors.ash, marginTop: 2 }}>{item.sub}</div>
+              </div>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: item.color, flexShrink: 0, marginLeft: 12 }}/>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GalleryScreen({ era, completedMissions, onBack }) {
+  const theme = ERA_THEMES[era] || ERA_THEMES.joseon;
+  const panelReveal = (i) => Math.min(1, Math.max(0, (completedMissions.size - i * 6) / 6));
+  const completedList = ALL_MISSIONS.filter(m => completedMissions.has(m.id));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#0E0E0A', overflow: 'hidden' }}>
+      <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(14,14,10,0.95)', borderBottom: '1px solid rgba(196,149,42,0.2)' }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#C4952A', padding: '4px 0' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        </button>
+        <div>
+          <div style={{ fontFamily: KJ.font.display, fontSize: 16, color: '#F5E8C0', letterSpacing: '-0.03em' }}>완성된 여정</div>
+          <div style={{ fontFamily: KJ.font.ui, fontSize: 11, color: '#A89070', marginTop: 1 }}>My K-Journey · {theme.name} Edition</div>
+        </div>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ margin: 16, borderRadius: KJ.radius.card, overflow: 'hidden', border: '2px solid rgba(196,149,42,0.4)' }}>
+          <div style={{ display: 'flex', height: 160 }}>
+            <div style={{ width: 10, background: 'linear-gradient(180deg, #A08050, #6A4820)', flexShrink: 0 }}/>
+            {Array.from({ length: 8 }).map((_, i) => {
+              const rev = panelReveal(i);
+              return (
+                <div key={i} style={{ flex: 1, position: 'relative', overflow: 'hidden', borderRight: i < 7 ? '1px solid rgba(196,149,42,0.3)' : 'none' }}>
+                  <div style={{ position: 'absolute', inset: 0 }}>
+                    {era === 'joseon' && JOSEON_PANELS[i] && React.createElement(JOSEON_PANELS[i])}
+                    {era === 'silla' && <PanelSilla index={i}/>}
+                    {era === 'goryeo' && <PanelGoryeo index={i}/>}
+                  </div>
+                  <div style={{ position: 'absolute', inset: 0, background: theme.panelBg, opacity: 1 - rev }}/>
+                </div>
+              );
+            })}
+            <div style={{ width: 10, background: 'linear-gradient(180deg, #A08050, #6A4820)', flexShrink: 0 }}/>
+          </div>
+          <div style={{ padding: '10px 14px', background: 'rgba(26,18,8,0.9)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontFamily: KJ.font.display, fontSize: 13, color: '#C4952A' }}>{theme.name} 여정 · {Math.floor(completedMissions.size / 6)}/8폭 완성</div>
+            <button style={{ padding: '5px 12px', borderRadius: KJ.radius.pill, background: '#C4952A20', color: '#C4952A', border: '1px solid #C4952A44', cursor: 'pointer', fontFamily: KJ.font.ui, fontSize: 11, fontWeight: 600 }}>공유하기</button>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, padding: '0 16px', marginBottom: 16 }}>
+          {[
+            { label: '완료 미션', value: completedMissions.size, unit: '개' },
+            { label: '병풍 완성', value: Math.floor(completedMissions.size / 6), unit: '/8폭' },
+            { label: '남은 미션', value: 50 - completedMissions.size, unit: '개' },
+          ].map(s => (
+            <div key={s.label} style={{ flex: 1, padding: '12px 10px', background: 'rgba(255,255,255,0.05)', borderRadius: KJ.radius.card, border: '1px solid rgba(196,149,42,0.2)', textAlign: 'center' }}>
+              <div style={{ fontFamily: KJ.font.display, fontSize: 22, color: '#C4952A', fontWeight: 700 }}>{s.value}<span style={{ fontSize: 12, color: '#A89070' }}>{s.unit}</span></div>
+              <div style={{ fontFamily: KJ.font.ui, fontSize: 10, color: '#A89070', marginTop: 3 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: '0 16px 40px' }}>
+          <div style={{ fontFamily: KJ.font.ui, fontSize: 10, color: '#A89070', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 12 }}>나의 여정 기록</div>
+          {completedList.map((m, idx) => {
+            const catStyle = CATEGORY_STYLES[m.cat] || CATEGORY_STYLES.settle;
+            return (
+              <div key={m.id} style={{ display: 'flex', gap: 12, marginBottom: 10, alignItems: 'flex-start' }}>
+                <div style={{ width: 28, height: 28, borderRadius: 6, background: catStyle.color + '25', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${catStyle.color}40` }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={catStyle.color} strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                </div>
+                <div style={{ flex: 1, paddingTop: 4 }}>
+                  <div style={{ fontFamily: KJ.font.ui, fontWeight: 600, fontSize: 13, color: '#F5E8C0' }}>{m.ko}</div>
+                  <div style={{ fontFamily: KJ.font.ui, fontSize: 11, color: '#A89070', marginTop: 1 }}>{m.en}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KJApp — Main application state + screen router
+// ═══════════════════════════════════════════════════════════════════════════
+
+const DEMO_COMPLETED = new Set([
+  'p1_1','p1_2','p1_3','p1_4','p1_5','p1_6',
+  'p2_1','p2_2','p2_3','p2_4','p2_5','p2_6',
+  'p3_1','p3_2',
+]);
+
+function KJApp() {
+  const [onboarding, setOnboarding] = useState('splash');
+  const [era, setEra] = useState('joseon');
+  const [completedMissions, setCompletedMissions] = useState(DEMO_COMPLETED);
+  const [profile, setProfile] = useState({ name: 'Emma', university: '연세대학교 Yonsei', stayType: 'exchange-1', housing: 'dormitory' });
+  const [daysLeft] = useState(47);
+  const [activeTab, setActiveTab] = useState('home');
+  const [missionScreen, setMissionScreen] = useState(null);
+  const [subScreen, setSubScreen] = useState(null);
+  const [animatingPanel, setAnimatingPanel] = useState(null);
+
+  const handleComplete = useCallback((mission) => {
+    if (completedMissions.has(mission.id)) return;
+    const newCount = completedMissions.size + 1;
+    const oldPanel = Math.floor(completedMissions.size / 6);
+    const newPanel = Math.floor(newCount / 6);
+    const panelUnlocked = newPanel > oldPanel;
+    const panelIndex = panelUnlocked ? oldPanel : Math.floor(newCount / 6);
+    setMissionScreen({ type: 'complete', mission, panelIndex, newPanelUnlocked: panelUnlocked });
+  }, [completedMissions]);
+
+  const confirmComplete = useCallback(() => {
+    if (!missionScreen) return;
+    const { mission, panelIndex } = missionScreen;
+    setCompletedMissions(prev => { const next = new Set(prev); next.add(mission.id); return next; });
+    setAnimatingPanel(panelIndex);
+    setTimeout(() => setAnimatingPanel(null), 1500);
+    setMissionScreen(null);
+    setActiveTab('home');
+  }, [missionScreen]);
+
+  const phase = completedMissions.size < 6 ? 1 : completedMissions.size < 12 ? 2 : completedMissions.size < 42 ? 3 : 4;
+
+  const appState = {
+    era, phase, completedMissions, daysLeft, profile, animatingPanel,
+    onNavMore: (screen) => setSubScreen(screen),
+  };
+
+  if (onboarding !== 'done') {
+    return (
+      <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
+        {onboarding === 'splash' && <SplashScreen onDone={() => setOnboarding('signin')} />}
+        {onboarding === 'signin' && <SignInScreen onSignIn={() => setOnboarding('profile')} />}
+        {onboarding === 'profile' && <ProfileScreen onDone={(data) => { setProfile(data); setOnboarding('era'); }} />}
+        {onboarding === 'era' && <EraSelectionScreen onSelect={(e) => { setEra(e); setOnboarding('done'); }} />}
+      </div>
+    );
+  }
+
+  if (subScreen === 'emergency') return <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}><EmergencyScreen onBack={() => setSubScreen(null)} /></div>;
+  if (subScreen === 'gallery') return <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}><GalleryScreen era={era} completedMissions={completedMissions} onBack={() => setSubScreen(null)} /></div>;
+  if (subScreen === 'era') return <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}><EraSelectionScreen onSelect={(e) => { setEra(e); setSubScreen(null); }} /></div>;
+
+  if (missionScreen?.type === 'complete') {
+    return <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
+      <MissionCompleteScreen mission={missionScreen.mission} era={era} newPanelUnlocked={missionScreen.newPanelUnlocked} panelIndex={missionScreen.panelIndex} onContinue={confirmComplete} />
+    </div>;
+  }
+
+  if (missionScreen?.type === 'detail') {
+    return <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
+      <MissionDetailScreen mission={missionScreen.mission} completed={completedMissions.has(missionScreen.mission.id)} era={era} onComplete={handleComplete} onBack={() => setMissionScreen(null)} />
+    </div>;
+  }
+
+  const renderTab = () => {
+    switch (activeTab) {
+      case 'home': return <HomeScreen appState={{ ...appState, onNavMore: (s) => setSubScreen(s) }} onComplete={handleComplete} onMissionSelect={(m) => setMissionScreen({ type: 'detail', mission: m })} onByeongpungOpen={() => setActiveTab('byeongpung')} />;
+      case 'byeongpung': return <ByeongpungTabScreen appState={appState} />;
+      case 'wantto': return <WantToScreen era={era} />;
+      case 'more': return <MoreScreen era={era} completedMissions={completedMissions} onNavigate={(screen) => { if (screen === 'byeongpung') setActiveTab('byeongpung'); else setSubScreen(screen); }} />;
+      default: return null;
+    }
+  };
+
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: KJ.colors.hanji, overflow: 'hidden', position: 'relative' }}>
+      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>{renderTab()}</div>
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} era={era} />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<KJApp />);
+</script>
+
+<script>
+  window.addEventListener('load', () => {
+    if (window.lucide) lucide.createIcons();
+  });
+</script>
+
+</body>
+</html>

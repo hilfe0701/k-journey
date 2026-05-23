@@ -1,0 +1,51 @@
+# K-Journey — 다음 할 일 (resume here)
+
+> 최종 업데이트: 2026-05-23. 목표: **Google Play 스토어 등록 (Android 전용).**
+> iOS/App Store는 이번 출시 범위 아님 — Apple Developer 계정·APNs·iOS 빌드 불필요
+> (코드의 iOS 배선은 그대로 두면 나중에 무손실 재사용). 코드·빌드 설정·런치 문서는
+> **완료·검증 끝** (`npm run check` green, `expo-doctor` 18/18).
+> 남은 건 **당신 계정이 필요한 외부 작업**뿐. 아래 순서대로.
+> 맥락 상세: `STATUS.md`의 "Play Store readiness" 섹션 +
+> `project_play_store_prep_2026_05_22` 메모리.
+
+## 이미 끝난 것 (할 일 없음)
+- 환경 분리 (`app.config.ts` + `eas.json` + `firebase.json`)
+- Google 로그인 배선 (lib v16; dev OAuth 실값, prod는 TODO)
+- Android targetSdk 34→35 (Play 필수 요건)
+- async-storage 정렬 (doctor 18/18)
+- 런치 문서: `docs/PRIVACY_POLICY.md`, `docs/PLAY_DATA_SAFETY.md`, `docs/STORE_LISTING.md`
+- 512² 스토어 아이콘: `store-assets/play-store-icon-512.png`
+- 로그인 화면 Android 대응 (2026-05-23): `sign-in.tsx` Apple 버튼 iOS 전용 게이팅 + Android는 Google primary (작동 안 하는 버튼 = Play 반려 위험 제거)
+
+## 다음에 할 것 (외부 — 당신만 가능, 순서대로)
+
+- [x] ✅ **1. 프로덕션 Firebase `k-journey-prod` 생성** — **완료 2026-05-23** (Google provider · Firestore 서울 `asia-northeast3` · 규칙 배포 ✔ · `app.config.ts` webClientId 채움 + `expo config` 검증)
+  - ~~iOS 앱 추가~~ → **Android 전용이라 스킵** (`GoogleService-Info.prod.plist` 불필요)
+  - Android 앱 추가 (패키지 `com.kjourney.app`, SHA-1은 4번 빌드 후) → json을 `config/firebase/google-services.prod.json`로 저장
+  - Authentication → **Google** provider만 활성화 (Apple은 iOS 출시 때)
+  - ❗ Google provider 켠 **뒤** `google-services.json`을 재다운로드해 저장 (webClientId 포함됨)
+  - Firestore → 생성 (프로덕션 모드, 리전 `asia-northeast3` 서울 권장 ⚠️변경불가)
+  - 규칙 배포: `firebase deploy --only firestore:rules --project <prod-id>` (CLI 설치됨: firebase-cli 15.18.0 via brew)
+- [ ] **2. Google Play 개발자 계정** 개설 ($25, play.google.com/console)
+- [x] ✅ **3. EAS 설정** — **완료 2026-05-23** (`@k-journey/k-journey`, projectId `a87d65e7-5b8f-4643-a62f-71a76f638d31`, owner `k-journey`; eas-cli `~/.local`; `eas init`이 app.json에 구운 dev `environment`/`googleWebClientId` 정리 — app.config.ts가 env 단일소스 유지)
+- [ ] **4. 프로덕션 빌드** — `eas build -p android --profile production` (AAB 생성)
+  - **(사전 필수)** `google-services.prod.json`은 gitignore라 클라우드 빌드 서버에 없음 → EAS 시크릿 업로드: `eas secret:create --scope project --name GOOGLE_SERVICES_JSON --type file --value ./config/firebase/google-services.prod.json` (app.config.ts가 `process.env.GOOGLE_SERVICES_JSON` 우선 사용)
+  - 첫 빌드 시 "Generate a new Android Keystore?" → **Yes** (EAS가 서명 관리; 대화형이라 직접 터미널에서)
+  - 빌드 후 `eas credentials` (Android → production)로 **SHA-1** 확인 → Firebase **prod** Android 앱 → "SHA 지문 추가"에 등록. 안 하면 Google 로그인 `DEVELOPER_ERROR`
+  - 참고: PostHog 키가 placeholder(`phc_REPLACE…`)라 분석은 꺼진 채로 출시됨. 원하면 실제 키를 EAS env로 주입(별도 작업)
+- [ ] **5. Play Console 스토어 등록**
+  - 개인정보처리방침: `docs/PRIVACY_POLICY.md` 공개 URL 호스팅 → Console에 입력
+  - Data safety: `docs/PLAY_DATA_SAFETY.md`대로 입력
+  - 스토어 등록정보: `docs/STORE_LISTING.md` 카피 사용 · 피처 그래픽 1024×500 제작 · 폰 스크린샷 · **리뷰어 테스트 로그인** 제공 (로그인 벽 = 흔한 반려 사유)
+- [ ] **6. AAB를 내부 테스트 트랙에 업로드** (`eas submit -p android` 또는 수동)
+
+## "X 주면 내가 Y 해줌" (다음 세션에 요청만)
+- **prod `google-services.json`** 주면 → `app.config.ts` `googleAuth.prod.webClientId` 채움 (Android 전용이라 `iosUrlScheme`은 TODO로 둠 — Android 빌드에 무해)
+- **prod PostHog 프로젝트** 만들면 → dev/prod 분석 분리 (`eas.json` env) 배선
+- 첫 빌드 후 → **Android 15 edge-to-edge QA** (targetSdk 35 부작용) 도움
+
+## 언제든 재검증
+```
+npm run check        # 146 tests + typecheck + lint
+npx expo-doctor      # 18/18
+```
