@@ -1,13 +1,15 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, Dimensions, Modal, Pressable } from 'react-native';
+import type { ImageSourcePropType } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
+  useAnimatedProps,
   withTiming,
   withDelay,
   Easing,
 } from 'react-native-reanimated';
-import * as Icons from 'lucide-react-native';
+import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
 import { Text } from '../ui';
 import { palette, motion, radius } from '../../../design-tokens';
@@ -18,6 +20,9 @@ const { width: W, height: H } = Dimensions.get('window');
 const CENTER_X = W / 2;
 const CENTER_Y = H / 2;
 const PANEL_MAX_R = Math.ceil(Math.hypot(W, H) / 2) + 40;
+// Regular completions bloom to a contained radius (then dissipate) instead of
+// filling the screen — the full reveal stays reserved for the panel unlock.
+const BLOOM_R = Math.round(Math.min(W, H) * 0.7);
 const RING_MAX_R = 220;
 const RING_DURATION = 480;
 const POST_HOLD_MS = 1200;
@@ -26,6 +31,11 @@ const STANDARD = Easing.bezier(0.25, 0.46, 0.45, 0.94);
 
 const LIGHT_PANEL_HEXES = new Set<string>([palette.hwanggeum, palette.hwanggeumLight, palette.hwangto]);
 
+// react-native-svg circle whose `r` (and opacity) we drive from the UI thread.
+// SVG strokes/fills are anti-aliased, so the expanding edge stays smooth — no
+// per-frame re-rasterized borderRadius "stair-stepping" like the old View circle.
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
 interface Props {
   visible: boolean;
   iconName: string;
@@ -33,6 +43,7 @@ interface Props {
   isPanelUnlock: boolean;
   panelNumber?: number;
   panelColor?: string;
+  panelImage?: ImageSourcePropType;
   onDismiss: () => void;
 }
 
@@ -43,6 +54,7 @@ export function MissionCompleteOverlay({
   isPanelUnlock,
   panelNumber,
   panelColor,
+  panelImage,
   onDismiss,
 }: Props) {
   return (
@@ -54,6 +66,7 @@ export function MissionCompleteOverlay({
           isPanelUnlock={isPanelUnlock}
           panelNumber={panelNumber}
           panelColor={panelColor}
+          panelImage={panelImage}
           onDismiss={onDismiss}
         />
       )}
@@ -62,25 +75,29 @@ export function MissionCompleteOverlay({
 }
 
 function ChoreographyView({
-  iconName,
   iconColor,
   isPanelUnlock,
   panelNumber,
   panelColor,
+  panelImage,
   onDismiss,
 }: Omit<Props, 'visible'>) {
   const reduceMotion = useReduceMotion();
 
-  const iconScale = useSharedValue(1);
-  const iconOpacity = useSharedValue(1);
-  const iconY = useSharedValue(0);
-
+  // 0→1 progress drivers.
   const r0 = useSharedValue(0);
   const r1 = useSharedValue(0);
   const r2 = useSharedValue(0);
   const r3 = useSharedValue(0);
 
   const panelR = useSharedValue(0);
+  // disc fade — stays 1 for the panel unlock (the painting holds on it); on a
+  // regular completion it fades to 0 so the ink bloom dissipates.
+  const discOpacity = useSharedValue(1);
+
+  // the actual panel painting — fades + scales in over the ink reveal
+  const artScale = useSharedValue(0.82);
+  const artOpacity = useSharedValue(0);
 
   const textOpacity = useSharedValue(0);
   const textY = useSharedValue(8);
@@ -98,22 +115,19 @@ function ChoreographyView({
       hapticTimer = setTimeout(() => hapticMissionComplete(), m.cardSink);
     }
 
-    // Reduce-motion path (ADR-0025): skip the 4-stage choreography. Cross-fade
-    // the icon out, snap the panel and text in. Total ~600 ms instead of ~2400.
+    // Reduce-motion path (ADR-0025): skip the 4-stage choreography. Snap the
+    // panel and text in. Total ~600 ms instead of ~2400.
     if (reduceMotion) {
-      iconOpacity.value = withTiming(0, { duration: 250, easing: STANDARD });
       if (isPanelUnlock) {
         panelR.value = PANEL_MAX_R; // snap, no expanding circle
+        artOpacity.value = withTiming(1, { duration: 250, easing: STANDARD });
+        artScale.value = 1;
         textOpacity.value = withDelay(200, withTiming(1, { duration: 250, easing: STANDARD }));
         textY.value = 0;
       }
       const timeoutId = setTimeout(onDismiss, isPanelUnlock ? 1600 : 600);
       return () => clearTimeout(timeoutId);
     }
-
-    iconScale.value = withTiming(0.92, { duration: m.cardSink, easing: STANDARD });
-    iconOpacity.value = withTiming(0, { duration: m.cardSink, easing: STANDARD });
-    iconY.value = withTiming(20, { duration: m.cardSink, easing: STANDARD });
 
     [r0, r1, r2, r3].forEach((ring, i) => {
       ring.value = withDelay(
@@ -129,6 +143,15 @@ function ChoreographyView({
         m.cardSink,
         withTiming(PANEL_MAX_R, { duration: m.panelReveal, easing: STANDARD }),
       );
+      // painting blooms in while the ink circle is still expanding
+      artOpacity.value = withDelay(
+        m.cardSink + m.panelReveal * 0.3,
+        withTiming(1, { duration: m.panelReveal * 0.7, easing: STANDARD }),
+      );
+      artScale.value = withDelay(
+        m.cardSink + m.panelReveal * 0.3,
+        withTiming(1, { duration: m.panelReveal * 0.7, easing: STANDARD }),
+      );
       textOpacity.value = withDelay(
         m.cardSink + m.panelReveal,
         withTiming(1, { duration: m.textFadeIn, easing: STANDARD }),
@@ -140,7 +163,17 @@ function ChoreographyView({
 
       timeoutId = setTimeout(onDismiss, m.total + POST_HOLD_MS);
     } else {
-      timeoutId = setTimeout(onDismiss, m.cardSink + 4 * m.inkRingStagger + 240);
+      // Regular mission complete: a contained ink bloom in the mission's
+      // category colour diffuses out, then dissipates.
+      panelR.value = withDelay(
+        m.cardSink,
+        withTiming(BLOOM_R, { duration: m.panelReveal, easing: STANDARD }),
+      );
+      discOpacity.value = withDelay(
+        m.cardSink + m.panelReveal * 0.5,
+        withTiming(0, { duration: 500, easing: STANDARD }),
+      );
+      timeoutId = setTimeout(onDismiss, m.cardSink + m.panelReveal * 0.5 + 500 + 200);
     }
 
     return () => {
@@ -150,78 +183,28 @@ function ChoreographyView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduceMotion]);
 
-  const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: iconY.value }, { scale: iconScale.value }],
-    opacity: iconOpacity.value,
+  // ── SVG animated props (UI thread) ─────────────────────────────────────────
+  const panelProps = useAnimatedProps(() => ({ r: panelR.value, opacity: discOpacity.value }));
+  const ring0Props = useAnimatedProps(() => ({ r: RING_MAX_R * r0.value, opacity: 1 - r0.value }));
+  const ring1Props = useAnimatedProps(() => ({ r: RING_MAX_R * r1.value, opacity: 1 - r1.value }));
+  const ring2Props = useAnimatedProps(() => ({ r: RING_MAX_R * r2.value, opacity: 1 - r2.value }));
+  const ring3Props = useAnimatedProps(() => ({ r: RING_MAX_R * r3.value, opacity: 1 - r3.value }));
+
+  const artStyle = useAnimatedStyle(() => ({
+    opacity: artOpacity.value,
+    transform: [{ scale: artScale.value }],
   }));
-
-  const panelStyle = useAnimatedStyle(() => {
-    const r = panelR.value;
-    return {
-      width: r * 2,
-      height: r * 2,
-      borderRadius: r,
-      left: CENTER_X - r,
-      top: CENTER_Y - r,
-      opacity: r > 0 ? 1 : 0,
-    };
-  });
-
-  const ring0Style = useAnimatedStyle(() => {
-    const r = RING_MAX_R * r0.value;
-    return {
-      width: r * 2,
-      height: r * 2,
-      borderRadius: r,
-      left: CENTER_X - r,
-      top: CENTER_Y - r,
-      opacity: 1 - r0.value,
-    };
-  });
-  const ring1Style = useAnimatedStyle(() => {
-    const r = RING_MAX_R * r1.value;
-    return {
-      width: r * 2,
-      height: r * 2,
-      borderRadius: r,
-      left: CENTER_X - r,
-      top: CENTER_Y - r,
-      opacity: 1 - r1.value,
-    };
-  });
-  const ring2Style = useAnimatedStyle(() => {
-    const r = RING_MAX_R * r2.value;
-    return {
-      width: r * 2,
-      height: r * 2,
-      borderRadius: r,
-      left: CENTER_X - r,
-      top: CENTER_Y - r,
-      opacity: 1 - r2.value,
-    };
-  });
-  const ring3Style = useAnimatedStyle(() => {
-    const r = RING_MAX_R * r3.value;
-    return {
-      width: r * 2,
-      height: r * 2,
-      borderRadius: r,
-      left: CENTER_X - r,
-      top: CENTER_Y - r,
-      opacity: 1 - r3.value,
-    };
-  });
 
   const textStyle = useAnimatedStyle(() => ({
     opacity: textOpacity.value,
     transform: [{ translateY: textY.value }],
   }));
 
-  type LucideIconProps = { size?: number; color?: string; strokeWidth?: number };
-  const iconMap = Icons as unknown as Record<string, React.ComponentType<LucideIconProps>>;
-  const Icon = iconMap[iconName] ?? iconMap.Sparkles;
-
   const textColor = panelColor && LIGHT_PANEL_HEXES.has(panelColor) ? palette.meok : palette.hanji;
+
+  // The spreading ink disc: the panel's colour on an unlock, otherwise the
+  // mission's category colour for the regular-completion bloom.
+  const discColor = isPanelUnlock ? panelColor : iconColor;
 
   return (
     <Pressable
@@ -238,35 +221,67 @@ function ChoreographyView({
       }
       accessibilityHint="Closes the celebration overlay"
     >
-      {isPanelUnlock && panelColor && (
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.absolute, { backgroundColor: panelColor }, panelStyle]}
-        />
-      )}
+      {/* Ink-bleed reveal + concentric ink rings, all anti-aliased in one SVG
+          layer. The panel disc uses a radial gradient that feathers to
+          transparent at the rim, so the colour diffuses into the hanji like ink
+          spreading in water rather than a hard geometric wipe. */}
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <Svg width={W} height={H}>
+          <Defs>
+            {discColor ? (
+              <RadialGradient id="inkBleed" cx="0.5" cy="0.5" r="0.5" gradientUnits="objectBoundingBox">
+                <Stop offset="0" stopColor={discColor} stopOpacity={1} />
+                <Stop offset="0.74" stopColor={discColor} stopOpacity={1} />
+                <Stop offset="0.9" stopColor={discColor} stopOpacity={0.55} />
+                <Stop offset="1" stopColor={discColor} stopOpacity={0} />
+              </RadialGradient>
+            ) : null}
+          </Defs>
 
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.absolute, styles.ring, { borderColor: iconColor }, ring0Style]}
-      />
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.absolute, styles.ring, { borderColor: iconColor }, ring1Style]}
-      />
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.absolute, styles.ring, { borderColor: iconColor }, ring2Style]}
-      />
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.absolute, styles.ring, { borderColor: iconColor }, ring3Style]}
-      />
+          {discColor ? (
+            <AnimatedCircle cx={CENTER_X} cy={CENTER_Y} fill="url(#inkBleed)" animatedProps={panelProps} />
+          ) : null}
 
-      <View style={[StyleSheet.absoluteFill, styles.center]} pointerEvents="none">
-        <Animated.View style={[styles.iconWrap, { backgroundColor: iconColor + '14' }, iconStyle]}>
-          <Icon size={56} color={iconColor} strokeWidth={1.4} />
-        </Animated.View>
+          <AnimatedCircle
+            cx={CENTER_X}
+            cy={CENTER_Y}
+            fill="none"
+            stroke={iconColor}
+            strokeWidth={2}
+            animatedProps={ring0Props}
+          />
+          <AnimatedCircle
+            cx={CENTER_X}
+            cy={CENTER_Y}
+            fill="none"
+            stroke={iconColor}
+            strokeWidth={2}
+            animatedProps={ring1Props}
+          />
+          <AnimatedCircle
+            cx={CENTER_X}
+            cy={CENTER_Y}
+            fill="none"
+            stroke={iconColor}
+            strokeWidth={2}
+            animatedProps={ring2Props}
+          />
+          <AnimatedCircle
+            cx={CENTER_X}
+            cy={CENTER_Y}
+            fill="none"
+            stroke={iconColor}
+            strokeWidth={2}
+            animatedProps={ring3Props}
+          />
+        </Svg>
       </View>
+
+      {isPanelUnlock && panelImage && (
+        <Animated.View pointerEvents="none" style={[styles.artWrap, artStyle]}>
+          <Animated.Image source={panelImage} style={styles.art} resizeMode="cover" />
+        </Animated.View>
+      )}
 
       {isPanelUnlock && (
         <Animated.View
@@ -291,23 +306,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: palette.hanji,
   },
-  absolute: {
+  artWrap: {
     position: 'absolute',
-  },
-  ring: {
+    left: W * 0.29,
+    top: H * 0.15,
+    width: W * 0.42,
+    height: H * 0.52,
+    borderRadius: radius.card,
     borderWidth: 2,
-    backgroundColor: 'transparent',
+    borderColor: palette.hwanggeum,
+    overflow: 'hidden',
+    backgroundColor: palette.hanji,
   },
-  center: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconWrap: {
-    width: 96,
-    height: 96,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+  art: {
+    width: '100%',
+    height: '100%',
   },
   textWrap: {
     position: 'absolute',

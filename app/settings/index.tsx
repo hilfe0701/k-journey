@@ -25,13 +25,8 @@ import { Text, Button } from '../../src/components/ui';
 import { palette, space, radius, semantic, elevation } from '../../design-tokens';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useProfile } from '../../src/hooks/useProfile';
-import {
-  updateUserProfile,
-  requestAccountDeletion,
-  requestDataExport,
-  metaTimestampToDate,
-  type UserProfile,
-} from '../../src/lib/firebase';
+import { updateUserProfile, type UserProfile } from '../../src/lib/firebase';
+import { deleteAccount } from '../../src/lib/accountDeletion';
 import { UNIVERSITIES } from '../../src/data/universities';
 import { ERA_LIST } from '../../src/theme/eras';
 import { BYEONGPUNG_PANEL_IMAGES } from '../../src/components/byeongpung/motifs';
@@ -73,7 +68,6 @@ export default function SettingsScreen() {
     | 'signOut'
     | 'deleteFirst'
     | 'deleteFinal'
-    | 'export'
     | null
   >(null);
 
@@ -220,13 +214,6 @@ export default function SettingsScreen() {
                     }}
                   />
                   <SettingsRow
-                    label="Export my data"
-                    onPress={() => {
-                      trackOpen('account');
-                      setOpenSheet('export');
-                    }}
-                  />
-                  <SettingsRow
                     label="Delete account"
                     destructive
                     onPress={() => {
@@ -364,7 +351,7 @@ export default function SettingsScreen() {
       <ConfirmSheet
         visible={openSheet === 'deleteFirst'}
         title="Delete your K-Journey account?"
-        body="This will remove your byeongpung, missions, buckets, and photos in 30 days. You can change your mind during that window."
+        body="This permanently removes your byeongpung, missions, and buckets. This can't be undone."
         primary="Delete account"
         primaryDestructive
         onClose={() => setOpenSheet(null)}
@@ -378,8 +365,8 @@ export default function SettingsScreen() {
       <ConfirmSheet
         visible={openSheet === 'deleteFinal'}
         title="One last check."
-        body={'Tap "I\'m sure" to schedule deletion. We\'ll email a recovery link to your Apple ID email — open it within 30 days to undo.'}
-        primary="I'm sure"
+        body="You'll sign in once more to confirm. Then your byeongpung, missions, and buckets are erased right away."
+        primary="Delete forever"
         primaryDestructive
         onClose={() => {
           track('account_delete_initiated', { stage: 'cancelled' });
@@ -388,41 +375,20 @@ export default function SettingsScreen() {
         onConfirm={async () => {
           if (!user) return;
           try {
-            await requestAccountDeletion(user.uid);
+            const deleted = await deleteAccount(user.uid);
+            if (!deleted) {
+              // User backed out of the re-auth prompt — nothing was deleted.
+              setOpenSheet(null);
+              return;
+            }
             track('account_delete_initiated', { stage: 'committed' });
             setOpenSheet(null);
-            surfaceError('account-deletion-scheduled');
-            await signOut();
+            // No signOut() here: deleteAccount already tore down the session
+            // (deleteUser → onAuthStateChanged(null) routes to sign-in). Calling
+            // signOut() now would throw auth/no-current-user.
+            surfaceError('account-deleted');
           } catch (err) {
             showOperationError('delete your account', err);
-          }
-        }}
-      />
-
-      {/* Export confirm */}
-      <ConfirmSheet
-        visible={openSheet === 'export'}
-        title="Export your K-Journey data?"
-        body="We'll email a ZIP with your byeongpung images, missions, buckets, and photos. Allow up to 10 minutes."
-        primary="Send to my email"
-        onClose={() => setOpenSheet(null)}
-        onConfirm={async () => {
-          if (!user) return;
-          setOpenSheet(null);
-          const lastExport = metaTimestampToDate(profile?._meta?.exportRequestedAt);
-          if (lastExport && Date.now() - lastExport.getTime() < 24 * 60 * 60 * 1000) {
-            // ADR-0033 §B — one export per 24 h.
-            surfaceError('export-already-queued', {
-              messageOverride: `Check your email — your last export was sent at ${format(lastExport, 'h:mm a')}.`,
-            });
-            return;
-          }
-          try {
-            await requestDataExport(user.uid);
-            track('account_export_requested');
-            surfaceError('export-queued');
-          } catch (err) {
-            showOperationError('request your export', err);
           }
         }}
       />

@@ -285,6 +285,12 @@ export const ERROR_CATALOG: Record<string, ErrorRow> = {
     body: 'Account restored.',
     autoDismissMs: 4000,
   },
+  'account-deleted': {
+    code: 'account-deleted',
+    tier: 'T1',
+    body: 'Your account and data have been deleted.',
+    autoDismissMs: 6000,
+  },
   'export-queued': {
     code: 'export-queued',
     tier: 'T1',

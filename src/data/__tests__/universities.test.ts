@@ -17,13 +17,14 @@ describe('UNIVERSITIES catalog', () => {
       expect(u.nameEn).toBeTruthy();
       expect(u.nameKo).toBeTruthy();
       expect(u.shortName).toBeTruthy();
+      expect(u.address).toBeTruthy();
       expect(u.campusArea).toBeTruthy();
       expect(u.nearestStation).toBeTruthy();
       expect(u.dorm.prohibited.length).toBeGreaterThan(0);
       expect(u.dorm.checkin).toBeTruthy();
       expect(u.offCampusArea.length).toBeGreaterThan(0);
       expect(u.nearbyEats.length).toBeGreaterThan(0);
-      expect(u.transitTip).toBeTruthy();
+      expect(u.transitRoutes.length).toBeGreaterThan(0);
     }
   });
 

@@ -19,7 +19,6 @@ import { useProfile } from '../src/hooks/useProfile';
 import { posthog } from '../src/lib/posthog';
 import { Text } from '../src/components/ui';
 import { ToastHost } from '../src/components/system/ToastHost';
-import { DeletionRecoveryModal } from '../src/components/system/DeletionRecoveryModal';
 import {
   AhaMomentTour,
   hasShownAhaMoment,
@@ -209,7 +208,6 @@ function AuthGate() {
         era={era}
         onDismiss={() => setShowTour(false)}
       />
-      <DeletionRecoveryModal />
       <ToastHost />
     </ThemeProvider>
   );

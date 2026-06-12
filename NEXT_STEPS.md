@@ -8,6 +8,22 @@
 > 맥락 상세: `STATUS.md`의 "Play Store readiness" 섹션 +
 > `project_play_store_prep_2026_05_22` 메모리.
 
+## ⚠️ 코드 변경됨 (2026-06-12) — 출시 전 필수 확인
+Play 출시 전수조사에서 데모 핵 제거 + 결함 수정을 반영함. 코드 게이트는 green
+(`npm run check`: typecheck + lint + 146 tests). 단, 아래 **외부 작업**이 남음:
+- 🔴 **Firestore 규칙 재배포 필수** — `firestore.rules`의 `missions` → `completedMissions`
+  오타 수정함(원래 규칙은 핵심 기능인 미션 완료 쓰기를 prod에서 전부 거부했음).
+  **재배포 안 하면 prod에서 미션 완료·계정 삭제가 깨짐**:
+  `firebase deploy --only firestore:rules --project k-journey-prod`
+- 🔴 **개인정보처리방침 채우기+호스팅** — `docs/PRIVACY_POLICY.md`에 법인명·support 이메일·
+  시행일 빈칸 남음. 채워서 `https://kjourney.app/privacy`(앱이 링크하는 URL)에 호스팅.
+  `support@kjourney.app` 메일박스도 실제 동작해야 함.
+- ⚠️ **계정 삭제는 실기기 prod 빌드에서 테스트** — 데모용 가짜 로그인 제거(진짜 Apple/Google
+  복원), 계정 삭제를 백엔드 없는 **클라이언트 즉시 삭제**로 구현
+  (`src/lib/accountDeletion.ts`: 재인증 → Firestore 데이터 삭제 → Auth 사용자 삭제).
+  재인증·deleteUser는 dev-mock/jest로 검증 불가 → 첫 prod 빌드에서 1회 수동 확인.
+  데이터 내보내기(export) 기능은 제거(백엔드 없음, Play 필수 아님).
+
 ## 이미 끝난 것 (할 일 없음)
 - 환경 분리 (`app.config.ts` + `eas.json` + `firebase.json`)
 - Google 로그인 배선 (lib v16; dev OAuth 실값, prod는 TODO)
@@ -29,7 +45,8 @@
 - [ ] **2. Google Play 개발자 계정** 개설 ($25, play.google.com/console)
 - [x] ✅ **3. EAS 설정** — **완료 2026-05-23** (`@k-journey/k-journey`, projectId `a87d65e7-5b8f-4643-a62f-71a76f638d31`, owner `k-journey`; eas-cli `~/.local`; `eas init`이 app.json에 구운 dev `environment`/`googleWebClientId` 정리 — app.config.ts가 env 단일소스 유지)
 - [ ] **4. 프로덕션 빌드** — `eas build -p android --profile production` (AAB 생성)
-  - **(사전 필수)** `google-services.prod.json`은 gitignore라 클라우드 빌드 서버에 없음 → EAS 시크릿 업로드: `eas secret:create --scope project --name GOOGLE_SERVICES_JSON --type file --value ./config/firebase/google-services.prod.json` (app.config.ts가 `process.env.GOOGLE_SERVICES_JSON` 우선 사용)
+  - **(사전 필수, ✅완료 2026-05-23)** `google-services.prod.json`은 gitignore라 클라우드 빌드 서버에 없음 → EAS **file env var(`sensitive`)** 로 업로드: `eas env:create production --name GOOGLE_SERVICES_JSON --type file --value ./config/firebase/google-services.prod.json --visibility sensitive --scope project`. ⚠️ **`secret` 가시성은 안 됨** — 설정(app.config.ts) 평가 단계에서 안 잡혀 `googleServicesFile`이 gitignore 경로로 굳고 Gradle 실패함. `sensitive`여야 평가 시점에 주입됨. (secret→sensitive는 `--force` 불가, `eas env:delete` 후 재생성.)
+  - 키스토어는 첫 빌드에서 이미 생성됨(EAS 원격) → 재빌드 시 프롬프트 없음
   - 첫 빌드 시 "Generate a new Android Keystore?" → **Yes** (EAS가 서명 관리; 대화형이라 직접 터미널에서)
   - 빌드 후 `eas credentials` (Android → production)로 **SHA-1** 확인 → Firebase **prod** Android 앱 → "SHA 지문 추가"에 등록. 안 하면 Google 로그인 `DEVELOPER_ERROR`
   - 참고: PostHog 키가 placeholder(`phc_REPLACE…`)라 분석은 꺼진 채로 출시됨. 원하면 실제 키를 EAS env로 주입(별도 작업)

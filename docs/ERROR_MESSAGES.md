@@ -114,7 +114,8 @@ Every error code in this catalog has:
 | `network-offline-recovered` | T1 | (toast) | `Synced.` | (none) | (auto-dismiss 3 s) | Reconnect after offline with pending writes (ADR-0031) |
 | `bucket-conflict` | T1 | (toast) | `Updated from another device.` | (none) | (auto-dismiss 4 s) | Bucket item count dropped between snapshots (ADR-0031) |
 | `account-deletion-scheduled` | T1 | (toast) | `Account scheduled for deletion. Check your email.` | (none) | (auto-dismiss 6 s) | Delete-account second confirm committed (ADR-0033 §A) |
-| `account-restored` | T1 | (toast) | `Account restored.` | (none) | (auto-dismiss 4 s) | Recovery flow — user cancelled a pending deletion (ADR-0033 §C) |
+| `account-restored` | T1 | (toast) | `Account restored.` | (none) | (auto-dismiss 4 s) | Recovery flow — user cancelled a pending deletion (ADR-0033 §C; legacy, unused after immediate delete) |
+| `account-deleted` | T1 | (toast) | `Your account and data have been deleted.` | (none) | (auto-dismiss 6 s) | Delete-account final confirm committed (immediate client-side delete) |
 | `export-queued` | T1 | (toast) | `Export queued. Check your email shortly.` | (none) | (auto-dismiss 6 s) | Data export requested (ADR-0033 §B) |
 | `export-already-queued` | T2 | `Export already queued` | `Check your email — your last export is on its way.` | `OK` | (none) | Re-tap within the 24 h throttle window (ADR-0033 §B); `messageOverride` may inject the last-export time |
 

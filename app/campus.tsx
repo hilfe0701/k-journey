@@ -76,6 +76,12 @@ function UniversityHeader({ uni }: { uni: University }) {
       </Text>
       <View style={styles.metaRow}>
         <MapPin size={16} color={palette.dancheong} strokeWidth={1.6} />
+        <Text role="sm" color={palette.meok} style={{ flex: 1 }}>
+          {uni.address}
+        </Text>
+      </View>
+      <View style={styles.metaRow}>
+        <Building2 size={16} color={palette.hwanggeumDeep} strokeWidth={1.6} />
         <Text role="sm" color={palette.meok}>
           {uni.campusArea}
         </Text>
@@ -205,9 +211,16 @@ function TransitBlock({ uni }: { uni: University }) {
         <Train size={18} color={palette.cheong} strokeWidth={1.6} />
         <Text role="h4">Getting to campus</Text>
       </View>
-      <Text role="sm" color={palette.meok} style={{ marginTop: space[2] }}>
-        {uni.transitTip}
-      </Text>
+      <View style={{ gap: space[2], marginTop: space[2] }}>
+        {uni.transitRoutes.map((route, idx) => (
+          <View key={idx} style={styles.routeRow}>
+            <View style={styles.routeDot} />
+            <Text role="sm" color={palette.meok} style={{ flex: 1 }}>
+              {route}
+            </Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -271,5 +284,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: space[3],
     borderRadius: radius.md,
     backgroundColor: palette.cloud,
+  },
+  routeRow: {
+    flexDirection: 'row',
+    gap: space[2],
+    alignItems: 'flex-start',
+  },
+  routeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: palette.cheong,
+    marginTop: 8,
   },
 });

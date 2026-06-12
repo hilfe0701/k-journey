@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Check, ChevronLeft } from 'lucide-react-native';
@@ -7,6 +7,7 @@ import { Check, ChevronLeft } from 'lucide-react-native';
 import { Text, Button } from '../../src/components/ui';
 import { palette, space, radius, semantic, elevation } from '../../design-tokens';
 import { ERA_LIST } from '../../src/theme/eras';
+import { BYEONGPUNG_PANEL_IMAGES } from '../../src/components/byeongpung/motifs';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useProfile } from '../../src/hooks/useProfile';
 import { updateUserProfile } from '../../src/lib/firebase';
@@ -86,13 +87,11 @@ export default function EraScreen() {
                   active ? elevation.s1 : null,
                 ]}
               >
-                <View style={[styles.swatch, { backgroundColor: era.panelBg }]}>
-                  <View style={styles.swatchPanels}>
-                    {era.panelColors.map((c, i) => (
-                      <View key={i} style={{ flex: 1, backgroundColor: c, marginHorizontal: 0.5 }} />
-                    ))}
-                  </View>
-                </View>
+                <Image
+                  source={BYEONGPUNG_PANEL_IMAGES[era.key][0]}
+                  style={styles.swatch}
+                  resizeMode="cover"
+                />
                 <View style={styles.cardBody}>
                   <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space[2] }}>
                     <Text role="h3">{era.nameEn}</Text>
@@ -155,13 +154,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: palette.hairline,
-    padding: 4,
-  },
-  swatchPanels: {
-    flex: 1,
-    flexDirection: 'row',
-    borderRadius: 4,
-    overflow: 'hidden',
   },
   cardBody: {
     flex: 1,

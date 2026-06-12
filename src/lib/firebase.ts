@@ -16,8 +16,9 @@ import {
   collection,
   setDoc,
   getDoc,
+  getDocs,
   deleteDoc,
-  deleteField,
+  writeBatch,
   runTransaction,
   serverTimestamp,
   type FirebaseFirestoreTypes,
@@ -68,12 +69,6 @@ export interface UserProfile {
   era: 'joseon' | 'silla' | 'goryeo' | null;
   onboardingCompletedAt: string | null;
   createdAt: FirebaseFirestoreTypes.Timestamp | null;
-  /** Account-lifecycle markers (ADR-0033). Written only via the dedicated
-   *  request/cancel mutators below — never patched through updateUserProfile. */
-  _meta?: {
-    deletionRequestedAt?: FirebaseFirestoreTypes.Timestamp | string | null;
-    exportRequestedAt?: FirebaseFirestoreTypes.Timestamp | string | null;
-  } | null;
 }
 
 export const userDoc = (uid: string) => doc(db(), 'users', uid);
@@ -121,67 +116,36 @@ export async function updateUserProfile(uid: string, patch: Partial<UserProfile>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Account-lifecycle markers — users/{uid}._meta (ADR-0033, GDPR / PIPA)
-//
-// Written with serverTimestamp() so the reaper Cloud Function's age query
-// cannot be gamed by a client clock (CLAUDE.md NEVER #21). Dev-mock branches
-// to MMKV — a missing branch leaves the Firestore offline queue spinning
-// forever with no error (project memory: feedback_devmock_mutator_required).
+// Account deletion — client-side, immediate (replaces the ADR-0033 soft-delete;
+// the reaper / export Cloud Functions were never built, so the old "request"
+// flow only wrote a marker nothing acted on). Auth-account deletion + re-auth
+// live in ./accountDeletion.ts; this wipes only the Firestore footprint.
+// Dev-mock branches to MMKV — a missing branch leaves the Firestore offline
+// queue spinning forever with no error (feedback_devmock_mutator_required).
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Coerce a _meta timestamp (Firestore Timestamp | ISO string | null) to a Date. */
-export function metaTimestampToDate(value: unknown): Date | null {
-  if (!value) return null;
-  if (typeof value === 'string') {
-    const d = new Date(value);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  if (typeof value === 'object') {
-    const ts = value as { toDate?: () => Date; seconds?: number };
-    if (typeof ts.toDate === 'function') return ts.toDate();
-    if (typeof ts.seconds === 'number') return new Date(ts.seconds * 1000);
-  }
-  return null;
-}
-
-/** Schedules soft-deletion — the 30-day grace window starts now (ADR-0033 §A). */
-export async function requestAccountDeletion(uid: string): Promise<void> {
+/**
+ * Permanently deletes the user's Firestore data: every completed-mission doc,
+ * every bucket doc (items are array fields on the bucket — no subcollection to
+ * sweep), then the user profile doc. Allowed by firestore.rules because the
+ * caller owns the docs and the profile is not in a deletion-pending state.
+ */
+export async function deleteAccountData(uid: string): Promise<void> {
   if (isDevMock()) {
-    const current = getJson<UserProfile>(KEYS.profileCache);
-    setJson(KEYS.profileCache, {
-      ...(current ?? ({ uid } as UserProfile)),
-      _meta: { ...(current?._meta ?? {}), deletionRequestedAt: new Date().toISOString() },
-    } as UserProfile);
+    setJson(KEYS.devMockMissions, []);
+    setJson(KEYS.devMockBuckets, []);
+    mmkv.delete(KEYS.profileCache);
     return;
   }
-  await setDoc(userDoc(uid), { _meta: { deletionRequestedAt: serverTimestamp() } }, { merge: true });
-}
-
-/** Cancels a pending soft-deletion within the grace window (ADR-0033 §C). */
-export async function cancelAccountDeletion(uid: string): Promise<void> {
-  if (isDevMock()) {
-    const current = getJson<UserProfile>(KEYS.profileCache);
-    if (current?._meta) {
-      const restMeta = { ...current._meta };
-      delete restMeta.deletionRequestedAt;
-      setJson(KEYS.profileCache, { ...current, _meta: restMeta } as UserProfile);
-    }
-    return;
-  }
-  await setDoc(userDoc(uid), { _meta: { deletionRequestedAt: deleteField() } }, { merge: true });
-}
-
-/** Queues a data export — the generateExport Cloud Function triggers on this write (ADR-0033 §B). */
-export async function requestDataExport(uid: string): Promise<void> {
-  if (isDevMock()) {
-    const current = getJson<UserProfile>(KEYS.profileCache);
-    setJson(KEYS.profileCache, {
-      ...(current ?? ({ uid } as UserProfile)),
-      _meta: { ...(current?._meta ?? {}), exportRequestedAt: new Date().toISOString() },
-    } as UserProfile);
-    return;
-  }
-  await setDoc(userDoc(uid), { _meta: { exportRequestedAt: serverTimestamp() } }, { merge: true });
+  const [missions, buckets] = await Promise.all([
+    getDocs(completedMissionsCollection(uid)),
+    getDocs(bucketsCollection(uid)),
+  ]);
+  const batch = writeBatch(db());
+  missions.forEach((d) => batch.delete(d.ref));
+  buckets.forEach((d) => batch.delete(d.ref));
+  batch.delete(userDoc(uid));
+  await batch.commit();
 }
 
 export async function markMissionComplete(

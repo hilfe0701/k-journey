@@ -55,8 +55,11 @@ service cloud.firestore {
                         || !deletionPending(resource.data)
                         || !deletionPending(request.resource.data) );
 
-      // Completed Have-To missions.
-      match /missions/{missionId} {
+      // Completed Have-To missions. Collection name must match the client
+      // (firebase.ts: completedMissionsCollection) — Firestore rules do NOT
+      // cascade from the parent users/{uid} match, so a name mismatch here
+      // denies every mission-complete write.
+      match /completedMissions/{missionId} {
         allow read, write: if isOwner(uid) && hasReasonableSize();
       }
 

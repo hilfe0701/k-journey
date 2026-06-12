@@ -95,7 +95,7 @@ export default function ProfileSetup() {
               <Input
                 value={name}
                 onChangeText={setName}
-                placeholder="First name"
+                placeholder="e.g. Alex"
                 autoFocus
                 autoCapitalize="words"
               />

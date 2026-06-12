@@ -1,9 +1,19 @@
 # 0033. Account deletion & data export (GDPR / 한국 개인정보보호법)
 
-* **Status:** proposed
+* **Status:** superseded for launch — client-side immediate deletion (2026-06-12)
 * **Date:** 2026-05-14
 * **Deciders:** 김재윤
 * **Tags:** `gdpr`, `pipa`, `account`, `compliance`, `firestore`, `cloud-function`
+
+> **Update (2026-06-12, Android launch):** The design chosen below (30-day soft
+> delete + reaper Cloud Function + email-delivered export) was **never built** —
+> there is no Cloud Functions backend. For the Play Store launch it is replaced
+> by **Option 2: immediate hard delete on tap**, executed entirely client-side
+> (`src/lib/accountDeletion.ts` + `deleteAccountData` in `src/lib/firebase.ts`):
+> re-authenticate → wipe Firestore data → delete the Auth user. No grace period,
+> no recovery email, and the data-export action is removed. This satisfies the
+> Play account-deletion policy without a backend. To restore the grace period or
+> export later, revisit this ADR and build the Functions.
 
 ## Context and Problem Statement
 

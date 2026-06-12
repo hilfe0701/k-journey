@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
+import type { ImageSourcePropType } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, MapPin, Lightbulb, Check, Building2, X } from 'lucide-react-native';
@@ -19,6 +20,7 @@ import { showOperationError } from '../../src/lib/errorAlert';
 import { track } from '../../src/lib/posthog';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { MissionCompleteOverlay } from '../../src/components/mission/MissionCompleteOverlay';
+import { BYEONGPUNG_PANEL_IMAGES } from '../../src/components/byeongpung/motifs';
 
 interface OverlayState {
   iconName: string;
@@ -26,6 +28,7 @@ interface OverlayState {
   isPanelUnlock: boolean;
   panelNumber?: number;
   panelColor?: string;
+  panelImage?: ImageSourcePropType;
 }
 
 export default function MissionDetail() {
@@ -64,6 +67,8 @@ export default function MissionDetail() {
         const panelNumber = panelClaimed ? candidatePanel : undefined;
         const panelColor =
           panelNumber ? theme.era.panelColors[panelNumber - 1] : undefined;
+        const panelImage =
+          panelNumber ? BYEONGPUNG_PANEL_IMAGES[theme.era.key][panelNumber - 1] : undefined;
 
         if (panelClaimed && panelNumber) {
           track('panel_unlock', { panelNumber, source: 'mission' });
@@ -75,6 +80,7 @@ export default function MissionDetail() {
           isPanelUnlock: panelClaimed,
           panelNumber,
           panelColor,
+          panelImage,
         });
       } else {
         await unmarkMission(user.uid, m.id);
@@ -202,6 +208,7 @@ export default function MissionDetail() {
         isPanelUnlock={overlay?.isPanelUnlock ?? false}
         panelNumber={overlay?.panelNumber}
         panelColor={overlay?.panelColor}
+        panelImage={overlay?.panelImage}
         onDismiss={handleOverlayDismiss}
       />
     </SafeAreaView>

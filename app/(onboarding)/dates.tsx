@@ -44,8 +44,10 @@ export default function DatesScreen() {
   }, [profile?.arrivalDate, profile?.departureDate]);
 
   const today = format(new Date(), 'yyyy-MM-dd');
-
-  const minDate = pickingFor === 'arrival' ? today : arrivalDate ?? today;
+  // Arrival is unrestricted — students may find the app well before or after
+  // landing, so any date in any year is selectable. Departure stays bounded
+  // below by arrival (a departure can't precede an arrival).
+  const minDate = pickingFor === 'arrival' ? undefined : arrivalDate ?? today;
   const selected = pickingFor === 'arrival' ? arrivalDate : departureDate;
 
   function handleDayPress(day: { dateString: string }) {

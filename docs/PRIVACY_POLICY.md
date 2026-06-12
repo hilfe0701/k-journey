@@ -76,16 +76,15 @@ windows.
 
 You can, from **Settings → Account** in the app:
 
-- **Access / export** your data (`account_export_requested`).
-- **Delete your account** and associated data (`account_delete_initiated`),
-  which removes your profile, progress, and stored images.
+- **Delete your account** and all associated data (`account_delete_initiated`).
+  This permanently removes your profile, progress, and stored images
+  immediately — it cannot be undone.
 
 For any request you cannot complete in-app, contact _[support email]_. We honor
-access, correction, deletion, and portability requests. (See PRD §11.12 and the
+access, correction, and deletion requests. (See PRD §11.12 and the
 account-management spec.)
 
-설정 → 계정에서 데이터 내보내기·계정 삭제가 가능합니다. 접근·정정·삭제·이동 요청을
-지원합니다.
+설정 → 계정에서 계정 삭제가 가능합니다. 접근·정정·삭제 요청을 지원합니다.
 
 ## 7. Children
 

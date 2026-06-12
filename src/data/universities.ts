@@ -1,7 +1,8 @@
 /**
  * Seoul universities supported in the K-Journey MVP.
  * Each record carries the campus-specific guidance that varies between schools:
- * dormitory rules, neighborhood food spots, and how to actually get to class.
+ * street address, dormitory rules, neighborhood food spots, and the several
+ * ways to actually get to class.
  */
 
 export type HousingType = 'dormitory' | 'off-campus';
@@ -18,20 +19,48 @@ export interface University {
   nameEn: string;
   nameKo: string;
   shortName: string;
+  address: string;
   campusArea: string;
   nearestStation: string;
   dorm: UniversityHousingRule;
   offCampusArea: string[];
   nearbyEats: string[];
-  transitTip: string;
+  /** Several ways to reach campus — subway, bus, shuttle, walk, taxi. */
+  transitRoutes: string[];
 }
 
 export const UNIVERSITIES: University[] = [
+  {
+    id: 'cau',
+    nameEn: 'Chung-Ang University',
+    nameKo: '중앙대학교',
+    shortName: 'Chung-Ang',
+    address: '84 Heukseok-ro, Dongjak-gu, Seoul (서울 동작구 흑석로 84)',
+    campusArea: 'Heukseok (흑석)',
+    nearestStation: 'Heukseok Station (흑석역) Line 9',
+    dorm: {
+      prohibited: ['Personal cooking', 'Pets', 'Alcohol in rooms', 'Smoking'],
+      checkin:
+        'Bluemir Hall (블루미르홀) — buildings 308 (308관) and 309 (309관). Check in at the residence front desk with your passport and assignment letter.',
+      curfew: 'Curfew 1am–5am (main entrance locked). Open 24 hours during exam periods.',
+      laundry: 'Coin laundry — ₩1,500 per wash.',
+    },
+    offCampusArea: ['Heukseok (흑석)', 'Sangdo (상도)', 'Noryangjin (노량진)'],
+    nearbyEats: ['Heukseok Toast', 'Sangdo Sutbul Galbi', 'Cafe Tap Public'],
+    transitRoutes: [
+      'Subway — Heukseok Station (흑석역) Line 9, Exit 1, then 8–10 min walk uphill.',
+      'Campus shuttle — Free shuttle from Heukseok Station Exit 1, every ~10 min on class days (skips the hill).',
+      'Village bus — Dongjak 01 (동작01) from Heukseok Station runs up into campus.',
+      'Bus — Buses along Hyeonchung-ro (현충로); get off at Chung-Ang Univ. and walk up.',
+      'Taxi — about 5 min from Heukseok Station; say "Jung-ang-dae jeongmun" (중앙대 정문).',
+    ],
+  },
   {
     id: 'yonsei',
     nameEn: 'Yonsei University',
     nameKo: '연세대학교',
     shortName: 'Yonsei',
+    address: '50 Yonsei-ro, Seodaemun-gu, Seoul (서울 서대문구 연세로 50)',
     campusArea: 'Sinchon (신촌)',
     nearestStation: 'Sinchon Station (신촌역) Line 2',
     dorm: {
@@ -42,13 +71,19 @@ export const UNIVERSITIES: University[] = [
     },
     offCampusArea: ['Sinchon (신촌)', 'Hongdae (홍대)', 'Yeonnam-dong (연남동)'],
     nearbyEats: ['Hongik Sutbul Galbi', 'Yeonnam Bansangye', 'Cafe 906'],
-    transitTip: 'Sinchon Station Exit 3 → 5 min walk. Bus 7611 stops at the main gate.',
+    transitRoutes: [
+      'Subway — Sinchon Station (신촌역) Line 2, Exit 3, then 7–10 min walk up Yonsei-ro.',
+      'Subway — Sinchon Station (신촌역, Gyeongui–Jungang Line) is a little closer to the west gate.',
+      'Bus — 7611, 7017 or 5712 stop right at the Yonsei main gate.',
+      'Walk — about 10 min straight up the pedestrian street from Sinchon Station.',
+    ],
   },
   {
     id: 'korea',
     nameEn: 'Korea University',
     nameKo: '고려대학교',
     shortName: 'Korea',
+    address: '145 Anam-ro, Seongbuk-gu, Seoul (서울 성북구 안암로 145)',
     campusArea: 'Anam-dong (안암동)',
     nearestStation: 'Korea Univ. Station (고려대역) Line 6',
     dorm: {
@@ -59,13 +94,19 @@ export const UNIVERSITIES: University[] = [
     },
     offCampusArea: ['Anam (안암)', 'Jegi-dong (제기동)', 'Bomun-dong (보문동)'],
     nearbyEats: ['Yeongnam Bunsik', 'Anam Sutbul Garden', 'Café Ona'],
-    transitTip: 'Korea Univ. Station Exit 1. Free shuttle from station to main gate runs 8am–7pm.',
+    transitRoutes: [
+      'Subway — Korea Univ. Station (고려대역) Line 6, Exit 1 or 3, then 5 min walk.',
+      'Subway — Anam Station (안암역) Line 6 is closer to the Medical campus and CJ House.',
+      'Shuttle — Free shuttle from Korea Univ. Station to the main gate, 8am–7pm.',
+      'Bus — Local buses along Anam-ro stop near the main gate.',
+    ],
   },
   {
     id: 'snu',
     nameEn: 'Seoul National University',
     nameKo: '서울대학교',
     shortName: 'SNU',
+    address: '1 Gwanak-ro, Gwanak-gu, Seoul (서울 관악구 관악로 1)',
     campusArea: 'Gwanak-gu (관악구)',
     nearestStation: 'Seoul Nat\'l Univ. Station (서울대입구역) Line 2',
     dorm: {
@@ -76,13 +117,19 @@ export const UNIVERSITIES: University[] = [
     },
     offCampusArea: ['Sillim-dong (신림동)', 'Bongcheon-dong (봉천동)', 'Seoul Nat\'l University Entrance'],
     nearbyEats: ['Sillim Sundae Town', 'Aedo Bunsik', 'The Coffee Bean & Tea Leaf SNU'],
-    transitTip: 'Subway is far from campus. Take Bus 5511 or 5513 from station Exit 3 — 20 min.',
+    transitRoutes: [
+      'Subway + bus — Seoul Nat\'l Univ. Station (서울대입구역) Line 2, Exit 3, then bus 5511 or 5513 (~20 min; campus is far from the station).',
+      'Bus — Green buses 5511, 5513 and 5516 run deep into the large hillside campus.',
+      'Walk — Only if you are right by the main gate; the campus is big and steep, so buses are better.',
+      'Taxi — about 10 min from the station to the main gate or your building.',
+    ],
   },
   {
     id: 'skku',
     nameEn: 'Sungkyunkwan University',
     nameKo: '성균관대학교',
     shortName: 'SKKU',
+    address: '25-2 Sungkyunkwan-ro, Jongno-gu, Seoul (서울 종로구 성균관로 25-2)',
     campusArea: 'Hyehwa (혜화)',
     nearestStation: 'Hyehwa Station (혜화역) Line 4',
     dorm: {
@@ -93,13 +140,18 @@ export const UNIVERSITIES: University[] = [
     },
     offCampusArea: ['Hyehwa (혜화)', 'Daehakno (대학로)', 'Myeongnyun-dong (명륜동)'],
     nearbyEats: ['Hyehwa Tteok-bokki Alley', 'Maple Tree House', 'Myeongnyun Jinsa Galbi'],
-    transitTip: 'Hyehwa Station Exit 4 → 10 min uphill walk. Bus 02 runs every 5 min.',
+    transitRoutes: [
+      'Subway — Hyehwa Station (혜화역) Line 4, Exit 1, then 10 min walk uphill.',
+      'Village bus — Jongno 02 (종로02) from Hyehwa Station runs up to the campus.',
+      'Walk — about 10–12 min uphill from Hyehwa Station through Daehakno (대학로).',
+    ],
   },
   {
     id: 'hanyang',
     nameEn: 'Hanyang University',
     nameKo: '한양대학교',
     shortName: 'Hanyang',
+    address: '222 Wangsimni-ro, Seongdong-gu, Seoul (서울 성동구 왕십리로 222)',
     campusArea: 'Wangsimni (왕십리)',
     nearestStation: 'Hanyang Univ. Station (한양대역) Line 2',
     dorm: {
@@ -110,13 +162,18 @@ export const UNIVERSITIES: University[] = [
     },
     offCampusArea: ['Wangsimni (왕십리)', 'Seongsu (성수)', 'Ttukseom (뚝섬)'],
     nearbyEats: ['Wangsimni Gopchang Alley', 'Seongsu Federation', 'Onion Café'],
-    transitTip: 'Hanyang Univ. Station Exit 2 → direct campus connection underground.',
+    transitRoutes: [
+      'Subway — Hanyang Univ. Station (한양대역) Line 2, Exit 2 connects directly into campus underground.',
+      'Subway — Wangsimni Station (왕십리역, Lines 2·5·Gyeongui–Jungang·Suin–Bundang) is about 10 min walk.',
+      'Bus — Buses along Wangsimni-ro stop at the Hanyang Univ. entrance.',
+    ],
   },
   {
     id: 'ewha',
     nameEn: 'Ewha Womans University',
     nameKo: '이화여자대학교',
     shortName: 'Ewha',
+    address: '52 Ewhayeodae-gil, Seodaemun-gu, Seoul (서울 서대문구 이화여대길 52)',
     campusArea: 'Sinchon (신촌)',
     nearestStation: 'Ewha Womans Univ. Station (이대역) Line 2',
     dorm: {
@@ -127,13 +184,18 @@ export const UNIVERSITIES: University[] = [
     },
     offCampusArea: ['Ewha (이대)', 'Sinchon (신촌)', 'Ahyeon (아현)'],
     nearbyEats: ['Ewha Ramyun Alley', 'Cafe Mamas', 'Seoga and Cook'],
-    transitTip: 'Ewha Station Exit 2 → 5 min walk to main gate. Buses 153, 7611, 7017.',
+    transitRoutes: [
+      'Subway — Ewha Womans Univ. Station (이대역) Line 2, Exit 2, then 5 min walk to the main gate.',
+      'Bus — 153, 7611 and 7017 stop near the main gate.',
+      'Walk — about 5 min straight up the shopping street from Exit 2.',
+    ],
   },
   {
     id: 'sogang',
     nameEn: 'Sogang University',
     nameKo: '서강대학교',
     shortName: 'Sogang',
+    address: '35 Baekbeom-ro, Mapo-gu, Seoul (서울 마포구 백범로 35)',
     campusArea: 'Sinchon-Sogang (신촌)',
     nearestStation: 'Sinchon Station (신촌역) Line 2',
     dorm: {
@@ -144,30 +206,19 @@ export const UNIVERSITIES: University[] = [
     },
     offCampusArea: ['Sinchon (신촌)', 'Daeheung (대흥)', 'Mapo (마포)'],
     nearbyEats: ['Sinchon Galmegisal', 'Mister Pizza Sogang', 'Cafe Onion Mapo'],
-    transitTip: 'Sinchon Station Exit 6 → 12 min walk. Shuttle bus from Sinchon every 15 min.',
-  },
-  {
-    id: 'cau',
-    nameEn: 'Chung-Ang University',
-    nameKo: '중앙대학교',
-    shortName: 'Chung-Ang',
-    campusArea: 'Heukseok (흑석)',
-    nearestStation: 'Heukseok Station (흑석역) Line 9',
-    dorm: {
-      prohibited: ['Personal cooking', 'Pets', 'Alcohol in rooms', 'Smoking'],
-      checkin: 'Future House International Hall, ground floor.',
-      curfew: 'No curfew. Building card-locked 24h.',
-      laundry: 'Free laundry rooms, but shared schedule signup.',
-    },
-    offCampusArea: ['Heukseok (흑석)', 'Sangdo (상도)', 'Noryangjin (노량진)'],
-    nearbyEats: ['Heukseok Toast', 'Sangdo Sutbul Galbi', 'Cafe Tap Public'],
-    transitTip: 'Heukseok Station Exit 1 → 8 min walk uphill, or shuttle every 10 min.',
+    transitRoutes: [
+      'Subway — Sogang Univ. Station (서강대역, Gyeongui–Jungang Line) is closest, about 7 min walk.',
+      'Subway — Sinchon Station (신촌역) Line 2, Exit 6, then 12 min walk.',
+      'Subway — Daeheung Station (대흥역) Line 6 is about 8 min from the south side.',
+      'Bus — Shuttle and local buses from Sinchon run every ~15 min.',
+    ],
   },
   {
     id: 'hufs',
     nameEn: 'Hankuk Univ. of Foreign Studies',
     nameKo: '한국외국어대학교',
     shortName: 'HUFS',
+    address: '107 Imun-ro, Dongdaemun-gu, Seoul (서울 동대문구 이문로 107)',
     campusArea: 'Imun-dong (이문동)',
     nearestStation: 'Hankuk Univ. of FS Station (외대앞역) Line 1',
     dorm: {
@@ -178,7 +229,11 @@ export const UNIVERSITIES: University[] = [
     },
     offCampusArea: ['Imun (이문)', 'Hoegi (회기)', 'Cheongnyangni (청량리)'],
     nearbyEats: ['Imun Seolnongtang', 'Hoegi Galbi Alley', 'Cafe Wholestreet'],
-    transitTip: 'HUFS Station Exit 2 → 5 min walk. Bus 273 runs from Hoegi area.',
+    transitRoutes: [
+      'Subway — Hankuk Univ. of FS Station (외대앞역) Line 1, Exit 2, then 5 min walk.',
+      'Subway — Hoegi Station (회기역, Line 1·Gyeongui–Jungang) is about 10 min from the south gate.',
+      'Bus — 273 and local buses run from the Hoegi area to the main gate.',
+    ],
   },
 ];
 
