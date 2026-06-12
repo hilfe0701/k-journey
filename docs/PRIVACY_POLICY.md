@@ -55,14 +55,14 @@ Store — we never see your card.
 
 | Processor | Role | Region |
 |---|---|---|
-| Google Firebase (Auth, Firestore, Storage, Crashlytics, Cloud Messaging) | Account, database, file storage, crash reporting, push | Production project region (e.g. `asia-northeast3`, Seoul) |
+| Google Firebase (Auth, Firestore, Crashlytics) | Account, database, crash reporting | Production project region (`asia-northeast3`, Seoul) |
 | PostHog | Product analytics & session replay | United States (`us.i.posthog.com`) |
 | Apple / Google | Sign-in identity providers | Per their policies |
 
 Analytics data is processed by PostHog in the **United States**. By using the
 app you understand your event data may be transferred there.
 
-데이터 처리 위탁: 구글 Firebase(계정·DB·스토리지·크래시·푸시), PostHog(분석·세션
+데이터 처리 위탁: 구글 Firebase(계정·DB·크래시), PostHog(분석·세션
 리플레이, 미국), Apple/Google(로그인). 분석 데이터는 미국에서 처리됩니다.
 
 ## 5. Retention

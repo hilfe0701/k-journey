@@ -36,8 +36,8 @@ recordings of in-app activity). Text inputs are masked; images are not masked.
 - **Photos / files:** **Not collected.** Verified in code — byeongpung images
   are captured locally (`react-native-view-shot`) and only saved to the device
   Photos library or shared via the OS share sheet (`src/lib/share.ts`). There is
-  **no Firebase Storage upload** (`@react-native-firebase/storage` is an unused
-  dependency). Do **not** declare Photos and videos as collected.
+  **no Firebase Storage upload** (the `@react-native-firebase/storage` dependency
+  was removed, 2026-06-12). Do **not** declare Photos and videos as collected.
 - **Approximate/precise location:** none collected → declare nothing.
 - **Financial info:** none — paid download (if any) is handled by the store; we
   never receive payment data.
@@ -52,3 +52,11 @@ recordings of in-app activity). Text inputs are masked; images are not masked.
 ## Data not collected (explicitly)
 Precise/approximate location, contacts, calendar, SMS/call logs, health &
 fitness, web browsing history, installed apps, payment info.
+
+### Advertising ID — NOT collected
+There is **no advertising SDK**. Firebase Analytics (which would pull
+`com.google.android.gms.permission.AD_ID`) was **removed** along with the unused
+`@react-native-firebase/analytics` / `messaging` / `storage` modules (2026-06-12),
+so the build neither requests `AD_ID` nor collects the Advertising ID. Answer the
+Play Data Safety advertising-ID question accordingly (**not collected**) and do
+**not** add the `AD_ID` permission.

@@ -659,15 +659,6 @@ function AboutSection({
           });
         }}
         right={<ExternalLink size={18} color={palette.ash} />}
-      />
-      <SettingsRow
-        label="Terms of service"
-        onPress={() => {
-          Linking.openURL('https://kjourney.app/terms').catch(() => {
-            surfaceError('unknown');
-          });
-        }}
-        right={<ExternalLink size={18} color={palette.ash} />}
         isLast={!__DEV__}
       />
       {__DEV__ ? (

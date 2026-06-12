@@ -48,8 +48,6 @@ export type KJEvent =
   | 'notification_pref_change'
   | 'profile_field_change'
   | 'account_delete_initiated'
-  | 'account_export_requested'
-  | 'photo_upload_outcome'
   | 'tour_aha_moment_shown'
   | 'tour_aha_moment_dismissed';
 

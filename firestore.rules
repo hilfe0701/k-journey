@@ -29,15 +29,6 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
-    // True when the user's account is in the 30-day soft-delete window
-    // (ADR-0033). Once pending, the only permitted write is the one that
-    // clears the marker — the recovery / cancel-deletion flow.
-    function deletionPending(data) {
-      return data.keys().hasAny(['_meta'])
-          && data._meta.keys().hasAny(['deletionRequestedAt'])
-          && data._meta.deletionRequestedAt != null;
-    }
-
     // Limits to defend against runaway writes.
     function hasReasonableSize() {
       return request.resource.size() < 1024 * 100; // 100 KB
@@ -47,13 +38,11 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if isOwner(uid);
-      // ADR-0033 §A + §C: once soft-deletion is pending, the only write the
-      // user may make is one that clears `_meta.deletionRequestedAt`. A brand
-      // new doc (resource == null) and any non-pending account write freely.
-      allow write: if isOwner(uid) && hasReasonableSize()
-                   && ( resource == null
-                        || !deletionPending(resource.data)
-                        || !deletionPending(request.resource.data) );
+      // Owner may create / update / delete their own profile. Account deletion
+      // is client-side and immediate (src/lib/accountDeletion.ts): after the
+      // user re-authenticates, the client deletes their completedMissions and
+      // buckets docs and then this profile doc. No soft-delete / grace window.
+      allow write: if isOwner(uid) && hasReasonableSize();
 
       // Completed Have-To missions. Collection name must match the client
       // (firebase.ts: completedMissionsCollection) — Firestore rules do NOT
@@ -63,18 +52,15 @@ service cloud.firestore {
         allow read, write: if isOwner(uid) && hasReasonableSize();
       }
 
-      // Want-To buckets and their items.
+      // Want-To buckets. Items are array fields on each bucket doc (firebase.ts),
+      // not a subcollection — the items match below is defensive for any future
+      // migration and matches nothing today.
       match /buckets/{bucketId} {
         allow read, write: if isOwner(uid) && hasReasonableSize();
 
         match /items/{itemId} {
           allow read, write: if isOwner(uid) && hasReasonableSize();
         }
-      }
-
-      // Saved/shared byeongpung exports (image metadata; binaries live in Storage).
-      match /exports/{exportId} {
-        allow read, write: if isOwner(uid) && hasReasonableSize();
       }
     }
 
@@ -102,15 +88,6 @@ service cloud.firestore {
     match /emergency/{id} {
       allow read: if true;
       allow write: if false;
-    }
-
-    // ─── Admin-only audit logs (ADR-0033 §C) ─────────────────
-    //
-    // Deletion + export audit trails written by Cloud Functions with admin
-    // credentials. No client read or write, ever.
-
-    match /_admin/{document=**} {
-      allow read, write: if false;
     }
 
     // ─── Default deny ─────────────────────────────────────────

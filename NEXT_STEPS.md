@@ -9,12 +9,18 @@
 > `project_play_store_prep_2026_05_22` 메모리.
 
 ## ⚠️ 코드 변경됨 (2026-06-12) — 출시 전 필수 확인
-Play 출시 전수조사에서 데모 핵 제거 + 결함 수정을 반영함. 코드 게이트는 green
+Play 출시 전수조사에서 데모 핵 제거 + 결함 수정을 반영함(2차 재감사 포함). 코드 게이트는 green
 (`npm run check`: typecheck + lint + 146 tests). 단, 아래 **외부 작업**이 남음:
-- 🔴 **Firestore 규칙 재배포 필수** — `firestore.rules`의 `missions` → `completedMissions`
-  오타 수정함(원래 규칙은 핵심 기능인 미션 완료 쓰기를 prod에서 전부 거부했음).
-  **재배포 안 하면 prod에서 미션 완료·계정 삭제가 깨짐**:
-  `firebase deploy --only firestore:rules --project k-journey-prod`
+- 🟡 **2차 재감사(2026-06-12): 안 쓰는 Firebase SDK 3개 제거** — `analytics`/`messaging`/
+  `storage`를 package.json에서 삭제(코드 미사용인데 RN 오토링킹으로 빌드에 포함돼 `AD_ID`
+  광고ID 권한을 끌고 오던 문제 → 개인정보처리방침의 "no advertising SDK"와 모순). 이제
+  광고ID 미수집 → **데이터안전 양식의 "광고 ID" 질문은 "수집 안 함"으로 답할 것.** 함께:
+  약관(terms) 죽은 링크 제거(`kjourney.app/terms` 페이지 불필요), firestore.rules의 죽은
+  soft-delete/exports/_admin 코드 정리. ⚠️ 네이티브 변경이라 **다음 prod 빌드(EAS가
+  prebuild 새로 생성)에서 로컬 알림·크래시 리포팅 정상 동작 1회 확인**.
+- ✅ **Firestore 규칙 재배포 — 완료 2026-06-12** (`k-journey-prod`에 배포: compiled successfully →
+  released → Deploy complete). `firestore.rules`의 `missions` → `completedMissions` 오타 수정 +
+  죽은 soft-delete 코드 정리분이 prod에 반영됨 → 미션 완료 쓰기 정상화.
 - 🔴 **개인정보처리방침 채우기+호스팅** — `docs/PRIVACY_POLICY.md`에 법인명·support 이메일·
   시행일 빈칸 남음. 채워서 `https://kjourney.app/privacy`(앱이 링크하는 URL)에 호스팅.
   `support@kjourney.app` 메일박스도 실제 동작해야 함.

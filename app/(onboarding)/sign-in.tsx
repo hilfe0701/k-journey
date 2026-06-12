@@ -129,7 +129,7 @@ export default function SignIn() {
           }
         />
         <Text role="xs" color={palette.stone} align="center" style={{ marginTop: space[4] }}>
-          By continuing, you accept K&#x2013;Journey&apos;s terms and acknowledge our privacy notice.
+          By continuing, you acknowledge K&#x2013;Journey&apos;s privacy notice.
           Your byeongpung stays with your account, even if you change phones.
         </Text>
         {__DEV__ && (
