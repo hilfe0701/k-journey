@@ -59,7 +59,11 @@ Play 출시 전수조사에서 데모 핵 제거 + 결함 수정을 반영함(2�
 - [ ] **5. Play Console 스토어 등록**
   - 개인정보처리방침: `docs/PRIVACY_POLICY.md` 공개 URL 호스팅 → Console에 입력
   - Data safety: `docs/PLAY_DATA_SAFETY.md`대로 입력
-  - 스토어 등록정보: `docs/STORE_LISTING.md` 카피 사용 · 피처 그래픽 1024×500 제작 · 폰 스크린샷 · **리뷰어 테스트 로그인** 제공 (로그인 벽 = 흔한 반려 사유)
+  - 스토어 등록정보 (`docs/STORE_LISTING.md` 카피 사용) — **이미지 자료 2종 신규 제작 필요** (상세 스펙은 STORE_LISTING.md §Graphics checklist):
+    - **피처 그래픽** `1024×500` PNG/JPG, **알파(투명) 금지** — 도장+한지 컨셉(`DESIGN.md`), 텍스트·이모지 최소. 중요한 요소를 가장자리/정중앙에 두지 말 것(잘림/재생버튼 오버레이)
+    - **폰 스크린샷 4~8장** (빌드 실행 후 캡처, 짧은 변 ≥1080px, 알파 금지): 온보딩 / 홈(phase+D-Day) / **미션완료 reveal**⭐ / 병풍 채워짐 / 갤러리 / 캠퍼스 / 긴급가이드 / 버킷리스트
+    - 아이콘 512² = ✅ 완료(`store-assets/play-store-icon-512.png`), 태블릿·프로모영상 = 스킵(폰 전용)
+    - **리뷰어 테스트 로그인** 제공 (로그인 벽 = 흔한 반려 사유)
 - [ ] **6. AAB를 내부 테스트 트랙에 업로드** (`eas submit -p android` 또는 수동)
 
 ## "X 주면 내가 Y 해줌" (다음 세션에 요청만)
