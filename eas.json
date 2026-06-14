@@ -19,6 +19,11 @@
       "autoIncrement": true,
       "env": { "APP_ENV": "prod" },
       "android": { "buildType": "app-bundle" }
+    },
+    "prod-apk": {
+      "environment": "production",
+      "env": { "APP_ENV": "prod" },
+      "android": { "buildType": "apk" }
     }
   },
   "submit": {
