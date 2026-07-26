@@ -1,7 +1,15 @@
 # CLAUDE.md — K-Journey project rules
 
 This file is loaded automatically into every Claude Code session in this repo,
-and `scripts/execute.py:188-190` injects it into **every harness step** as a guardrail.
+and `scripts/execute.py:262-264` injects it into **every harness step** as a guardrail.
+Since 2026-07-27 it is injected alongside an **allowlist** of `docs/` pages, not all 19:
+6 uncontested pages always (`StepExecutor.BASE_DOCS`), and the 13 that sit on superseded
+ADRs only when a step asks for one by name in its `index.json` `"docs"` field — and then
+with an isolation banner attached (`StepExecutor.LEGACY_DOCS`). The `docs/` side of the
+injection went from **19 pages / 152,615 chars** to **6 pages / 38,559 chars (−74.7%)**,
+so this file is now the larger half of the guardrail instead of 16.2% of it. The 13
+excluded pages each carry a one-line legacy banner at the top; their bodies are unchanged.
+Counted, not eyeballed — the commands are in the commit message.
 It encodes the currently applicable constraints. It does not prevent redesign:
 when a current DEC conflicts with a legacy ADR, follow the current DEC, record the
 conflict, and update or supersede the ADR before implementation.

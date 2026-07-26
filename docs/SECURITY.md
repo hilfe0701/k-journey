@@ -1,5 +1,7 @@
 # Security & Privacy
 
+> ⛔ **(legacy — not injected into harness steps by default.)** the account and Firestore ACL sections sit on `ADR-0021`, superseded by `DEC-001`/`DEC-022` — the per-user ACL model in `firestore.rules` is in scope for removal. The threat model, secret handling, and key-rotation runbook survive. Basis: `CLAUDE.md` Decision precedence · `.work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md` (2026-07-27).
+
 > Threat model, rules, PII policy, and key-rotation runbook for K-Journey. Decision authority for the rules model: [ADR-0021](adr/0021-firestore-rules-acl-model.md). For the runtime threat surface, see [`architecture/ARCHITECTURE.md`](architecture/ARCHITECTURE.md) §8.
 
 ## 1. Threat model summary

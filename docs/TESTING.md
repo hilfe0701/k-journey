@@ -1,5 +1,7 @@
 # Testing
 
+> ⛔ **(legacy — not injected into harness steps by default.)** the auth and remote-sync test sections sit on superseded ADRs. The test conventions, runner setup, and usability checklist (§9) stand; the `TC` source of truth for this pass is `.work/pmjob/k-journey/30-k-journey-traceability-matrix-2026-07-25.md`. Basis: `CLAUDE.md` Decision precedence · `.work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md` (2026-07-27).
+
 > Test strategy, current coverage, and the manual QA checklists. Authority: [ADR-0020](adr/0020-jest-with-rn-mocks.md). Round-2 expansion of tests is tracked under Plan Part J.
 
 ## 1. Test pyramid (current state)

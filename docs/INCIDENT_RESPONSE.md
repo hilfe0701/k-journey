@@ -1,5 +1,7 @@
 # Incident Response
 
+> ⛔ **(legacy — not injected into harness steps by default.)** the account and server-user-data incident paths are out of scope under `DEC-001`/`DEC-022`. Severity ladder, contact tree, and the user-notification templates (§8.4–8.6) stand. Basis: `CLAUDE.md` Decision precedence · `.work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md` (2026-07-27).
+
 > What to do when something goes wrong in production. Not a script — a playbook of decisions. Acute action: page yourself, classify, decide, act, postmortem.
 
 ## 1. Severity ladder

@@ -1,5 +1,7 @@
 # Operations
 
+> ⛔ **(legacy — not injected into harness steps by default.)** the account-support and server-operations runbooks are out of scope under `DEC-001`/`DEC-022`, and every `owner` cell is still `미확인` — do not invent one. Basis: `CLAUDE.md` Decision precedence · `.work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md` (2026-07-27).
+
 > What to do when something breaks, who to call, and the routine maintenance cadence. For acute incidents see `INCIDENT_RESPONSE.md`. For release procedure see `RELEASE.md`.
 
 ## 1. Environments

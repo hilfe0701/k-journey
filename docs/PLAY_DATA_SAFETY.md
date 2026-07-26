@@ -1,5 +1,7 @@
 # Play Console — Data Safety form answers
 
+> ⛔ **(legacy — not injected into harness steps by default.)** the Email / Name / User IDs collected-and-linked answers and the in-app account deletion answer contradict `DEC-001`, `POL-001`, and `POL-012`. "Photos: not collected, no Firebase Storage" is corroborating evidence for leaving `ADR-0034` out. Basis: `CLAUDE.md` Decision precedence · `.work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md` (2026-07-27).
+
 > Fill this into **Play Console → App content → Data safety**. Derived from the
 > actual data surface (`src/lib/posthog.ts`, `useAuth.ts`, `firebase.ts`,
 > `firestore.rules`). Keep in sync with `docs/PRIVACY_POLICY.md`. The App Store

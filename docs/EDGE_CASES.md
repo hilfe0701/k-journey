@@ -1,5 +1,7 @@
 # Edge Cases & Failure Modes
 
+> ⛔ **(legacy — not injected into harness steps by default.)** the auth and remote-sync failure rows sit on `ADR-0006`/`0013`/`0014`/`0031`, all superseded. The rest of the feature × failure-mode matrix stands. Basis: `CLAUDE.md` Decision precedence · `.work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md` (2026-07-27).
+
 > Per-feature matrix of how K-Journey behaves under failure or unusual input. Mirrors PRD v1.1 §17 with code pointers and ADR back-references. If you're implementing a new feature, add a row.
 
 ## How to read this matrix

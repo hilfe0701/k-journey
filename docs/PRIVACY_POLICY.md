@@ -1,5 +1,7 @@
 # K-Journey privacy policy (DRAFT)
 
+> ⛔ **(legacy — not injected into harness steps by default.)** the account and server-retained-PII sections sit on `ADR-0006`/`0013`/`0014`/`0021`, all superseded. The document is also still a DRAFT. Basis: `CLAUDE.md` Decision precedence · `.work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md` (2026-07-27).
+
 > **Status: DRAFT — not yet published.** Review with legal counsel before going
 > live. Host the final version at a public HTTPS URL (e.g. a GitHub Pages or
 > Notion page) and put that URL in: Play Console → Store listing → Privacy

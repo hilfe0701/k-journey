@@ -92,10 +92,10 @@ class StepExecutor:
     def run(self):
         self._print_header()
         self._check_blockers()
+        self._warn_doc_drift()
         self._checkout_branch()
-        guardrails = self._load_guardrails()
         self._ensure_created_at()
-        self._execute_all_steps(guardrails)
+        self._execute_all_steps()
         self._finalize()
 
     # --- timestamps ---
@@ -182,16 +182,103 @@ class StepExecutor:
         self._write_json(self._top_index_file, top)
 
     # --- guardrails & context ---
+    #
+    # 2026-07-27 (㈒①): `docs/*.md` 전체 글롭을 allowlist 로 교체했다.
+    # 글롭이던 시절 주입량은 CLAUDE.md 29,547자 + docs 19종 152,615자 = 182,162자였고,
+    # 개정된 CLAUDE.md 는 그 중 16.2% 뿐이었다. 나머지 83.8% 가 아직 로그인·패널 언락·
+    # 갤러리·원격 sync 를 말한다 — 가드레일 안에서 길이가 이긴다.
+    # 근거: .work/adr-dec-raw-v4.md §3 · .work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md
+    #
+    # 19 = 13 + 6 (`comm -23` 으로 확인). 「결론이 적힌 7건」과 「뒤집힘에 걸린 13건」은
+    # 다르다 — 좁은 7건을 쓰면 docs/SECURITY.md 를 포함한 6건을 놓친다.
 
-    def _load_guardrails(self) -> str:
+    #: 어느 「뒤집힘」 ADR 에도 걸리지 않는 6종. 모든 step 에 주입한다.
+    BASE_DOCS = (
+        "ACCESSIBILITY",
+        "I18N_TIMEZONE",
+        "MICROCOPY",
+        "MONITORING",
+        "PERFORMANCE",
+        "RELEASE",
+    )
+
+    #: 「뒤집힘」 ADR 을 근거로 삼는 13종. 기본으로 주입하지 않는다.
+    #: step 이 index.json 의 "docs" 로 명시 요청할 때만, 격리 경고를 머리에 붙여 주입한다.
+    #: 값은 그 경고 문구다 — 통째로 빼는 것이 아니라 「어디까지 살아 있는지」를 함께 준다.
+    LEGACY_DOCS = {
+        "ANALYTICS_SCHEMA": "`sign_in`·`mission_complete`·`panel_unlock`·`byeongpung_share`·"
+                            "`gallery_open`·`photo_upload_outcome` 은 뒤집힌 ADR 위에 있다. "
+                            "조건 축 payload 는 **미확정** `DEC-027` 의존이다 — sink 배선만, payload·cohort 는 격리.",
+        "EDGE_CASES": "auth·원격 sync 실패 모드 행은 `ADR-0006`·`0013`·`0014`·`0031` 위에 있다(뒤집힘). "
+                      "그 밖의 feature × failure-mode 격자는 유효하다.",
+        "EMPTY_STATES": "§§5–7(gallery·byeongpung)은 `DEC-024` 가 `Won't` 로 둔 `MEM-02`·`MEM-03` 전제다. "
+                        "일반 3-slot empty-state 계약은 유효하다(`ADR-0027` 유효).",
+        "ERROR_MESSAGES": "`auth-*`·`network-offline-recovered`·`bucket-conflict` 행은 걷어낸다"
+                          "(`DEC-026` 삭제분 — **확정**). `save_failed`·`E8` 새 문구는 **미확정**이라 추가하지 않는다. "
+                          "T1~T4 층위와 `showOperationError` 마스터 표는 유효하다.",
+        "INCIDENT_RESPONSE": "계정·서버 사용자 데이터 사고 절차는 `DEC-001`·`DEC-022` 범위 밖이다. "
+                             "사고 등급·연락 체계·사용자 고지 템플릿(§8.4-8.6)은 유효하다.",
+        "OPERATIONS": "계정 문의·서버 운영 런북은 `DEC-001`·`DEC-022` 범위 밖이다. "
+                      "운영 주체는 `38` §7 기준 `owner` 5칸 전부 `미확인`이다 — 값을 지어내지 마라.",
+        "PLAY_DATA_SAFETY": "Email/Name/User IDs 수집·연결 고지와 in-app 계정 삭제는 `DEC-001`·`POL-001`·`POL-012` 와 어긋난다. "
+                            "「Photos: not collected / no Firebase Storage」는 `ADR-0034` 제외의 보조 근거다.",
+        "PRIVACY_POLICY": "계정·서버 보관 PII 절은 `ADR-0006`·`0013`·`0014`·`0021` 위에 있다(뒤집힘).",
+        "PUSH_COPY": "panel unlock 타입·`claimPanelUnlock` 게이트·「sync fires panels」 문장은 legacy"
+                     "(`ADR-0009` · `DEC-024`). D-Day·phase 로컬 알림 원칙은 유효하다.",
+        "SECURITY": "계정·Firestore ACL 절은 `ADR-0021` 위에 있고 `DEC-001`·`DEC-022` 가 뒤집었다"
+                    "(`firestore.rules` 의 per-user ACL 은 제거 대상이다). "
+                    "위협 모델·비밀값 취급·키 로테이션 실무는 살아남는다 — DEC 가 명시적으로 바꾸지 않는 한 유효.",
+        "SETTINGS": "**전체가 `ADR-0032` legacy 다.** §4 Account·Firestore/MMKV 미러·signed-in email·"
+                    "`ADR-0033` soft-delete/export 는 유지할 수 없다. §1–§3 중 무엇이 로컬 설정으로 남는지는 "
+                    "**새 DEC 가 필요하다 — 구현 step 안에서 결정하지 마라.**",
+        "STORE_LISTING": "account-bound progress·sign-in required·리뷰어 계정은 `DEC-001` 과 정면으로 어긋난다. "
+                         "스토어 등록 자체가 이번 범위 밖이다.",
+        "TESTING": "auth·원격 sync 테스트 절은 뒤집힌 ADR 위에 있다. 테스트 규약·러너 설정·"
+                   "사용성 체크리스트(§9)는 유효하다. 이번 구현의 `TC` 정본은 "
+                   "`.work/pmjob/k-journey/30-k-journey-traceability-matrix-2026-07-25.md` 다.",
+    }
+
+    def _iter_doc_names(self, step: Optional[dict]) -> list:
+        """이 step 에 주입할 docs 이름 목록. base 6종 + step 이 명시 요청한 것."""
+        names = list(self.BASE_DOCS)
+        for name in (step or {}).get("docs", []):
+            if name not in names:
+                names.append(name)
+        return names
+
+    def _warn_doc_drift(self):
+        """allowlist 어디에도 없는 docs/*.md 가 생기면 조용히 빠진다. 소리를 내게 한다."""
+        docs_dir = ROOT / "docs"
+        if not docs_dir.is_dir():
+            return
+        known = set(self.BASE_DOCS) | set(self.LEGACY_DOCS)
+        unknown = sorted(d.stem for d in docs_dir.glob("*.md") if d.stem not in known)
+        if unknown:
+            print(f"  WARN: allowlist 에 없는 docs/ 문서 {len(unknown)}건 — 주입되지 않는다: {', '.join(unknown)}")
+            print(f"        BASE_DOCS 또는 LEGACY_DOCS 에 넣어 판정하라 (scripts/execute.py).")
+
+    def _load_guardrails(self, step: Optional[dict] = None) -> str:
         sections = []
         claude_md = ROOT / "CLAUDE.md"
         if claude_md.exists():
             sections.append(f"## 프로젝트 규칙 (CLAUDE.md)\n\n{claude_md.read_text()}")
+
         docs_dir = ROOT / "docs"
-        if docs_dir.is_dir():
-            for doc in sorted(docs_dir.glob("*.md")):
-                sections.append(f"## {doc.stem}\n\n{doc.read_text()}")
+        for name in self._iter_doc_names(step):
+            doc = docs_dir / f"{name}.md"
+            if not doc.exists():
+                print(f"  WARN: docs/{name}.md 가 없다 — 주입하지 않는다")
+                continue
+            if name in self.LEGACY_DOCS:
+                sections.append(
+                    f"## {name} — ⛔ LEGACY (이 step 이 명시 요청함)\n\n"
+                    f"> ⛔ **이 문서는 뒤집힌 ADR 위에 있다. 통째로 구현 근거로 쓰지 마라.**\n"
+                    f"> {self.LEGACY_DOCS[name]}\n"
+                    f"> 판정 근거: CLAUDE.md 의 Decision precedence 절.\n\n"
+                    f"{doc.read_text()}"
+                )
+            else:
+                sections.append(f"## {name}\n\n{doc.read_text()}")
         return "\n\n---\n\n".join(sections) if sections else ""
 
     @staticmethod
@@ -309,11 +396,18 @@ class StepExecutor:
 
     # --- 실행 루프 ---
 
-    def _execute_single_step(self, step: dict, guardrails: str) -> bool:
+    def _execute_single_step(self, step: dict) -> bool:
         """단일 step 실행 (재시도 포함). 완료되면 True, 실패/차단이면 False."""
         step_num, step_name = step["step"], step["name"]
         done = sum(1 for s in self._read_json(self._index_file)["steps"] if s["status"] == "completed")
         prev_error = None
+
+        # 가드레일은 step 마다 다르다 — base 6종 + 이 step 이 index.json 의 "docs" 로 요청한 것.
+        guardrails = self._load_guardrails(step)
+        extra = [n for n in step.get("docs", []) if n not in self.BASE_DOCS]
+        print(f"  Guardrails: CLAUDE.md + base {len(self.BASE_DOCS)}종"
+              + (f" + legacy {len(extra)}종({', '.join(extra)})" if extra else "")
+              + f" · {len(guardrails):,}자")
 
         for attempt in range(1, self.MAX_RETRIES + 1):
             index = self._read_json(self._index_file)
@@ -380,7 +474,7 @@ class StepExecutor:
 
         return False  # unreachable
 
-    def _execute_all_steps(self, guardrails: str):
+    def _execute_all_steps(self):
         while True:
             index = self._read_json(self._index_file)
             pending = next((s for s in index["steps"] if s["status"] == "pending"), None)
@@ -395,7 +489,7 @@ class StepExecutor:
                     self._write_json(self._index_file, index)
                     break
 
-            self._execute_single_step(pending, guardrails)
+            self._execute_single_step(pending)
 
     def _finalize(self):
         index = self._read_json(self._index_file)

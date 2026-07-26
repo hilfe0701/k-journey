@@ -1,5 +1,7 @@
 # Error Messages — User Copy Catalog
 
+> ⛔ **(legacy — not injected into harness steps by default.)** the `auth-*`, `network-offline-recovered`, and `bucket-conflict` rows go (`DEC-026` deletions, confirmed); the `save_failed` / `E8` wording is **unconfirmed** and must not be added yet. The T1–T4 tiers and the `showOperationError` master table stand. Basis: `CLAUDE.md` Decision precedence · `.work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md` (2026-07-27).
+
 > Master copy table for every user-facing error in K-Journey. The single source of truth that `showOperationError(action, error)` (`src/lib/errorAlert.ts`) routes through. Authority: [ADR-0012](adr/0012-async-mutator-error-contract.md), [ADR-0028](adr/0028-error-recovery-retry-strategy.md). Voice: `MICROCOPY.md`. Edge-case rows: `EDGE_CASES.md`.
 
 ## How this file is read by code

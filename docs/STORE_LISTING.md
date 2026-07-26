@@ -1,5 +1,7 @@
 # Store listing copy & asset checklist
 
+> ⛔ **(legacy — not injected into harness steps by default.)** account-bound progress, "sign-in required", and the reviewer credentials contradict `DEC-001`. Store submission is out of scope for this pass anyway. Basis: `CLAUDE.md` Decision precedence · `.work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md` (2026-07-27).
+
 > Source copy for **Google Play Console → Store listing** (and reusable for App
 > Store Connect). Voice follows `docs/MICROCOPY.md`: English-first, sentence
 > case, no emoji (CLAUDE.md NEVER #3), Korean parenthetical for proper nouns.

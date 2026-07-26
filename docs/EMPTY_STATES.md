@@ -1,5 +1,7 @@
 # Empty States — Per-Screen Specification
 
+> ⛔ **(legacy — not injected into harness steps by default.)** §§5–7 (gallery, byeongpung) presuppose `MEM-02`/`MEM-03`, which `DEC-024` puts out of scope. The general 3-slot empty-state contract (`ADR-0027`, still valid) stands. Basis: `CLAUDE.md` Decision precedence · `.work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md` (2026-07-27).
+
 > Implementation guide for [ADR-0027](adr/0027-empty-state-pattern.md). Every "zero" state in K-Journey conforms to this spec. Voice rules: `MICROCOPY.md` §6.1, §6.3. Visual: `DESIGN.md` §14.
 
 ## The contract (recap from ADR-0027)

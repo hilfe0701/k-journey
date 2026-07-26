@@ -1,5 +1,7 @@
 # Analytics Schema
 
+> ⛔ **(legacy — not injected into harness steps by default.)** `sign_in`, `mission_complete`, `panel_unlock`, `byeongpung_share`, `gallery_open`, and `photo_upload_outcome` sit on superseded ADRs; condition-axis payloads depend on the **unconfirmed** `DEC-027` — wire sinks only, isolate payload and cohort. The dedupe rules and UX KPIs (§10) stand. Basis: `CLAUDE.md` Decision precedence · `.work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md` (2026-07-27).
+
 > Canonical, typed event surface. Mirrors PRD v1.1 §16. The `KJEvent` union in `src/lib/posthog.ts` enforces this at compile time — add new events to the union *before* using them.
 
 ## 1. Schema

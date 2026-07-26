@@ -1,5 +1,7 @@
 # Push Notification Copy Catalog
 
+> ⛔ **(legacy — not injected into harness steps by default.)** the panel-unlock push type, its `claimPanelUnlock` gate, and the "sync fires panels" wording are legacy (`ADR-0009`, `DEC-024`). The D-Day and phase local-notification principles stand. Basis: `CLAUDE.md` Decision precedence · `.work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md` (2026-07-27).
+
 > Implementation guide for [ADR-0029](adr/0029-push-copy-library-and-priming.md). The single source of every push string K-Journey ever sends. Voice rules: `MICROCOPY.md` §6.3, §7. Trigger policy (when, not what): [ADR-0015](adr/0015-behavior-triggered-push-only.md).
 
 ## What this catalog is for
