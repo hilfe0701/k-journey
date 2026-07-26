@@ -87,6 +87,7 @@ class StepExecutor:
         idx = self._read_json(self._index_file)
         self._project = idx.get("project", "project")
         self._phase_name = idx.get("phase", phase_dir_name)
+        self._branch = idx.get("branch", f"feat-{self._phase_name}")
         self._total = len(idx["steps"])
 
     def run(self):
@@ -120,7 +121,10 @@ class StepExecutor:
         return subprocess.run(cmd, cwd=self._root, capture_output=True, text=True)
 
     def _checkout_branch(self):
-        branch = f"feat-{self._phase_name}"
+        # index.json 의 "branch" 가 있으면 그것을 쓴다. 없으면 원본 harness 규칙(feat-<phase>).
+        # 이 프로젝트는 handoff.md·AGENTS.md 가 작업 브랜치를 v2-conditional-orchestration 으로
+        # 선언했고 원격 HEAD 도 거기 있다 — feat-<phase> 를 새로 파면 선언과 어긋난다.
+        branch = self._branch
 
         r = self._run_git("rev-parse", "--abbrev-ref", "HEAD")
         if r.returncode != 0:
@@ -414,7 +418,8 @@ class StepExecutor:
             step_context = self._build_step_context(index)
             preamble = self._build_preamble(guardrails, step_context, prev_error)
 
-            tag = f"Step {step_num}/{self._total - 1} ({done} done): {step_name}"
+            # 원본 harness 는 step 을 0 부터 셌다. 이 프로젝트의 step 은 1 부터라 -1 을 뺐다.
+            tag = f"Step {step_num}/{self._total} ({done} done): {step_name}"
             if attempt > 1:
                 tag += f" [retry {attempt}/{self.MAX_RETRIES}]"
 
@@ -505,7 +510,7 @@ class StepExecutor:
                 print(f"  ✓ {msg}")
 
         if self._auto_push:
-            branch = f"feat-{self._phase_name}"
+            branch = self._branch
             r = self._run_git("push", "-u", "origin", branch)
             if r.returncode != 0:
                 print(f"\n  ERROR: git push 실패: {r.stderr.strip()}")

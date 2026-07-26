@@ -1,0 +1,65 @@
+{
+  "project": "K-Journey",
+  "phase": "p0-slice",
+  "branch": "v2-conditional-orchestration",
+  "basis": "DEC-028 (.work/pmjob/k-journey/31-k-journey-decision-log-2026-07-25.md)",
+  "goal": "P0 슬라이스 하나가 `npm run web` 에서 온보딩 조건 입력 → 홈 → 태스크 상세 → 완료까지 끊김 없이 돈다. step 6 종료 시점이 그 판정 시점이다.",
+  "steps": [
+    {
+      "step": 1,
+      "name": "strip-auth-layer",
+      "summary": "",
+      "status": "pending",
+      "docs": ["SECURITY", "PLAY_DATA_SAFETY"]
+    },
+    {
+      "step": 2,
+      "name": "condition-axes-and-rule-engine",
+      "summary": "",
+      "status": "pending",
+      "docs": []
+    },
+    {
+      "step": 3,
+      "name": "onboarding-condition-input",
+      "summary": "",
+      "status": "pending",
+      "docs": ["EMPTY_STATES"]
+    },
+    {
+      "step": 4,
+      "name": "journey-home-states",
+      "summary": "",
+      "status": "pending",
+      "docs": ["EMPTY_STATES"]
+    },
+    {
+      "step": 5,
+      "name": "task-detail-and-blocking",
+      "summary": "",
+      "status": "pending",
+      "docs": ["ERROR_MESSAGES"]
+    },
+    {
+      "step": 6,
+      "name": "source-and-verified-date",
+      "summary": "",
+      "status": "pending",
+      "docs": ["ERROR_MESSAGES"]
+    },
+    {
+      "step": 7,
+      "name": "content-audit",
+      "summary": "",
+      "status": "pending",
+      "docs": []
+    },
+    {
+      "step": 8,
+      "name": "tests-and-qa",
+      "summary": "",
+      "status": "pending",
+      "docs": ["TESTING", "EDGE_CASES"]
+    }
+  ]
+}
