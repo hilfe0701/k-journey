@@ -8,7 +8,6 @@ import { format, addDays } from 'date-fns';
 
 import { Text, Button } from '../../src/components/ui';
 import { palette, space, radius, semantic } from '../../design-tokens';
-import { useAuth } from '../../src/hooks/useAuth';
 import { useProfile } from '../../src/hooks/useProfile';
 import { updateUserProfile } from '../../src/lib/firebase';
 import { rescheduleAllNotifications, getPermissionState } from '../../src/lib/notifications';
@@ -22,7 +21,6 @@ import { track } from '../../src/lib/posthog';
 
 export default function DatesScreen() {
   const router = useRouter();
-  const { user } = useAuth();
   const { profile } = useProfile();
   const [pickingFor, setPickingFor] = useState<'arrival' | 'departure'>('arrival');
   const [arrivalDate, setArrivalDate] = useState<string | null>(null);
@@ -64,7 +62,7 @@ export default function DatesScreen() {
   }
 
   async function handleContinue() {
-    if (!user || !arrivalDate || !departureDate) return;
+    if (!arrivalDate || !departureDate) return;
     const err = validateDates(arrivalDate, departureDate);
     if (err) {
       Alert.alert('Check your dates', DATE_ERROR_MESSAGES[err]);
@@ -72,7 +70,7 @@ export default function DatesScreen() {
     }
     setSaving(true);
     try {
-      await updateUserProfile(user.uid, { arrivalDate, departureDate });
+      await updateUserProfile({ arrivalDate, departureDate });
       track('onboarding_step_complete', { step: 'dates' });
 
       // Push permission: the OS prompt only ever fires from behind the priming

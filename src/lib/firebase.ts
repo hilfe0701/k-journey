@@ -1,33 +1,32 @@
 /**
- * Firebase services initialization (modular API — RNFB v22-ready).
+ * Local journey data access.
  *
- * Native modules from @react-native-firebase/* auto-initialize on app start
- * because plugins are registered in app.json. This file is the typed wrapper
- * for Firestore reads/writes that the rest of the app uses.
- *
- * NOTE: Requires GoogleService-Info.plist (iOS) and google-services.json (Android)
- * at project root. Generate them in Firebase Console → Project Settings.
+ * The filename is retained for import compatibility with the first slice, but
+ * this module deliberately has no Firebase Auth, Firestore, or Storage path.
+ * Firebase remains available to the app's platform services (for example
+ * Crashlytics); journey state is stored on this device through MMKV.
  */
 
-import type { FirebaseAuthTypes } from '@react-native-firebase/auth';
-import {
-  getFirestore,
-  doc,
-  collection,
-  setDoc,
-  getDoc,
-  getDocs,
-  deleteDoc,
-  writeBatch,
-  runTransaction,
-  serverTimestamp,
-  type FirebaseFirestoreTypes,
-} from '@react-native-firebase/firestore';
-
-import { storage as mmkv, KEYS, getJson, setJson } from './storage';
 import { BucketTemplateKey } from '../data/bucketTemplates';
+import { kstNow } from './dates';
+import { getJson, KEYS, setJson, storage } from './storage';
 
-const db = () => getFirestore();
+export const LOCAL_PROFILE_ID = 'local-profile';
+
+export interface UserProfile {
+  uid: string;
+  email: null;
+  displayName: string | null;
+  photoUrl: null;
+  university: string | null;
+  stayType: 'exchange-1' | 'exchange-2' | 'language' | 'working-holiday' | null;
+  housing: 'dormitory' | 'off-campus' | null;
+  arrivalDate: string | null;
+  departureDate: string | null;
+  era: 'joseon' | 'silla' | 'goryeo' | null;
+  onboardingCompletedAt: string | null;
+  createdAt: string | null;
+}
 
 export interface DevMockCompletedDoc {
   missionId: string;
@@ -49,147 +48,48 @@ export interface Bucket {
   createdAtIso: string;
 }
 
-function isDevMock(): boolean {
-  return __DEV__ && (mmkv.getBoolean(KEYS.devMockAuth) ?? false);
+const EMPTY_PROFILE: UserProfile = {
+  uid: LOCAL_PROFILE_ID,
+  email: null,
+  displayName: null,
+  photoUrl: null,
+  university: null,
+  stayType: null,
+  housing: null,
+  arrivalDate: null,
+  departureDate: null,
+  era: null,
+  onboardingCompletedAt: null,
+  createdAt: null,
+};
+
+export async function updateUserProfile(patch: Partial<UserProfile>): Promise<void> {
+  const current = getJson<UserProfile>(KEYS.profileCache) ?? EMPTY_PROFILE;
+  setJson(KEYS.profileCache, { ...current, ...patch, uid: LOCAL_PROFILE_ID });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// User profile shape stored in Firestore at users/{uid}
-// ─────────────────────────────────────────────────────────────────────────────
-export interface UserProfile {
-  uid: string;
-  email: string | null;
-  displayName: string | null;
-  photoUrl: string | null;
-  university: string | null;
-  stayType: 'exchange-1' | 'exchange-2' | 'language' | 'working-holiday' | null;
-  housing: 'dormitory' | 'off-campus' | null;
-  arrivalDate: string | null;       // ISO date YYYY-MM-DD
-  departureDate: string | null;
-  era: 'joseon' | 'silla' | 'goryeo' | null;
-  onboardingCompletedAt: string | null;
-  createdAt: FirebaseFirestoreTypes.Timestamp | null;
+export async function markMissionComplete(missionId: string): Promise<void> {
+  const list = getJson<DevMockCompletedDoc[]>(KEYS.completedMissionsCache) ?? [];
+  if (list.some((item) => item.missionId === missionId)) return;
+  list.unshift({ missionId, completedAtIso: kstNow().toISOString() });
+  setJson(KEYS.completedMissionsCache, list);
 }
 
-export const userDoc = (uid: string) => doc(db(), 'users', uid);
-
-export const completedMissionsCollection = (uid: string) =>
-  collection(userDoc(uid), 'completedMissions');
-
-export const bucketsCollection = (uid: string) =>
-  collection(userDoc(uid), 'buckets');
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-export async function ensureUserDocument(user: FirebaseAuthTypes.User): Promise<void> {
-  const ref = userDoc(user.uid);
-  const snap = await getDoc(ref);
-  if (!snap.exists) {
-    await setDoc(ref, {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoUrl: user.photoURL,
-      university: null,
-      stayType: null,
-      housing: null,
-      arrivalDate: null,
-      departureDate: null,
-      era: null,
-      onboardingCompletedAt: null,
-      createdAt: serverTimestamp(),
-    });
-  }
+export async function unmarkMission(missionId: string): Promise<void> {
+  const list = getJson<DevMockCompletedDoc[]>(KEYS.completedMissionsCache) ?? [];
+  setJson(KEYS.completedMissionsCache, list.filter((item) => item.missionId !== missionId));
 }
-
-export async function updateUserProfile(uid: string, patch: Partial<UserProfile>): Promise<void> {
-  if (isDevMock()) {
-    const current = getJson<UserProfile>(KEYS.profileCache);
-    const merged: UserProfile = current
-      ? { ...current, ...patch }
-      : ({ uid, ...patch } as UserProfile);
-    setJson(KEYS.profileCache, merged);
-    return;
-  }
-  await setDoc(userDoc(uid), patch, { merge: true });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Account deletion — client-side, immediate (replaces the ADR-0033 soft-delete;
-// the reaper / export Cloud Functions were never built, so the old "request"
-// flow only wrote a marker nothing acted on). Auth-account deletion + re-auth
-// live in ./accountDeletion.ts; this wipes only the Firestore footprint.
-// Dev-mock branches to MMKV — a missing branch leaves the Firestore offline
-// queue spinning forever with no error (feedback_devmock_mutator_required).
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Permanently deletes the user's Firestore data: every completed-mission doc,
- * every bucket doc (items are array fields on the bucket — no subcollection to
- * sweep), then the user profile doc. Allowed by firestore.rules because the
- * caller owns the docs and the profile is not in a deletion-pending state.
- */
-export async function deleteAccountData(uid: string): Promise<void> {
-  if (isDevMock()) {
-    setJson(KEYS.devMockMissions, []);
-    setJson(KEYS.devMockBuckets, []);
-    mmkv.delete(KEYS.profileCache);
-    return;
-  }
-  const [missions, buckets] = await Promise.all([
-    getDocs(completedMissionsCollection(uid)),
-    getDocs(bucketsCollection(uid)),
-  ]);
-  const batch = writeBatch(db());
-  missions.forEach((d) => batch.delete(d.ref));
-  buckets.forEach((d) => batch.delete(d.ref));
-  batch.delete(userDoc(uid));
-  await batch.commit();
-}
-
-export async function markMissionComplete(
-  uid: string,
-  missionId: string,
-): Promise<void> {
-  if (isDevMock()) {
-    const list = getJson<DevMockCompletedDoc[]>(KEYS.devMockMissions) ?? [];
-    if (!list.find((d) => d.missionId === missionId)) {
-      list.unshift({ missionId, completedAtIso: new Date().toISOString() });
-      setJson(KEYS.devMockMissions, list);
-    }
-    return;
-  }
-  await setDoc(doc(completedMissionsCollection(uid), missionId), {
-    missionId,
-    completedAt: serverTimestamp(),
-  });
-}
-
-export async function unmarkMission(uid: string, missionId: string): Promise<void> {
-  if (isDevMock()) {
-    const list = getJson<DevMockCompletedDoc[]>(KEYS.devMockMissions) ?? [];
-    const next = list.filter((d) => d.missionId !== missionId);
-    setJson(KEYS.devMockMissions, next);
-    return;
-  }
-  await deleteDoc(doc(completedMissionsCollection(uid), missionId));
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Bucket (Want To) CRUD
-// ─────────────────────────────────────────────────────────────────────────────
 
 function newId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function readMockBuckets(): Bucket[] {
-  return getJson<Bucket[]>(KEYS.devMockBuckets) ?? [];
+function readBuckets(): Bucket[] {
+  return getJson<Bucket[]>(KEYS.bucketsCache) ?? [];
 }
 
-function writeMockBuckets(list: Bucket[]) {
-  setJson(KEYS.devMockBuckets, list);
+function writeBuckets(list: Bucket[]): void {
+  setJson(KEYS.bucketsCache, list);
 }
 
 export interface CreateBucketInput {
@@ -199,136 +99,90 @@ export interface CreateBucketInput {
   initialItems: string[];
 }
 
-export async function createBucket(uid: string, input: CreateBucketInput): Promise<Bucket> {
+export async function createBucket(input: CreateBucketInput): Promise<Bucket> {
   const bucket: Bucket = {
     id: newId('bkt'),
     themeName: input.themeName.trim(),
     templateKey: input.templateKey,
     maxItems: input.maxItems,
     items: input.initialItems
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0)
+      .map((text) => text.trim())
+      .filter((text) => text.length > 0)
       .slice(0, input.maxItems)
       .map((text) => ({ id: newId('itm'), text, completedAtIso: null })),
-    createdAtIso: new Date().toISOString(),
+    createdAtIso: kstNow().toISOString(),
   };
-
-  if (isDevMock()) {
-    const list = readMockBuckets();
-    list.unshift(bucket);
-    writeMockBuckets(list);
-    return bucket;
-  }
-
-  await setDoc(doc(bucketsCollection(uid), bucket.id), {
-    ...bucket,
-    createdAt: serverTimestamp(),
-  });
+  const list = readBuckets();
+  list.unshift(bucket);
+  writeBuckets(list);
   return bucket;
 }
 
-export async function deleteBucket(uid: string, bucketId: string): Promise<void> {
-  if (isDevMock()) {
-    writeMockBuckets(readMockBuckets().filter((b) => b.id !== bucketId));
-    return;
-  }
-  await deleteDoc(doc(bucketsCollection(uid), bucketId));
+export async function deleteBucket(bucketId: string): Promise<void> {
+  writeBuckets(readBuckets().filter((bucket) => bucket.id !== bucketId));
 }
 
-export async function addBucketItem(
-  uid: string,
-  bucketId: string,
-  text: string,
-): Promise<void> {
+export async function addBucketItem(bucketId: string, text: string): Promise<void> {
   const trimmed = text.trim();
   if (!trimmed) return;
-
-  if (isDevMock()) {
-    const list = readMockBuckets();
-    const idx = list.findIndex((b) => b.id === bucketId);
-    if (idx < 0) return;
-    const bucket = list[idx];
-    if (bucket.items.length >= bucket.maxItems) return;
-    bucket.items = [...bucket.items, { id: newId('itm'), text: trimmed, completedAtIso: null }];
-    list[idx] = bucket;
-    writeMockBuckets(list);
-    return;
-  }
-
-  const ref = doc(bucketsCollection(uid), bucketId);
-  await runTransaction(db(), async (tx) => {
-    const snap = await tx.get(ref);
-    const data = snap.data() as Bucket | undefined;
-    if (!data) return;
-    if (data.items.length >= data.maxItems) return;
-    const items = [...data.items, { id: newId('itm'), text: trimmed, completedAtIso: null }];
-    tx.update(ref, { items });
-  });
+  const list = readBuckets();
+  const index = list.findIndex((bucket) => bucket.id === bucketId);
+  if (index < 0) return;
+  const bucket = list[index];
+  if (bucket.items.length >= bucket.maxItems) return;
+  list[index] = {
+    ...bucket,
+    items: [...bucket.items, { id: newId('itm'), text: trimmed, completedAtIso: null }],
+  };
+  writeBuckets(list);
 }
 
 export async function toggleBucketItem(
-  uid: string,
   bucketId: string,
   itemId: string,
 ): Promise<{ wasCompleted: boolean; nextCompletedCount: number } | null> {
-  if (isDevMock()) {
-    const list = readMockBuckets();
-    const idx = list.findIndex((b) => b.id === bucketId);
-    if (idx < 0) return null;
-    const bucket = list[idx];
-    let wasCompleted = false;
-    bucket.items = bucket.items.map((it) => {
-      if (it.id !== itemId) return it;
-      wasCompleted = !!it.completedAtIso;
-      return {
-        ...it,
-        completedAtIso: it.completedAtIso ? null : new Date().toISOString(),
-      };
-    });
-    const nextCompletedCount = bucket.items.filter((it) => it.completedAtIso).length;
-    list[idx] = bucket;
-    writeMockBuckets(list);
-    return { wasCompleted, nextCompletedCount };
-  }
-
-  const ref = doc(bucketsCollection(uid), bucketId);
-  return runTransaction(db(), async (tx) => {
-    const snap = await tx.get(ref);
-    const data = snap.data() as Bucket | undefined;
-    if (!data) return null;
-    let wasCompleted = false;
-    const items = data.items.map((it) => {
-      if (it.id !== itemId) return it;
-      wasCompleted = !!it.completedAtIso;
-      return {
-        ...it,
-        completedAtIso: it.completedAtIso ? null : new Date().toISOString(),
-      };
-    });
-    const nextCompletedCount = items.filter((it) => it.completedAtIso).length;
-    tx.update(ref, { items });
-    return { wasCompleted, nextCompletedCount };
+  const list = readBuckets();
+  const index = list.findIndex((bucket) => bucket.id === bucketId);
+  if (index < 0) return null;
+  const bucket = list[index];
+  let wasCompleted = false;
+  const items = bucket.items.map((item) => {
+    if (item.id !== itemId) return item;
+    wasCompleted = !!item.completedAtIso;
+    return {
+      ...item,
+      completedAtIso: item.completedAtIso ? null : kstNow().toISOString(),
+    };
   });
+  list[index] = { ...bucket, items };
+  writeBuckets(list);
+  return {
+    wasCompleted,
+    nextCompletedCount: items.filter((item) => item.completedAtIso).length,
+  };
 }
 
-export async function deleteBucketItem(
-  uid: string,
-  bucketId: string,
-  itemId: string,
-): Promise<void> {
-  if (isDevMock()) {
-    const list = readMockBuckets();
-    const idx = list.findIndex((b) => b.id === bucketId);
-    if (idx < 0) return;
-    list[idx] = { ...list[idx], items: list[idx].items.filter((it) => it.id !== itemId) };
-    writeMockBuckets(list);
-    return;
-  }
-  const ref = doc(bucketsCollection(uid), bucketId);
-  await runTransaction(db(), async (tx) => {
-    const snap = await tx.get(ref);
-    const data = snap.data() as Bucket | undefined;
-    if (!data) return;
-    tx.update(ref, { items: data.items.filter((it) => it.id !== itemId) });
-  });
+export async function deleteBucketItem(bucketId: string, itemId: string): Promise<void> {
+  const list = readBuckets();
+  const index = list.findIndex((bucket) => bucket.id === bucketId);
+  if (index < 0) return;
+  list[index] = {
+    ...list[index],
+    items: list[index].items.filter((item) => item.id !== itemId),
+  };
+  writeBuckets(list);
+}
+
+/** Clears all local journey state for the development reset control. */
+export function clearLocalJourneyData(): void {
+  [
+    KEYS.profileCache,
+    KEYS.completedMissionsCache,
+    KEYS.bucketsCache,
+    KEYS.firedPanelUnlocks,
+    KEYS.lastSeenPhase,
+    KEYS.lastFiredDDayMilestones,
+    KEYS.phaseOverride,
+    KEYS.galleryDismissed,
+  ].forEach((key) => storage.delete(key));
 }

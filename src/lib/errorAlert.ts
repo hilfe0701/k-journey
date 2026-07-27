@@ -13,7 +13,6 @@
 
 import { Alert, Linking } from 'react-native';
 import { getCrashlytics, recordError } from '@react-native-firebase/crashlytics';
-import { getAuth } from '@react-native-firebase/auth';
 
 import { resolveErrorRow, ERROR_CATALOG, type ErrorRow } from './errors/catalog';
 import { emitError } from './errors/host';
@@ -39,7 +38,7 @@ export interface SurfaceOptions {
 export function showOperationError(action: string, error: unknown, options?: SurfaceOptions) {
   recordSilently(error);
 
-  let row = applyAuthContext(resolveErrorRow(error));
+  let row = resolveErrorRow(error);
   if (row.code === 'unknown') {
     row = { ...row, title: `Couldn't ${action}` };
   }
@@ -56,30 +55,7 @@ export function surfaceError(codeOrError: string | unknown, options?: SurfaceOpt
     : resolveErrorRow(codeOrError);
   if (codeOrError instanceof Error) recordSilently(codeOrError);
   if (options?.cause !== undefined) recordSilently(options.cause);
-  routeRow(applyAuthContext(resolved), options);
-}
-
-/**
- * ERROR_MESSAGES.md / ADR-0021 mapping: a Firestore permission-denied while
- * signed OUT is a "sign in again" banner (T4), not a "not yours" modal (T2).
- * `resolveErrorRow` is a pure function and can't see auth state, so the
- * signed-in/out split is applied here.
- */
-function applyAuthContext(row: ErrorRow): ErrorRow {
-  if (row.code === 'firestore-rules-fail-owner' && !isSignedIn()) {
-    return ERROR_CATALOG['firestore-rules-fail'];
-  }
-  return row;
-}
-
-function isSignedIn(): boolean {
-  try {
-    return getAuth().currentUser != null;
-  } catch {
-    // intentional swallow: auth unavailable (tests / not initialized) — assume
-    // signed in so the defensive T2 owner row is kept over a misleading banner.
-    return true;
-  }
+  routeRow(resolved, options);
 }
 
 function routeRow(row: ErrorRow, options?: SurfaceOptions) {

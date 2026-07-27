@@ -261,18 +261,6 @@ export const ERROR_CATALOG: Record<string, ErrorRow> = {
     body: 'Picking up where you left off.',
     autoDismissMs: 4000,
   },
-  'network-offline-recovered': {
-    code: 'network-offline-recovered',
-    tier: 'T1',
-    body: 'Synced.',
-    autoDismissMs: 3000,
-  },
-  'bucket-conflict': {
-    code: 'bucket-conflict',
-    tier: 'T1',
-    body: 'Updated from another device.',
-    autoDismissMs: 4000,
-  },
   'account-deletion-scheduled': {
     code: 'account-deletion-scheduled',
     tier: 'T1',

@@ -14,7 +14,6 @@ import { getCrashlytics, recordError } from '@react-native-firebase/crashlytics'
 import { AlertTriangle } from 'lucide-react-native';
 
 import { ThemeProvider } from '../src/theme/ThemeProvider';
-import { useAuth } from '../src/hooks/useAuth';
 import { useProfile } from '../src/hooks/useProfile';
 import { posthog } from '../src/lib/posthog';
 import { Text } from '../src/components/ui';
@@ -27,13 +26,12 @@ import { palette, space, radius } from '../design-tokens';
 import { runMigrations } from '../src/lib/storageMigrations';
 import { checkClockSkew } from '../src/lib/clockGuard';
 import { usePushPermissionWatcher } from '../src/lib/permissions';
-import { useNetworkToasts } from '../src/state/useNetworkToasts';
 import { surfaceError } from '../src/lib/errorAlert';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Boot path: MMKV migrations + clock-skew diagnostic. Both are synchronous and
-// must precede any hook that reads MMKV (e.g. useAuth → useMMKVBoolean). See
+// must precede any hook that reads MMKV (for example, useProfile). See
 // ADR-0023 (migrations) and ADR-0022 (clock guard). Side-effect on module load
 // is intentional — RN guarantees this module is the entry point.
 try {
@@ -107,15 +105,14 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.hanji }}>
       <SafeAreaProvider>
         <PostHogProvider client={posthog} autocapture={false}>
-          <AuthGate />
+          <RouteGate />
         </PostHogProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
 
-function AuthGate() {
-  const { initializing, user } = useAuth();
+function RouteGate() {
   const { profile } = useProfile();
   const segments = useSegments();
   const router = useRouter();
@@ -124,12 +121,12 @@ function AuthGate() {
 
   // Aha-moment tour: surface exactly once after onboarding completes (PRD §4.6).
   React.useEffect(() => {
-    if (!user || !profile?.onboardingCompletedAt) return;
+    if (!profile?.onboardingCompletedAt) return;
     if (hasShownAhaMoment()) return;
     const segs = segments as string[];
     if (segs[0] !== '(tabs)') return;
     setShowTour(true);
-  }, [user, profile?.onboardingCompletedAt, segments]);
+  }, [profile?.onboardingCompletedAt, segments]);
 
   // Surface a one-time clock-jump banner if boot detected device-clock skew
   // (ADR-0022, ADR-0028 T4). Deferred to an effect so the ToastHost is mounted.
@@ -147,19 +144,14 @@ function AuthGate() {
     departureDate: profile?.departureDate ?? null,
   });
 
-  // Offline / reconnect toasts (ADR-0031) — screen-independent.
-  useNetworkToasts();
-
   useEffect(() => {
-    if (initializing) return;
-
     const segs = segments as string[];
     const inOnboarding = segs[0] === '(onboarding)';
     const subRoute = segs[1];
 
     // Cold-start splash gate: Expo Router restores nav state across app launches,
     // which makes returning users skip the splash entirely. Force one trip through
-    // splash on the first post-auth render of every session.
+    // splash on the first local-profile render of every session.
     if (!coldStartHandledRef.current) {
       coldStartHandledRef.current = true;
       if (subRoute !== 'splash') {
@@ -173,13 +165,6 @@ function AuthGate() {
 
     const onboardingComplete = !!profile?.onboardingCompletedAt;
 
-    if (!user) {
-      if (subRoute !== 'sign-in') {
-        router.replace('/(onboarding)/splash');
-      }
-      return;
-    }
-
     if (!onboardingComplete) {
       if (!inOnboarding || subRoute === 'sign-in') {
         router.replace('/(onboarding)/profile');
@@ -192,7 +177,7 @@ function AuthGate() {
     if (inOnboarding && subRoute !== 'era') {
       router.replace('/(tabs)');
     }
-  }, [initializing, user, profile, segments, router]);
+  }, [profile, segments, router]);
 
   const era = profile?.era ?? 'joseon';
 

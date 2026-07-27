@@ -8,7 +8,6 @@ import { Text, Button, Input } from '../../src/components/ui';
 import { palette, space, radius } from '../../design-tokens';
 import { BUCKET_TEMPLATES, BucketTemplateKey } from '../../src/data/bucketTemplates';
 import { BUCKET_TEMPLATE_IMAGES } from '../../src/components/byeongpung/motifs';
-import { useAuth } from '../../src/hooks/useAuth';
 import { createBucket } from '../../src/lib/firebase';
 import { showOperationError } from '../../src/lib/errorAlert';
 import { track } from '../../src/lib/posthog';
@@ -17,8 +16,6 @@ const MAX_OPTIONS = [5, 8, 10, 12, 15, 20];
 
 export default function NewBucket() {
   const router = useRouter();
-  const { user } = useAuth();
-
   const [themeName, setThemeName] = useState('');
   const [maxItems, setMaxItems] = useState(10);
   const [templateKey, setTemplateKey] = useState<BucketTemplateKey>('peony');
@@ -42,10 +39,10 @@ export default function NewBucket() {
   const canSave = themeName.trim().length > 0 && !busy;
 
   async function handleSave() {
-    if (!user || !canSave) return;
+    if (!canSave) return;
     setBusy(true);
     try {
-      const bucket = await createBucket(user.uid, {
+      const bucket = await createBucket({
         themeName,
         templateKey,
         maxItems,

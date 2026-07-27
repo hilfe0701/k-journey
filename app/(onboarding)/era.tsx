@@ -8,7 +8,6 @@ import { Text, Button } from '../../src/components/ui';
 import { palette, space, radius, semantic, elevation } from '../../design-tokens';
 import { ERA_LIST } from '../../src/theme/eras';
 import { BYEONGPUNG_PANEL_IMAGES } from '../../src/components/byeongpung/motifs';
-import { useAuth } from '../../src/hooks/useAuth';
 import { useProfile } from '../../src/hooks/useProfile';
 import { updateUserProfile } from '../../src/lib/firebase';
 import { track } from '../../src/lib/posthog';
@@ -16,7 +15,6 @@ import { showOperationError } from '../../src/lib/errorAlert';
 
 export default function EraScreen() {
   const router = useRouter();
-  const { user } = useAuth();
   const { profile } = useProfile();
   const isEditing = !!profile?.onboardingCompletedAt;
   const [selected, setSelected] = useState<typeof ERA_LIST[number]['key']>(
@@ -25,13 +23,12 @@ export default function EraScreen() {
   const [saving, setSaving] = useState(false);
 
   async function handleStart() {
-    if (!user) return;
     setSaving(true);
     try {
       const previousEra = profile?.era ?? null;
-      const patch: Parameters<typeof updateUserProfile>[1] = { era: selected };
+      const patch: Parameters<typeof updateUserProfile>[0] = { era: selected };
       if (!isEditing) patch.onboardingCompletedAt = new Date().toISOString();
-      await updateUserProfile(user.uid, patch);
+      await updateUserProfile(patch);
       if (isEditing) {
         if (previousEra !== selected) {
           track('era_switch', { from: previousEra, to: selected });

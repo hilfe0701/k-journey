@@ -10,7 +10,6 @@ import { Text, Button, Badge } from '../../src/components/ui';
 import { palette, space, radius, categoryColors } from '../../design-tokens';
 import { missionById, Mission } from '../../src/data/missions';
 import { universityById, University } from '../../src/data/universities';
-import { useAuth } from '../../src/hooks/useAuth';
 import { useProfile } from '../../src/hooks/useProfile';
 import { useCompletedMissions } from '../../src/hooks/useCompletedMissions';
 import { useTotalCompletions } from '../../src/hooks/useTotalCompletions';
@@ -34,7 +33,6 @@ interface OverlayState {
 export default function MissionDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
   const { profile } = useProfile();
   const { set: completedSet } = useCompletedMissions();
   const { total: totalCompletions } = useTotalCompletions();
@@ -46,14 +44,13 @@ export default function MissionDetail() {
   const uni = profile?.university ? universityById(profile.university) : undefined;
 
   async function toggleComplete(m: NonNullable<typeof mission>) {
-    if (!user) return;
     const isCompleting = !completedSet.has(m.id);
     setBusy(true);
     try {
       if (isCompleting) {
         // Write first — celebration / panel-claim only fires on success so a
         // failed write doesn't burn the user's once-per-panel claim.
-        await markMissionComplete(user.uid, m.id);
+        await markMissionComplete(m.id);
         track('mission_complete', {
           missionId: m.id,
           phase: m.phase,
@@ -83,7 +80,7 @@ export default function MissionDetail() {
           panelImage,
         });
       } else {
-        await unmarkMission(user.uid, m.id);
+        await unmarkMission(m.id);
         track('mission_uncomplete', { missionId: m.id });
         router.back();
       }

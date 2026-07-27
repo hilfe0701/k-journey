@@ -6,10 +6,10 @@ import { ChevronLeft, Building2, Home as HomeIcon } from 'lucide-react-native';
 
 import { Text, Button, Input, Card, ProgressBar } from '../../src/components/ui';
 import { palette, space, radius, semantic } from '../../design-tokens';
-import { useAuth } from '../../src/hooks/useAuth';
 import { updateUserProfile } from '../../src/lib/firebase';
 import { UNIVERSITIES } from '../../src/data/universities';
 import { track } from '../../src/lib/posthog';
+import { showOperationError } from '../../src/lib/errorAlert';
 
 const STAY_TYPES = [
   { value: 'exchange-1', label: 'Exchange — 1 semester' },
@@ -25,7 +25,6 @@ const HOUSING_TYPES = [
 
 export default function ProfileSetup() {
   const router = useRouter();
-  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [universityId, setUniversityId] = useState<string | null>(null);
@@ -50,10 +49,9 @@ export default function ProfileSetup() {
       track('onboarding_step_complete', { step: 'profile_' + step });
       return;
     }
-    if (!user) return;
     setSaving(true);
     try {
-      await updateUserProfile(user.uid, {
+      await updateUserProfile({
         displayName: name.trim(),
         university: universityId,
         stayType,
@@ -61,6 +59,8 @@ export default function ProfileSetup() {
       });
       track('onboarding_step_complete', { step: 'profile_done' });
       router.push('/(onboarding)/dates');
+    } catch (err) {
+      showOperationError('save your profile', err, { onPrimary: handleNext });
     } finally {
       setSaving(false);
     }

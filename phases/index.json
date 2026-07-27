@@ -4,8 +4,9 @@
     {
       "dir": "p0-slice",
       "name": "P0 조건부 여정 오케스트레이션 슬라이스",
-      "status": "pending",
-      "basis": "DEC-028"
+      "status": "blocked",
+      "basis": "DEC-028",
+      "blocked_at": "2026-07-27T16:01:40+0900"
     }
   ]
 }

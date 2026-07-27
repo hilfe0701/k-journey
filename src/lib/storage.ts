@@ -3,7 +3,7 @@
  *   - Emergency content (must work offline)
  *   - Last-known user profile (offline first paint)
  *   - Onboarding progress (resume mid-flow if user closes app)
- *   - Local mission completion (synced to Firestore on reconnect)
+ *   - Local mission completion and bucket progress
  */
 
 import { MMKV } from 'react-native-mmkv';
@@ -15,12 +15,9 @@ export const KEYS = {
   profileCache: 'profile:cache:v1',
   onboardingProgress: 'onboarding:progress:v1',
   completedMissionsCache: 'missions:completed:v1',
+  bucketsCache: 'buckets:cache:v1',
   galleryDismissed: 'gallery:dismissed',
   phaseOverride: 'phase:override',
-  devMockAuth: 'dev:mockAuth',
-  devMockFreshOnboarding: 'dev:mockFreshOnboarding',
-  devMockMissions: 'dev:missions:v1',
-  devMockBuckets: 'dev:buckets:v1',
   lastSeenPhase: 'phase:lastSeen',
   lastFiredDDayMilestones: 'dday:firedMilestones:v1',
   firedPanelUnlocks: 'panel:fired:v1',

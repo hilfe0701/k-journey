@@ -23,10 +23,9 @@ import Constants from 'expo-constants';
 
 import { Text, Button } from '../../src/components/ui';
 import { palette, space, radius, semantic, elevation } from '../../design-tokens';
-import { useAuth } from '../../src/hooks/useAuth';
 import { useProfile } from '../../src/hooks/useProfile';
 import { updateUserProfile, type UserProfile } from '../../src/lib/firebase';
-import { deleteAccount } from '../../src/lib/accountDeletion';
+import { clearLocalJourneyData } from '../../src/lib/firebase';
 import { UNIVERSITIES } from '../../src/data/universities';
 import { ERA_LIST } from '../../src/theme/eras';
 import { BYEONGPUNG_PANEL_IMAGES } from '../../src/components/byeongpung/motifs';
@@ -41,21 +40,17 @@ import { showOperationError, surfaceError } from '../../src/lib/errorAlert';
 import { validateDates, validateName } from '../../src/lib/validation';
 import { emitError } from '../../src/lib/errors/host';
 import { ERROR_CATALOG } from '../../src/lib/errors/catalog';
-import { storage, KEYS } from '../../src/lib/storage';
 import { track } from '../../src/lib/posthog';
-import { hapticDestructive } from '../../src/lib/haptics';
 import { resetAhaMoment } from '../../src/components/onboarding/AhaMomentTour';
 
 type Section =
   | { key: 'notifications'; title: string; data: 'notifications'[] }
   | { key: 'era'; title: string; data: 'era'[] }
   | { key: 'profile'; title: string; data: 'profile'[] }
-  | { key: 'account'; title: string; data: 'account'[] }
   | { key: 'about'; title: string; data: 'about'[] };
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { signOut, user } = useAuth();
   const { profile } = useProfile();
   const [permission, setPermission] = useState<PermissionState | null>(null);
   const [openSheet, setOpenSheet] = useState<
@@ -65,9 +60,6 @@ export default function SettingsScreen() {
     | 'arrival'
     | 'departure'
     | 'era'
-    | 'signOut'
-    | 'deleteFirst'
-    | 'deleteFinal'
     | null
   >(null);
 
@@ -88,7 +80,6 @@ export default function SettingsScreen() {
       { key: 'notifications', title: 'Notifications', data: ['notifications'] },
       { key: 'era', title: 'Era theme', data: ['era'] },
       { key: 'profile', title: 'Your profile', data: ['profile'] },
-      { key: 'account', title: 'Account', data: ['account'] },
       { key: 'about', title: 'About', data: ['about'] },
     ],
     [],
@@ -197,36 +188,8 @@ export default function SettingsScreen() {
                   />
                 </View>
               );
-            case 'account':
-              return (
-                <View style={styles.card}>
-                  <SettingsRow
-                    label={user?.email ?? 'Signed in'}
-                    valueText=""
-                    readOnly
-                  />
-                  <SettingsRow
-                    label="Sign out"
-                    destructive
-                    onPress={() => {
-                      trackOpen('account');
-                      setOpenSheet('signOut');
-                    }}
-                  />
-                  <SettingsRow
-                    label="Delete account"
-                    destructive
-                    onPress={() => {
-                      trackOpen('account');
-                      track('account_delete_initiated', { stage: 'first-confirm' });
-                      setOpenSheet('deleteFirst');
-                    }}
-                    isLast
-                  />
-                </View>
-              );
             case 'about':
-              return <AboutSection onMount={() => trackOpen('about')} signOut={signOut} />;
+              return <AboutSection onMount={() => trackOpen('about')} />;
             default:
               return null;
           }
@@ -239,9 +202,8 @@ export default function SettingsScreen() {
         initial={profile?.displayName ?? ''}
         onClose={() => setOpenSheet(null)}
         onSave={async (next) => {
-          if (!user) return;
           try {
-            await updateUserProfile(user.uid, { displayName: next });
+            await updateUserProfile({ displayName: next });
             track('profile_field_change', { field: 'displayName' });
             setOpenSheet(null);
             surfaceError('profile-updated');
@@ -259,9 +221,8 @@ export default function SettingsScreen() {
         selected={profile?.university ?? null}
         onClose={() => setOpenSheet(null)}
         onSelect={async (value) => {
-          if (!user) return;
           try {
-            await updateUserProfile(user.uid, { university: value });
+            await updateUserProfile({ university: value });
             track('profile_field_change', { field: 'university' });
             setOpenSheet(null);
             surfaceError('profile-updated');
@@ -282,9 +243,8 @@ export default function SettingsScreen() {
         selected={profile?.housing ?? null}
         onClose={() => setOpenSheet(null)}
         onSelect={async (value) => {
-          if (!user) return;
           try {
-            await updateUserProfile(user.uid, { housing: value as 'dormitory' | 'off-campus' });
+            await updateUserProfile({ housing: value as 'dormitory' | 'off-campus' });
             track('profile_field_change', { field: 'housing' });
             setOpenSheet(null);
             surfaceError('profile-updated');
@@ -300,7 +260,7 @@ export default function SettingsScreen() {
         kind="arrival"
         profile={profile}
         onClose={() => setOpenSheet(null)}
-        onSave={(next) => handleDateSave(user, profile, 'arrival', next, setOpenSheet)}
+        onSave={(next) => handleDateSave(profile, 'arrival', next, setOpenSheet)}
       />
 
       {/* Departure date */}
@@ -309,7 +269,7 @@ export default function SettingsScreen() {
         kind="departure"
         profile={profile}
         onClose={() => setOpenSheet(null)}
-        onSave={(next) => handleDateSave(user, profile, 'departure', next, setOpenSheet)}
+        onSave={(next) => handleDateSave(profile, 'departure', next, setOpenSheet)}
       />
 
       {/* Era picker (uses existing onboarding route) */}
@@ -318,9 +278,8 @@ export default function SettingsScreen() {
         currentEra={profile?.era ?? 'joseon'}
         onClose={() => setOpenSheet(null)}
         onSelect={async (value) => {
-          if (!user) return;
           try {
-            await updateUserProfile(user.uid, { era: value });
+            await updateUserProfile({ era: value });
             track('era_switch', { from: profile?.era ?? null, to: value });
             setOpenSheet(null);
           } catch (err) {
@@ -329,81 +288,16 @@ export default function SettingsScreen() {
         }}
       />
 
-      {/* Sign out confirm */}
-      <ConfirmSheet
-        visible={openSheet === 'signOut'}
-        title="Sign out?"
-        body="Your byeongpung stays. You can sign back in to continue."
-        primary="Sign out"
-        primaryDestructive
-        onClose={() => setOpenSheet(null)}
-        onConfirm={async () => {
-          setOpenSheet(null);
-          try {
-            await signOut();
-          } catch (err) {
-            showOperationError('sign out', err);
-          }
-        }}
-      />
-
-      {/* Delete account — first confirm */}
-      <ConfirmSheet
-        visible={openSheet === 'deleteFirst'}
-        title="Delete your K-Journey account?"
-        body="This permanently removes your byeongpung, missions, and buckets. This can't be undone."
-        primary="Delete account"
-        primaryDestructive
-        onClose={() => setOpenSheet(null)}
-        onConfirm={() => {
-          track('account_delete_initiated', { stage: 'second-confirm' });
-          setOpenSheet('deleteFinal');
-        }}
-      />
-
-      {/* Delete account — final confirm */}
-      <ConfirmSheet
-        visible={openSheet === 'deleteFinal'}
-        title="One last check."
-        body="You'll sign in once more to confirm. Then your byeongpung, missions, and buckets are erased right away."
-        primary="Delete forever"
-        primaryDestructive
-        onClose={() => {
-          track('account_delete_initiated', { stage: 'cancelled' });
-          setOpenSheet(null);
-        }}
-        onConfirm={async () => {
-          if (!user) return;
-          try {
-            const deleted = await deleteAccount(user.uid);
-            if (!deleted) {
-              // User backed out of the re-auth prompt — nothing was deleted.
-              setOpenSheet(null);
-              return;
-            }
-            track('account_delete_initiated', { stage: 'committed' });
-            setOpenSheet(null);
-            // No signOut() here: deleteAccount already tore down the session
-            // (deleteUser → onAuthStateChanged(null) routes to sign-in). Calling
-            // signOut() now would throw auth/no-current-user.
-            surfaceError('account-deleted');
-          } catch (err) {
-            showOperationError('delete your account', err);
-          }
-        }}
-      />
     </SafeAreaView>
   );
 }
 
 async function handleDateSave(
-  user: { uid: string } | null,
   profile: UserProfile | null,
   kind: 'arrival' | 'departure',
   next: string,
   setOpenSheet: (v: null) => void,
 ) {
-  if (!user) return;
   const arrival = kind === 'arrival' ? next : profile?.arrivalDate ?? null;
   const departure = kind === 'departure' ? next : profile?.departureDate ?? null;
   if (arrival && departure) {
@@ -423,7 +317,7 @@ async function handleDateSave(
     departureDate: profile?.departureDate ?? null,
   });
   try {
-    await updateUserProfile(user.uid, {
+    await updateUserProfile({
       [kind === 'arrival' ? 'arrivalDate' : 'departureDate']: next,
     });
     track('profile_field_change', { field: kind === 'arrival' ? 'arrivalDate' : 'departureDate' });
@@ -623,13 +517,7 @@ function ToggleRow({
   );
 }
 
-function AboutSection({
-  onMount,
-  signOut,
-}: {
-  onMount: () => void;
-  signOut: () => Promise<void>;
-}) {
+function AboutSection({ onMount }: { onMount: () => void }) {
   useEffect(() => onMount(), [onMount]);
   const version =
     Constants.expoConfig?.version ?? Constants.manifest2?.extra?.expoClient?.version ?? '0.0.0';
@@ -666,23 +554,9 @@ function AboutSection({
           <SettingsRow
             label="[Dev] Fresh onboarding"
             destructive
-            onPress={async () => {
-              storage.set(KEYS.devMockFreshOnboarding, true);
-              storage.delete(KEYS.profileCache);
-              storage.delete(KEYS.devMockMissions);
-              storage.delete(KEYS.devMockBuckets);
-              storage.delete(KEYS.firedPanelUnlocks);
-              storage.delete(KEYS.phaseOverride);
-              resetAhaMoment();
-              await signOut();
-            }}
-          />
-          <SettingsRow
-            label="[Dev] Skip auth"
-            valueText={storage.getBoolean(KEYS.devMockAuth) ? 'On' : 'Off'}
             onPress={() => {
-              const current = storage.getBoolean(KEYS.devMockAuth) ?? false;
-              storage.set(KEYS.devMockAuth, !current);
+              clearLocalJourneyData();
+              resetAhaMoment();
             }}
             isLast
           />
@@ -926,64 +800,6 @@ function EraSheet({
           );
         })}
         <Button label="Use this era" fullWidth onPress={() => onSelect(pending)} />
-      </View>
-    </SheetFrame>
-  );
-}
-
-function ConfirmSheet({
-  visible,
-  title,
-  body,
-  primary,
-  primaryDestructive,
-  onClose,
-  onConfirm,
-}: {
-  visible: boolean;
-  title: string;
-  body: string;
-  primary: string;
-  primaryDestructive?: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <SheetFrame visible={visible} title={title} onClose={onClose}>
-      <Text role="body" color={palette.meokMid}>
-        {body}
-      </Text>
-      <View style={{ flexDirection: 'row', gap: space[3], marginTop: space[4] }}>
-        <Pressable
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel="Cancel"
-          style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.85 : 1 }]}
-        >
-          <Text role="body" weight="semibold" color={palette.meok}>
-            Cancel
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => {
-            // ADR-0030: a Warning haptic on every destructive confirm tap.
-            if (primaryDestructive) hapticDestructive();
-            onConfirm();
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={primary}
-          style={({ pressed }) => [
-            styles.confirmBtn,
-            {
-              backgroundColor: primaryDestructive ? palette.dancheong : palette.meok,
-              opacity: pressed ? 0.85 : 1,
-            },
-          ]}
-        >
-          <Text role="body" weight="semibold" color={palette.hanji}>
-            {primary}
-          </Text>
-        </Pressable>
       </View>
     </SheetFrame>
   );

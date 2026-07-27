@@ -4,9 +4,8 @@ import { palette } from '../../../design-tokens';
 import { useNetwork } from '../../state/useNetwork';
 
 /**
- * A small, calm offline dot for the header (ADR-0031). Muted ash, never the
- * alarm-red dancheong — offline is a state, not an error. The matching toast
- * (useNetworkToasts) carries the announcement; this dot is the persistent cue.
+ * A small, calm offline dot for the header. Muted ash, never the alarm-red
+ * dancheong — offline is a state, not an error.
  */
 export function NetworkIndicator() {
   const { isConnected } = useNetwork();

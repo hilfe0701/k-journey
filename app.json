@@ -40,7 +40,6 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-apple-authentication",
       [
         "expo-splash-screen",
         {
@@ -63,7 +62,6 @@
         }
       ],
       "@react-native-firebase/app",
-      "@react-native-firebase/auth",
       "@react-native-firebase/crashlytics",
       [
         "expo-notifications",

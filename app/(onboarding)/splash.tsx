@@ -10,7 +10,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Text } from '../../src/components/ui';
 import { palette, motion } from '../../design-tokens';
-import { useAuth } from '../../src/hooks/useAuth';
 import { useProfile } from '../../src/hooks/useProfile';
 
 const PANEL_COLORS = [
@@ -26,8 +25,7 @@ const PANEL_COLORS = [
 
 export default function Splash() {
   const router = useRouter();
-  const { initializing, user } = useAuth();
-  const { profile } = useProfile();
+  const { loading, profile } = useProfile();
   const titleOpacity = useSharedValue(0);
   const taglineOpacity = useSharedValue(0);
 
@@ -36,10 +34,8 @@ export default function Splash() {
     taglineOpacity.value = withDelay(1200, withTiming(1, { duration: 600 }));
 
     const timer = setTimeout(() => {
-      if (initializing) return;
-      if (!user) {
-        router.replace('/(onboarding)/sign-in');
-      } else if (profile?.onboardingCompletedAt) {
+      if (loading) return;
+      if (profile?.onboardingCompletedAt) {
         router.replace('/(tabs)');
       } else {
         router.replace('/(onboarding)/profile');
@@ -47,7 +43,7 @@ export default function Splash() {
     }, motion.splashTotal);
 
     return () => clearTimeout(timer);
-  }, [initializing, user, profile, router, titleOpacity, taglineOpacity]);
+  }, [loading, profile, router, titleOpacity, taglineOpacity]);
 
   const titleStyle = useAnimatedStyle(() => ({ opacity: titleOpacity.value }));
   const taglineStyle = useAnimatedStyle(() => ({ opacity: taglineOpacity.value }));

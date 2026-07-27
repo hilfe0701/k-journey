@@ -18,7 +18,6 @@ import { Text, Input, Button, ProgressBar, Badge, EmptyState } from '../../src/c
 import { palette, space, radius } from '../../design-tokens';
 import { BUCKET_TEMPLATES } from '../../src/data/bucketTemplates';
 import { BUCKET_TEMPLATE_IMAGES } from '../../src/components/byeongpung/motifs';
-import { useAuth } from '../../src/hooks/useAuth';
 import { useBucket } from '../../src/hooks/useBuckets';
 import { useTotalCompletions } from '../../src/hooks/useTotalCompletions';
 import { useTheme } from '../../src/theme/ThemeProvider';
@@ -45,7 +44,6 @@ interface OverlayState {
 export default function BucketDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
   const { bucket, loading } = useBucket(id);
   const { total: totalCompletions } = useTotalCompletions();
   const theme = useTheme();
@@ -105,11 +103,11 @@ export default function BucketDetail() {
   const canAdd = bucket.items.length < bucket.maxItems;
 
   async function handleAdd() {
-    if (!user || !bucket || !draft.trim() || !canAdd) return;
+    if (!bucket || !draft.trim() || !canAdd) return;
     const text = draft.trim();
     setDraft('');
     try {
-      await addBucketItem(user.uid, bucket.id, text);
+      await addBucketItem(bucket.id, text);
     } catch (err) {
       setDraft(text);
       showOperationError('add this item', err);
@@ -117,10 +115,10 @@ export default function BucketDetail() {
   }
 
   async function handleToggle(itemId: string) {
-    if (!user || !bucket) return;
+    if (!bucket) return;
     setBusyItem(itemId);
     try {
-      const result = await toggleBucketItem(user.uid, bucket.id, itemId);
+      const result = await toggleBucketItem(bucket.id, itemId);
       if (!result) return;
       if (!result.wasCompleted) {
         // Newly checked — fire analytics + maybe panel unlock
@@ -154,16 +152,16 @@ export default function BucketDetail() {
   }
 
   async function handleDeleteItem(itemId: string) {
-    if (!user || !bucket) return;
+    if (!bucket) return;
     try {
-      await deleteBucketItem(user.uid, bucket.id, itemId);
+      await deleteBucketItem(bucket.id, itemId);
     } catch (err) {
       showOperationError('delete this item', err);
     }
   }
 
   function handleDeleteBucket() {
-    if (!user || !bucket) return;
+    if (!bucket) return;
     Alert.alert(
       'Delete this bucket?',
       'This removes the bucket and all items. The painting progress is lost.',
@@ -175,7 +173,7 @@ export default function BucketDetail() {
           onPress: async () => {
             hapticDestructive();
             try {
-              await deleteBucket(user.uid, bucket.id);
+              await deleteBucket(bucket.id);
               router.back();
             } catch (err) {
               showOperationError('delete this bucket', err);
