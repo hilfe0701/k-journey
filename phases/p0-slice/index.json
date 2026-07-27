@@ -32,11 +32,14 @@
     {
       "step": 3,
       "name": "onboarding-condition-input",
-      "summary": "",
-      "status": "pending",
+      "summary": "ONB-02~ONB-08 순차 라우트와 UNKNOWN 선택, 로컬 UserProfile 축 저장, MMKV 진행 지점 복원, 날짜 3축 입력, 저장/복원 테스트를 구현하고 npm ci·npm run check·expo web export를 통과함; not done: 브라우저 관통 판정은 샌드박스의 localhost 접근 제한으로 별도 브라우저 레인에 위임, ONB-01·홈 상태·태스크 상세·출처 모델·I02·디자인 시스템 재작성은 각 후속 step/범위 밖, residenceCardStatus는 정본 화면 인벤토리에 별도 입력 화면이 없어 UNKNOWN 유지, REQ-P0-02의 미확정 분기 로직과 legacy gallery/byeongpung empty state는 구현하지 않음.",
+      "status": "completed",
       "docs": [
         "EMPTY_STATES"
-      ]
+      ],
+      "started_at": "2026-07-27T16:40:07+0900",
+      "completed_at": "2026-07-27T16:58:53+0900",
+      "verified_by": "Codex — npm ci · npm run check · npx expo export --platform web"
     },
     {
       "step": 4,
