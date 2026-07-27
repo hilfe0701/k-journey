@@ -1,3 +1,4 @@
+// Screen ID: ONB-04 — Housing and contract holder.
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -20,6 +21,7 @@ import { track } from '../../src/lib/posthog';
 import { space } from '../../design-tokens';
 import { Text } from '../../src/components/ui';
 
+// REQ-DAR-001 · REQ-DAR-005 · POL-003: collect the four housing types and contract holder.
 const HOUSING_OPTIONS = [
   { value: 'dormitory', label: 'University dormitory' },
   { value: 'own_lease', label: 'Private lease' },

@@ -27,6 +27,7 @@ const profile: ConditionProfile = {
 };
 
 describe('condition axes', () => {
+  // REQ-TER-001 · TC-156 · TC-157 · TC-158 · TC-159: condition-axis combinations.
   it('declares the ten glossary groups, including the three date fields', () => {
     expect(CONDITION_AXIS_GROUPS).toHaveLength(10);
     expect(CONDITION_AXES).toEqual([
@@ -105,6 +106,7 @@ describe('housing × contract-holder rules', () => {
   ] as const;
   const contractHolders = ['self', 'third_party', 'none', 'undecided', 'n_a'] as const;
 
+  // REQ-SFR-001 · POL-003 · POL-006 · TC-001 · TC-003 · TC-005 · TC-101.
   it('evaluates all 4 × 5 explicit combinations without a default value', () => {
     for (const housingType of housingTypes) {
       for (const contractHolder of contractHolders) {
@@ -123,6 +125,7 @@ describe('housing × contract-holder rules', () => {
     expect(evaluateHousingContract('registered_business', 'n_a').status).toBe('applicable');
   });
 
+  // REQ-SFR-001 · POL-006 · TC-002.
   it('returns a reason and final authority for unknown or undecided combinations', () => {
     const unknown = evaluateHousingContract(UNKNOWN, UNKNOWN);
     const undecided = evaluateHousingContract('own_lease', 'undecided');
@@ -195,6 +198,7 @@ describe('visa and stay-day boundaries', () => {
     },
   );
 
+  // REQ-SFR-011 · POL-006 · TC-051 · TC-052.
   it('uses the confirmed 28-day boundary for Yonsei group registration', () => {
     expect(evaluateGroupRegistration({ ...profile, totalStayDays: 27 }).status).toBe(
       'locked_permanent',

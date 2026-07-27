@@ -1,3 +1,4 @@
+// Screen IDs: TASK-00 (Task Detail); regions TASK-01 through TASK-04.
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -388,6 +389,7 @@ function StatusSection({
   );
 }
 
+/** REQ-DAR-002 · REQ-DAR-006 · REQ-DAR-007 · REQ-COR-001 · REQ-COR-004 · TASK-03. */
 function SourceSection({ metadata }: { metadata: TaskMetadata }) {
   const source = metadata.source;
   const reviewDue = isSourceReviewDue(source);
@@ -618,6 +620,7 @@ function AddressMatchQuestion({
   );
 }
 
+/** REQ-SFR-008 · REQ-SFR-010 · TASK-02 · POL-006 · POL-007. */
 function PhotoSpecificationSection() {
   return (
     <View style={styles.section}>

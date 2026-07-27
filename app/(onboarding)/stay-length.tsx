@@ -1,3 +1,4 @@
+// Screen ID: ONB-05 — Stay length.
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -36,6 +37,7 @@ export default function StayLengthScreen() {
   }, [profile, profileTotalStayDays]);
 
   const parsedDays = Number(stayDays);
+  // REQ-DAR-003 · REQ-QUR-002 · POL-003: validate and label stay length explicitly.
   const hasValidDays = /^\d+$/.test(stayDays) && Number.isInteger(parsedDays) && parsedDays >= 0;
   const canContinue = unknown || hasValidDays;
 

@@ -12,6 +12,7 @@ describe('onboarding progress', () => {
     storage.clearAll();
   });
 
+  // REQ-TER-003 · POL-001 · TC-133.
   it('restores the current route after a cold start', () => {
     setOnboardingProgress('housing');
 
@@ -36,6 +37,7 @@ describe('onboarding condition persistence', () => {
     storage.clearAll();
   });
 
+  // REQ-DAR-001 · REQ-DAR-003 · REQ-DAR-004 · REQ-DAR-005 · POL-003 · TC-061 · TC-073 · TC-079 · TC-085.
   it('stores every condition axis locally, including explicit unknown values', async () => {
     await updateUserProfile({
       universityId: 'yonsei',

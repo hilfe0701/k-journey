@@ -1,3 +1,4 @@
+// Screen ID: ONB-08 — Optional era choice.
 import React, { useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';

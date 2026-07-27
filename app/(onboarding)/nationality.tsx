@@ -1,3 +1,4 @@
+// Screen ID: ONB-06 — Nationality and home-country insurance.
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -16,6 +17,7 @@ import { setOnboardingProgress } from '../../src/lib/storage';
 import { showOperationError } from '../../src/lib/errorAlert';
 import { track } from '../../src/lib/posthog';
 
+// REQ-DAR-004 · POL-003 · POL-005: collect the minimum NHIS exclusion inputs.
 const INSURANCE_OPTIONS = [
   { value: 'yes', label: 'Yes' },
   { value: 'no', label: 'No' },

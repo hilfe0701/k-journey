@@ -26,6 +26,7 @@ const profile: ConditionProfile = {
 };
 
 describe('task state axes', () => {
+  // REQ-TER-002 · TC-102 · TC-108: confirmed error-state boundaries only.
   it('contains the seven meaning states and only the three confirmed error states', () => {
     expect(TASK_STATES).toHaveLength(7);
     expect(TASK_ERROR_STATES).toEqual([
@@ -39,6 +40,7 @@ describe('task state axes', () => {
     ]);
   });
 
+  // REQ-DAR-006 · POL-007 · TC-125.
   it('attaches the complete provenance model to every administrative task', () => {
     for (const task of TASK_METADATA) {
       expect(Object.keys(task.source).sort()).toEqual([
@@ -60,6 +62,7 @@ describe('task state axes', () => {
     }
   });
 
+  // REQ-DAR-008 · POL-007 · TC-129.
   it('marks a known review date due in KST and leaves unknown dates unresolved', () => {
     const now = toKstStartOfDay('2026-07-27');
 
@@ -69,6 +72,7 @@ describe('task state axes', () => {
     expect(isSourceReviewDue({ reviewAfter: null }, now)).toBe(false);
   });
 
+  // REQ-DAR-007 · POL-008 · TC-127.
   it('preserves all four fee values instead of selecting a single amount', () => {
     const registration = TASK_METADATA.find((task) => task.taskId === 'residence-registration');
     expect(registration?.source.conflictValues.map((entry) => entry.value)).toEqual([
@@ -81,6 +85,7 @@ describe('task state axes', () => {
 });
 
 describe('evaluateTasks', () => {
+  // REQ-SFR-004 · POL-005 · TC-016 · TC-017 · TC-155.
   it('returns review_required for unknown appliesWhen inputs', () => {
     const result = evaluateTasks(
       [
@@ -127,6 +132,7 @@ describe('evaluateTasks', () => {
     });
   });
 
+  // REQ-SFR-003 · POL-004 · POL-006 · TC-011 · TC-144.
   it('locks tasks until every dependency is completed', () => {
     const definitions = [
       { taskId: 'appointment' },
@@ -142,6 +148,7 @@ describe('evaluateTasks', () => {
     ).toBe('available');
   });
 
+  // REQ-PER-002 · POL-003 · TC-112 · TC-152.
   it('preserves a completed task and asks for review after a relevant condition changes', () => {
     const previous = profile;
     const next = { ...profile, housingType: 'registered_business' as const };
@@ -191,6 +198,7 @@ describe('evaluateTasks', () => {
 });
 
 describe('task transitions', () => {
+  // REQ-TER-002 · TC-145 · TC-146 · TC-147 · TC-148 · TC-153 · TC-154.
   it.each([
     ['available', 'start', 'in_progress'],
     ['in_progress', 'complete', 'completed'],
@@ -205,6 +213,7 @@ describe('task transitions', () => {
     });
   });
 
+  // REQ-SFR-004 · REQ-SFR-011 · POL-005 · POL-006 · TC-149 · TC-151.
   it('rejects user actions on blocked and not-applicable tasks', () => {
     expect(transitionTaskState('locked', 'start')).toMatchObject({
       state: 'locked',

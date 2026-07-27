@@ -4,6 +4,7 @@ import { storage } from '../../lib/storage';
 // MMKV is mocked in jest.setup.js to an in-memory map.
 
 describe('calcPhase', () => {
+  // REQ-SFR-005 · POL-009 · ONB-07 · HOME-02 · TC-021 · TC-022 · TC-023 · TC-025.
   beforeEach(() => {
     storage.clearAll();
   });

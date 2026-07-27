@@ -21,6 +21,7 @@ export interface PhaseInputs {
  * Manual override is stored in MMKV under `phase:override`. When set, it wins
  * until the user clears it. Used to preview adjacent phases.
  */
+/** REQ-SFR-005 · POL-009 · ONB-07/HOME-02: derive the KST date phase. */
 export function calcPhase({ arrivalDate, departureDate, today }: PhaseInputs): Phase {
   const override = storage.getNumber(KEYS.phaseOverride);
   if (override === 1 || override === 2 || override === 3 || override === 4) {

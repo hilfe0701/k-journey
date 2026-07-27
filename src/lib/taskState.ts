@@ -162,7 +162,10 @@ const UNCONFIRMED_SOURCE: TaskSourceMetadata = {
   conflictValues: [],
 };
 
-/** Shared labels for the task page and Journey Home cards. */
+/**
+ * REQ-DAR-002 · REQ-DAR-006 · REQ-DAR-007 · POL-007 · POL-008:
+ * shared task metadata for TASK-03 and Journey Home source evidence.
+ */
 export const TASK_METADATA: readonly TaskMetadata[] = [
   {
     taskId: 'residence-registration',
@@ -196,7 +199,7 @@ export function taskMetadata(taskId: string): TaskMetadata | undefined {
   return TASK_METADATA.find((task) => task.taskId === taskId);
 }
 
-/** Returns true only when a known review date is today or earlier in KST. */
+/** REQ-DAR-008 · POL-007: a known source review date is due in KST. */
 export function isSourceReviewDue(
   source: Pick<TaskSourceMetadata, 'reviewAfter'>,
   now: Date = kstNow(),
@@ -431,7 +434,10 @@ function evaluateTask(
   return { taskId: definition.taskId, state: 'available', errorState, completedAt };
 }
 
-/** Re-evaluates the full task set from local conditions and progress. */
+/**
+ * REQ-SFR-003 · REQ-SFR-004 · REQ-SFR-011 · POL-004 · POL-005 · POL-006:
+ * derive available, blocked, not-applicable, and review-required task states.
+ */
 export function evaluateTasks(
   definitions: readonly TaskDefinition[],
   profile: ConditionProfile,
@@ -444,7 +450,7 @@ export function evaluateTasks(
   );
 }
 
-/** Named entry point for condition-change callers; verdicts remain derived. */
+/** REQ-PER-002 · POL-003 · TC-112 · TC-113: re-evaluate after a profile change. */
 export function reevaluateTasks(
   definitions: readonly TaskDefinition[],
   profile: ConditionProfile,

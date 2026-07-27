@@ -175,6 +175,7 @@ export function saveTaskProgress(progress: LocalTaskProgress): void {
 }
 
 export async function updateUserProfile(patch: Partial<UserProfile>): Promise<void> {
+  // REQ-DAR-001 · REQ-DAR-003 · REQ-DAR-005 · POL-003: persist condition axes locally.
   const current = getJson<UserProfile>(KEYS.profileCache) ?? EMPTY_PROFILE;
   setJson(KEYS.profileCache, { ...current, ...patch, uid: LOCAL_PROFILE_ID });
 }

@@ -59,6 +59,7 @@ export function remove(key: string) {
 }
 
 export function setOnboardingProgress(currentRoute: OnboardingRoute): void {
+  // REQ-TER-003 · POL-001 · TC-133: preserve the interrupted onboarding route locally.
   setJson<OnboardingProgress>(KEYS.onboardingProgress, { currentRoute });
 }
 

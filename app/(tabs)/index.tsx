@@ -1,3 +1,4 @@
+// Screen IDs: HOME-00 (Journey Home); regions HOME-01 through HOME-07.
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -227,6 +228,7 @@ function CurrentPhaseCard({
   );
 }
 
+/** REQ-SFR-005 · POL-009 · HOME-02: show the arrival-plus-90-day deadline. */
 function RegistrationDeadlineCard({ arrivalDate }: { arrivalDate: string | null }) {
   if (!arrivalDate) {
     return (
@@ -287,6 +289,7 @@ function RegistrationDeadlineCard({ arrivalDate }: { arrivalDate: string | null 
   );
 }
 
+/** REQ-SFR-006 · REQ-SFR-002 · POL-006 · POL-009 · HOME-03. */
 function DepartureLockCard() {
   return (
     <Card padded bg={palette.dancheongLight} style={styles.warningCard}>
@@ -477,6 +480,8 @@ export function buildHomeTasks(
   progress: LocalTaskProgress,
   phase: Phase | null,
 ): HomeTask[] {
+  // REQ-SFR-003 · REQ-SFR-004 · REQ-SFR-011 · POL-004 · POL-005 · POL-006:
+  // expose available, blocked, and not-applicable tasks with reasons.
   const registration = evaluateResidenceRegistration(profile);
   const housing = evaluateHousingContract(profile.housingType, profile.contractHolder);
   const groupRegistration = evaluateGroupRegistration(profile);
@@ -639,6 +644,7 @@ function knownDate(value: string | null | undefined): string | null {
 }
 
 function shouldShowDepartureLock(profile: UserProfile): boolean {
+  // REQ-SFR-006 · HOME-03: the warning is text-based, not color-only.
   return (
     profile.visaTypeOrStatus === 'D-2-8' &&
     profile.residenceCardStatus !== 'issued' &&

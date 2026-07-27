@@ -1,3 +1,4 @@
+// Screen ID: ONB-07 — Arrival and departure dates.
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';

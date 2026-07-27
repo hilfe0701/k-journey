@@ -236,6 +236,7 @@ export function changedConditionAxes(
   previous: ConditionProfile,
   next: ConditionProfile,
 ): ConditionAxis[] {
+  // REQ-TER-001 · POL-003: condition changes are derived from the full axis set.
   return CONDITION_AXES.filter((axis) => previous[axis] !== next[axis]);
 }
 
@@ -255,7 +256,7 @@ export function validateConditionProfile(profile: ConditionProfile): ConditionVa
   return { valid: invalidFields.length === 0, invalidFields };
 }
 
-/** REQ-SFR-001's four housing × five contract-holder matrix. */
+/** REQ-SFR-001 · POL-003 · POL-006: four housing × five contract-holder matrix. */
 export function evaluateHousingContract(
   housingType: HousingType,
   contractHolder: ContractHolder,
@@ -410,7 +411,10 @@ export function getHousingProofDocuments(
   };
 }
 
-/** REQ-SFR-005 and the DEC-021 28-day boundary, kept as separate rules. */
+/**
+ * REQ-SFR-005 · POL-009: calculate the 90-day registration deadline rule.
+ * REQ-SFR-011 · POL-006: keep the university-specific group-registration rule separate.
+ */
 export function evaluateResidenceRegistration(profile: ConditionProfile): RuleVerdict {
   const totalStayDays = profile.totalStayDays;
   const visa = profile.visaTypeOrStatus;
