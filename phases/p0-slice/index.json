@@ -44,11 +44,14 @@
     {
       "step": 4,
       "name": "journey-home-states",
-      "summary": "",
-      "status": "pending",
+      "summary": "HOME-00~07을 조건 엔진 기반 홈으로 구현해 Available·Blocked·Not applicable 분리, 차단 사유·공식 근거, 입국일+90일 기한, 기준일 불명, 출국 잠금 경고, 조건 변경 재계산을 반영함; not done: TASK 상세·출처 확인일/충돌 경고·콘텐츠 값·푸시·legacy 문화 미션/병풍/갤러리 연결은 각 후속 step 또는 DEC-024 범위 밖이라 구현하지 않음.",
+      "status": "completed",
       "docs": [
         "EMPTY_STATES"
-      ]
+      ],
+      "started_at": "2026-07-27T16:58:53+0900",
+      "completed_at": "2026-07-27T17:09:20+0900",
+      "verified_by": "Codex — npm run check · npx expo export --platform web · git diff --check"
     },
     {
       "step": 5,
