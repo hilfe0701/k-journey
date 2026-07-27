@@ -53,6 +53,7 @@ grep -rn "totalStayDays *< *30\|totalStayDays *>= *30" src/    # 0건이어야 �
 - [ ] `28` 경계 테스트가 있고 `30` 경계 테스트가 **없다**(`DEC-021`)
 - [ ] `not_applicable` 판정이 **사유 문자열을 함께 반환**한다
 - [ ] 새 테스트 포함 `jest` 전건 통과
+- [ ] **`npx expo export --platform web`이 성공한다** — `DEC-029` 검증 ③-a(executor 몫 · 번들 성립). ⚠️ **번들 성공 ≠ 실행이다**: 브라우저 콘솔 error 0건은 ③-b(브라우저 레인)가 step 6·8 종료 시 잰다
 
 ## ⛔ 이 step이 하지 않는 것
 

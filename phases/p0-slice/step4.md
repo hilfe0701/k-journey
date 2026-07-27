@@ -40,6 +40,7 @@ npm run typecheck && npm run lint && npm test
 - [ ] `arrivalDate`를 넣으면 `HOME-02`에 **`입국일 + 90일`** 날짜가 실제로 계산돼 나온다
 - [ ] 온보딩 조건을 바꾸면 홈의 태스크 묶음이 **재계산**된다
 - [ ] `jest` 전건 통과
+- [ ] **`npx expo export --platform web`이 성공한다** — `DEC-029` 검증 ③-a(executor 몫 · 번들 성립). ⚠️ **번들 성공 ≠ 실행이다**: 브라우저 콘솔 error 0건은 ③-b(브라우저 레인)가 step 6·8 종료 시 잰다
 
 ## ⛔ 이 step이 하지 않는 것
 

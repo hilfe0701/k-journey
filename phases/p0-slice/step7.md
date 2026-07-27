@@ -52,6 +52,7 @@ npm run typecheck && npm run lint && npm test
 - [ ] 위 정정 4건이 콘텐츠에 **반영돼 있다**(재도입 0건)
 - [ ] 감사 결과를 **`.work/audit-log.md`에 표로 남긴다** — 항목 · 판정(유지/수정/삭제/참고정보) · 근거 URL · 확인일
 - [ ] `jest` 전건 통과
+- [ ] **`npx expo export --platform web`이 성공한다** — `DEC-029` 검증 ③-a(executor 몫 · 번들 성립). ⚠️ **번들 성공 ≠ 실행이다**: 브라우저 콘솔 error 0건은 ③-b(브라우저 레인)가 step 6·8 종료 시 잰다
 
 ## ⛔ 이 step이 하지 않는 것
 

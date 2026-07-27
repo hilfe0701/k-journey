@@ -7,7 +7,9 @@ import {
   evaluateHousingContract,
   getHousingProofDocuments,
   evaluateResidenceRegistration,
+  isUnknownConditionValue,
   validateConditionProfile,
+  type RuleVerdict,
 } from '../conditionRules';
 import { UNKNOWN, type ConditionProfile } from '../firebase';
 
@@ -232,5 +234,141 @@ describe('visa and stay-day boundaries', () => {
       expect(result.reason).toBeTruthy();
       expect(result.sourceUrl).toMatch(/^https:\/\//);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 속성 기반 불변식 INV-1 ~ INV-4
+//
+// 명세: k-journey/42-k-journey-nonfunctional-acceptance-2026-07-26.md §4
+// 이 블록이 생긴 이유:
+//   TC-156~159 네 ID가 이 파일 30행의 주석 한 줄에만 있었고, 그 밑 테스트는
+//   축 이름 assertion이라 조합을 돌지 않았다. "ID가 있다"가 "검증이 있다"로
+//   읽히고 있었다 — 47-k-journey-role-review-unscored-dec-round2-2026-07-27.md §2.2 ★12.
+//   판단 기록은 31-k-journey-decision-log-2026-07-25.md DEC-034.
+// ---------------------------------------------------------------------------
+
+const HOUSING_TYPES = [
+  'dormitory',
+  'own_lease',
+  'third_party_lease',
+  'registered_business',
+  UNKNOWN,
+] as const;
+
+const CONTRACT_HOLDERS = ['self', 'third_party', 'none', 'undecided', 'n_a', UNKNOWN] as const;
+
+const VISA_STATUSES = ['D-2-6', 'D-2-8', 'visa_free', 'other', UNKNOWN] as const;
+
+// 경계를 고른 이유: DEC-021이 정한 28일 경계(< 28 확정 차단 / >= 28 판정 보류)와
+// REQ-DAR-003의 90일 경계 양쪽을 건드린다. 임의의 값을 늘리는 것보다 경계가 잡는다.
+const STAY_DAYS = [0, 27, 28, 29, 90, 91, 120, UNKNOWN] as const;
+
+// 값은 conditionRules.ts 의 RuleVerdict 유니온에서 그대로 가져온다.
+// 처음에 'permanent_block' 으로 적었다가 이 순회가 틀렸다고 알려 주었다 — 실제 리터럴은 'locked_permanent' 다.
+const RULE_STATUSES = ['applicable', 'not_applicable', 'review_required', 'locked_permanent'];
+
+/** 조합 순회 — 5 × 6 × 5 × 8 = 1200개 프로파일. */
+function* everyCombination(): Generator<ConditionProfile> {
+  for (const housingType of HOUSING_TYPES) {
+    for (const contractHolder of CONTRACT_HOLDERS) {
+      for (const visaTypeOrStatus of VISA_STATUSES) {
+        for (const totalStayDays of STAY_DAYS) {
+          yield { ...profile, housingType, contractHolder, visaTypeOrStatus, totalStayDays };
+        }
+      }
+    }
+  }
+}
+
+const EVALUATORS: ReadonlyArray<[string, (p: ConditionProfile) => RuleVerdict]> = [
+  ['evaluateResidenceRegistration', evaluateResidenceRegistration],
+  ['evaluateGroupRegistration', evaluateGroupRegistration],
+];
+
+describe('INV-1 ~ INV-4: property-based invariants over condition combinations', () => {
+  it('TC-156 / INV-1: every combination yields exactly one known verdict', () => {
+    const offenders: string[] = [];
+    let checked = 0;
+
+    for (const candidate of everyCombination()) {
+      for (const [name, evaluate] of EVALUATORS) {
+        const verdict = evaluate(candidate);
+        checked += 1;
+        if (!verdict || !RULE_STATUSES.includes(verdict.status)) {
+          offenders.push(`${name}: ${JSON.stringify(candidate)} -> ${JSON.stringify(verdict)}`);
+        }
+      }
+    }
+
+    // 미판정 0건 · 5종 외 결과 0건 (42 §4 TC-156 기대)
+    expect(offenders).toEqual([]);
+    expect(checked).toBe(1200 * EVALUATORS.length);
+  });
+
+  it('TC-157 / INV-2: an unknown axis never yields an applicable verdict for rules that depend on it', () => {
+    const offenders: string[] = [];
+
+    for (const candidate of everyCombination()) {
+      for (const [name, evaluate] of EVALUATORS) {
+        const verdict = evaluate(candidate);
+        if (verdict.status !== 'applicable') continue;
+        // applicable 로 판정했다면, 그 판정이 읽은 축 중 미확인이 있으면 안 된다.
+        if (isUnknownConditionValue(candidate.totalStayDays)) {
+          offenders.push(`${name}: applicable with unknown totalStayDays`);
+        }
+        if (name === 'evaluateResidenceRegistration' && isUnknownConditionValue(candidate.visaTypeOrStatus)) {
+          offenders.push(`${name}: applicable with unknown visaTypeOrStatus`);
+        }
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('TC-158 / INV-3: not_applicable and permanent_block always carry a reason and a source or final authority', () => {
+    const offenders: string[] = [];
+    let seenNotApplicable = 0;
+    let seenPermanentBlock = 0;
+
+    for (const candidate of everyCombination()) {
+      for (const [name, evaluate] of EVALUATORS) {
+        const verdict = evaluate(candidate);
+        if (verdict.status !== 'not_applicable' && verdict.status !== 'locked_permanent') continue;
+
+        if (verdict.status === 'not_applicable') seenNotApplicable += 1;
+        else seenPermanentBlock += 1;
+
+        const grounded =
+          Boolean((verdict as { sourceUrl?: string }).sourceUrl) ||
+          Boolean((verdict as { finalAuthority?: string }).finalAuthority);
+        if (!verdict.reason || !grounded) {
+          offenders.push(`${name}: ${verdict.status} without reason/source — ${JSON.stringify(candidate)}`);
+        }
+      }
+    }
+
+    expect(offenders).toEqual([]);
+    // 순회가 실제로 두 상태를 만들었는지 확인한다. 0건이면 이 테스트는 아무것도 보지 않은 것이다.
+    expect(seenNotApplicable).toBeGreaterThan(0);
+    expect(seenPermanentBlock).toBeGreaterThan(0);
+  });
+
+  it('TC-159 / INV-4: the same input yields the same verdict across 10 runs', () => {
+    const offenders: string[] = [];
+
+    for (const candidate of everyCombination()) {
+      for (const [name, evaluate] of EVALUATORS) {
+        const first = JSON.stringify(evaluate(candidate));
+        for (let run = 2; run <= 10; run += 1) {
+          if (JSON.stringify(evaluate(candidate)) !== first) {
+            offenders.push(`${name}: run ${run} differed — ${JSON.stringify(candidate)}`);
+            break;
+          }
+        }
+      }
+    }
+
+    expect(offenders).toEqual([]);
   });
 });

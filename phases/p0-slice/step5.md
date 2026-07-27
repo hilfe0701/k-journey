@@ -40,6 +40,7 @@ npm run typecheck && npm run lint && npm test
       `본인`이면 나오지 않는다 (조건부 분해가 실제로 동작하는지)
 - [ ] **완료 → 완료 취소 → 다시 완료**가 되고 홈의 묶음이 따라 바뀐다
 - [ ] `jest` 전건 통과
+- [ ] **`npx expo export --platform web`이 성공한다** — `DEC-029` 검증 ③-a(executor 몫 · 번들 성립). ⚠️ **번들 성공 ≠ 실행이다**: 브라우저 콘솔 error 0건은 ③-b(브라우저 레인)가 step 6·8 종료 시 잰다
 
 ## ⛔ 이 step이 하지 않는 것
 

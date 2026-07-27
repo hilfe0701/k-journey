@@ -146,6 +146,37 @@ class StepExecutor:
 
         print(f"  Branch: {branch}")
 
+    def _record_changed_files(self, step_num: int):
+        """DEC-028 검증 방법 ④ (범위 이탈 검사) 의 집행 지점.
+
+        step 이 실제로 건드린 파일을 index.json 에 남긴다. 반드시 _commit_step 앞에서
+        불러야 한다 — 커밋하고 나면 diff 가 비어 판정할 것이 사라진다.
+
+        차단하지 않고 기록만 한다. step 파일의 "이 step 이 하지 않는 것" 은 산문이라
+        파일 목록과 기계 대조가 되지 않는다. 이 함수가 만드는 것은 게이트가 아니라 증거다.
+        (근거: 47-k-journey-role-review-unscored-dec-round2-2026-07-27.md §2.2 ★13 —
+         "적어 두고 안 하는 것이 가장 나쁘다". 8 step 중 step 1 에서만, 그마저 사람이 손으로 했다.)
+        """
+        index_rel = f"phases/{self._phase_dir_name}/index.json"
+        output_rel = f"phases/{self._phase_dir_name}/step{step_num}-output.json"
+
+        r = self._run_git("diff", "--name-only", "HEAD")
+        if r.returncode != 0:
+            print(f"  WARN: 범위 이탈 검사용 diff 실패: {r.stderr.strip()}")
+            return
+
+        untracked = self._run_git("ls-files", "--others", "--exclude-standard")
+        names = r.stdout.split() + (untracked.stdout.split() if untracked.returncode == 0 else [])
+        # harness 자신이 쓰는 파일은 step 의 변경이 아니다.
+        changed = sorted({n for n in names if n not in (index_rel, output_rel)})
+
+        index = self._read_json(self._index_file)
+        for s in index["steps"]:
+            if s["step"] == step_num:
+                s["changed_files"] = changed
+        self._write_json(self._index_file, index)
+        print(f"  Scope: {len(changed)} files changed (DEC-028 검증 ④ — 판정은 사람이 한다)")
+
     def _commit_step(self, step_num: int, step_name: str):
         output_rel = f"phases/{self._phase_dir_name}/step{step_num}-output.json"
         index_rel = f"phases/{self._phase_dir_name}/index.json"
@@ -436,6 +467,8 @@ class StepExecutor:
                     if s["step"] == step_num:
                         s["completed_at"] = ts
                 self._write_json(self._index_file, index)
+                # DEC-028 검증 ④ — 커밋보다 먼저 잰다. 커밋하면 diff 가 사라진다.
+                self._record_changed_files(step_num)
                 self._commit_step(step_num, step_name)
                 print(f"  ✓ Step {step_num}: {step_name} [{elapsed}s]")
                 return True

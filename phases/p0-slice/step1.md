@@ -45,6 +45,7 @@ grep -rniE "연결되면 반영|동기화됩니다|synced|sync_conflict|save_pen
 - [ ] `jest` **146건 이상** 통과 (`I01` 기준선. 줄어들면 왜 줄었는지 `summary`에 적어라)
 - [ ] 위 `grep` 2개가 **0건**(legacy 주석 · 이 step이 남긴 주석은 제외)
 - [ ] `npx expo start --web`로 앱이 뜨고 **sign-in 화면을 거치지 않고** 온보딩이 렌더된다
+- [ ] **`npx expo export --platform web`이 성공한다** — `DEC-029` 검증 ③-a(executor 몫 · 번들 성립). ⚠️ **번들 성공 ≠ 실행이다**: 브라우저 콘솔 error 0건은 ③-b(브라우저 레인)가 step 6·8 종료 시 잰다
 
 > 🔻 **2026-07-27 정정 (`DEC-029`).** 마지막 항목은 원래 「온보딩 첫 화면(**`ONB-02` University**)에 도달한다」였다.
 > **`ONB-02`는 이 시점에 코드에 없다** — `ONB-02`~`ONB-06`은 **step 3**(`onboarding-condition-input`)이 만든다.
