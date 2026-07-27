@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { formatInTimeZone } from 'date-fns-tz';
 import {
   AlertTriangle,
   ArrowDownUp,
@@ -10,6 +11,7 @@ import {
   ChevronLeft,
   CircleHelp,
   CircleOff,
+  ExternalLink,
   FileCheck2,
   FileText,
   LockKeyhole,
@@ -33,9 +35,16 @@ import {
 import { showOperationError } from '../../src/lib/errorAlert';
 import { kstNow } from '../../src/lib/dates';
 import { track } from '../../src/lib/posthog';
-import { taskMetadata } from '../../src/lib/taskState';
+import {
+  isSourceReviewDue,
+  taskMetadata,
+  type TaskMetadata,
+  type TaskSourceMetadata,
+  type TaskSourceValue,
+} from '../../src/lib/taskState';
 import { buildHomeTasks, type HomeTask } from '../(tabs)';
 import { palette, radius, semantic, space } from '../../design-tokens';
+import { KST, toKstStartOfDay } from '../../src/lib/dates';
 
 const DOCUMENT_SPECIFICATIONS: Record<string, string> = {
   'dormitory-confirmation': 'Full confirmation with the residence address and official stamp.',
@@ -217,6 +226,8 @@ export default function TaskDetail() {
           tasks={tasks}
         />
 
+        <SourceSection metadata={metadata} />
+
         {task.taskId === 'housing-proof' ? (
           <HousingDocumentsSection
             profile={profile}
@@ -375,6 +386,123 @@ function StatusSection({
       ) : null}
     </View>
   );
+}
+
+function SourceSection({ metadata }: { metadata: TaskMetadata }) {
+  const source = metadata.source;
+  const reviewDue = isSourceReviewDue(source);
+
+  return (
+    <View style={styles.section}>
+      <SectionHeading
+        icon={<ExternalLink size={19} color={palette.cheong} strokeWidth={1.5} />}
+        title="Official source"
+      />
+      <Card padded bg={palette.cloud} style={styles.sourceCard}>
+        <SourceField label="Source" value={source.sourceLabel} />
+        <SourceField
+          label="Official link"
+          value={source.sourceUrl || 'Not confirmed (미확인)'}
+          selectable={Boolean(source.sourceUrl)}
+          accessibilityLabel={source.sourceUrl ? `Official source: ${source.sourceUrl}` : undefined}
+        />
+        <SourceField label="Checked on" value={formatSourceDate(source.checkedAt)} />
+        <SourceField label="Review after" value={formatSourceDate(source.reviewAfter)} />
+        <SourceField label="Final authority" value={source.finalAuthority || 'Not confirmed (미확인)'} />
+        <SourceField label="Volatility" value={sourceVolatilityLabel(source.volatility)} />
+      </Card>
+
+      {reviewDue ? (
+        <View style={styles.warningCallout} accessibilityRole="alert">
+          <AlertTriangle size={19} color={palette.dancheong} strokeWidth={1.5} />
+          <View style={styles.flexCopy}>
+            <Text role="h4">Source needs review</Text>
+            <Text role="sm" color={palette.meok}>
+              This guidance is past its review date. Confirm with {source.finalAuthority || 'the final authority'} before acting.
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {source.conflictNote ? (
+        <View style={styles.conflictCallout} accessibilityRole="alert">
+          <View style={styles.calloutHeader}>
+            <AlertTriangle size={19} color={palette.hwanggeumDeep} strokeWidth={1.5} />
+            <Text role="h4">Guidance differs</Text>
+          </View>
+          <Text role="sm" color={palette.meok}>
+            {source.conflictNote}
+          </Text>
+          <View style={styles.conflictList}>
+            {source.conflictValues.map((item) => (
+              <ConflictValueRow key={`${item.sourceLabel}-${item.value}`} value={item} />
+            ))}
+          </View>
+          <Text role="xs" color={palette.ash}>
+            K-Journey keeps every reported value. The final authority is {source.finalAuthority}.
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function SourceField({
+  label,
+  value,
+  selectable = false,
+  accessibilityLabel,
+}: {
+  label: string;
+  value: string;
+  selectable?: boolean;
+  accessibilityLabel?: string;
+}) {
+  return (
+    <View style={styles.sourceField}>
+      <Text role="xs" color={palette.ash} style={styles.sourceLabel}>
+        {label}
+      </Text>
+      <Text
+        role="sm"
+        weight="semibold"
+        selectable={selectable}
+        accessibilityRole={selectable ? 'link' : undefined}
+        accessibilityLabel={accessibilityLabel}
+        style={styles.sourceValue}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function ConflictValueRow({ value }: { value: TaskSourceValue }) {
+  return (
+    <View style={styles.conflictValueRow}>
+      <View style={styles.flexCopy}>
+        <Text role="body" weight="semibold">
+          {value.value}
+        </Text>
+        <Text role="xs" color={palette.ash}>
+          {value.sourceLabel} · checked {formatSourceDate(value.checkedAt)}
+        </Text>
+      </View>
+      <Text role="xs" color={palette.cheong} selectable accessibilityRole="link">
+        {value.sourceUrl}
+      </Text>
+    </View>
+  );
+}
+
+function formatSourceDate(value: string | null): string {
+  if (!value) return 'Not confirmed (미확인)';
+  return formatInTimeZone(toKstStartOfDay(value), KST, 'MMM d, yyyy');
+}
+
+function sourceVolatilityLabel(value: TaskSourceMetadata['volatility']): string {
+  if (value === 'unknown') return 'Not confirmed (미확인)';
+  return value === 'high' ? 'High — check before acting' : value[0].toUpperCase() + value.slice(1);
 }
 
 function HousingDocumentsSection({
@@ -804,6 +932,31 @@ const styles = StyleSheet.create({
   neutralCallout: { gap: space[2], padding: space[4], backgroundColor: palette.cloud, borderRadius: radius.card, borderWidth: 1, borderColor: palette.hairline },
   calloutHeader: { flexDirection: 'row', alignItems: 'center', gap: space[2] },
   documentList: { gap: space[3] },
+  sourceCard: { gap: 0 },
+  sourceField: {
+    minHeight: 44,
+    paddingVertical: space[2],
+    borderBottomWidth: 1,
+    borderBottomColor: semantic.border.hairline,
+    gap: space[1],
+  },
+  sourceLabel: { textTransform: 'none' },
+  sourceValue: { flexShrink: 1 },
+  conflictCallout: {
+    gap: space[3],
+    padding: space[4],
+    backgroundColor: palette.hwanggeumLight,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: palette.hwanggeumDeep,
+  },
+  conflictList: { gap: space[2] },
+  conflictValueRow: {
+    gap: space[2],
+    paddingTop: space[2],
+    borderTopWidth: 1,
+    borderTopColor: palette.hwanggeum,
+  },
   documentCard: { gap: space[3] },
   documentHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: space[2] },
   specificationRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space[2], paddingTop: space[2], borderTopWidth: 1, borderTopColor: semantic.border.hairline },

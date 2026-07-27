@@ -2,10 +2,13 @@ import {
   ERROR_TRANSITIONS,
   TASK_ERROR_STATES,
   TASK_STATES,
+  TASK_METADATA,
   evaluateTasks,
+  isSourceReviewDue,
   transitionTaskState,
 } from '../taskState';
 import type { ConditionProfile } from '../firebase';
+import { toKstStartOfDay } from '../dates';
 
 const profile: ConditionProfile = {
   universityId: 'yonsei',
@@ -33,6 +36,46 @@ describe('task state axes', () => {
     expect(ERROR_TRANSITIONS).toEqual([
       { id: 'E1', from: 'valid', to: 'input_invalid' },
       { id: 'E7', from: 'granted', to: 'permission_denied' },
+    ]);
+  });
+
+  it('attaches the complete provenance model to every administrative task', () => {
+    for (const task of TASK_METADATA) {
+      expect(Object.keys(task.source).sort()).toEqual([
+        'checkedAt',
+        'conflictNote',
+        'conflictValues',
+        'finalAuthority',
+        'owner',
+        'reviewAfter',
+        'sourceLabel',
+        'sourceUrl',
+        'volatility',
+      ]);
+      expect(typeof task.source.sourceUrl).toBe('string');
+      expect(typeof task.source.sourceLabel).toBe('string');
+      expect(typeof task.source.finalAuthority).toBe('string');
+      expect(typeof task.source.owner).toBe('string');
+      expect(Array.isArray(task.source.conflictValues)).toBe(true);
+    }
+  });
+
+  it('marks a known review date due in KST and leaves unknown dates unresolved', () => {
+    const now = toKstStartOfDay('2026-07-27');
+
+    expect(isSourceReviewDue({ reviewAfter: '2026-07-26' }, now)).toBe(true);
+    expect(isSourceReviewDue({ reviewAfter: '2026-07-27' }, now)).toBe(true);
+    expect(isSourceReviewDue({ reviewAfter: '2026-07-28' }, now)).toBe(false);
+    expect(isSourceReviewDue({ reviewAfter: null }, now)).toBe(false);
+  });
+
+  it('preserves all four fee values instead of selecting a single amount', () => {
+    const registration = TASK_METADATA.find((task) => task.taskId === 'residence-registration');
+    expect(registration?.source.conflictValues.map((entry) => entry.value)).toEqual([
+      '30,000 won',
+      '34,000 won',
+      '35,000 won',
+      '40,000 won',
     ]);
   });
 });

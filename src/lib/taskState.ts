@@ -5,6 +5,7 @@ import {
   evaluateAppliesWhen,
   isUnknownConditionValue,
 } from './conditionRules';
+import { kstDifferenceInDays, kstNow, toKstStartOfDay } from './dates';
 
 export const TASK_STATES = [
   'locked',
@@ -59,7 +60,107 @@ export interface TaskMetadata {
   title: string;
   summary: string;
   dependsOn?: readonly string[];
+  source: TaskSourceMetadata;
 }
+
+export type SourceVolatility = 'low' | 'medium' | 'high' | 'unknown';
+
+export interface TaskSourceValue {
+  value: string;
+  sourceLabel: string;
+  sourceUrl: string;
+  checkedAt: string | null;
+}
+
+/**
+ * Provenance attached to every administrative task. Empty or null values are
+ * intentional unknowns: the UI must show them as not confirmed alongside the
+ * final authority instead of filling in a plausible value.
+ */
+export interface TaskSourceMetadata {
+  sourceUrl: string;
+  sourceLabel: string;
+  checkedAt: string | null;
+  reviewAfter: string | null;
+  finalAuthority: string;
+  conflictNote: string | null;
+  volatility: SourceVolatility;
+  owner: string;
+  conflictValues: readonly TaskSourceValue[];
+}
+
+const UNKNOWN_SOURCE_VALUE = 'Not confirmed (미확인)';
+const UNKNOWN_OWNER = UNKNOWN_SOURCE_VALUE;
+
+const RESIDENCE_REGISTRATION_SOURCE: TaskSourceMetadata = {
+  sourceUrl: 'https://www.immigration.go.kr/bbs/immigration_eng/229/590314/artclView.do',
+  sourceLabel: 'Ministry of Justice notice',
+  checkedAt: '2026-07-25',
+  reviewAfter: null,
+  finalAuthority: 'the Ministry of Justice and HiKorea',
+  conflictNote:
+    'Registration fees differ by source and route. Check the final authority before paying.',
+  volatility: 'high',
+  owner: UNKNOWN_OWNER,
+  conflictValues: [
+    {
+      value: '30,000 won',
+      sourceLabel: 'University guidance',
+      sourceUrl:
+        'https://gsc.korea.ac.kr/gsc/ExchangeVisitingProgram/Visa_Immigration/Visa/Visa.do',
+      checkedAt: '2026-07-25',
+    },
+    {
+      value: '34,000 won',
+      sourceLabel: 'CIEE application experience',
+      sourceUrl: 'https://www.ciee.org/go-abroad/college-study-abroad/blog/getting-arc-without-hirevisa',
+      checkedAt: '2026-07-25',
+    },
+    {
+      value: '35,000 won',
+      sourceLabel: 'Ministry of Justice notice',
+      sourceUrl: 'https://www.immigration.go.kr/bbs/immigration_eng/229/590314/artclView.do',
+      checkedAt: '2026-07-25',
+    },
+    {
+      value: '40,000 won',
+      sourceLabel: 'HiKorea application route',
+      sourceUrl: 'https://www.hikorea.go.kr/board/BoardApplicationListR.pt',
+      checkedAt: '2026-07-25',
+    },
+  ],
+};
+
+const UNIVERSITY_RESIDENCE_SOURCE: TaskSourceMetadata = {
+  sourceUrl:
+    'https://git.yonsei.ac.kr/git/news/academic.do?mode=download&articleNo=103946&attachNo=88133',
+  sourceLabel: 'Yonsei University GIT guidance',
+  checkedAt: '2026-07-25',
+  reviewAfter: null,
+  finalAuthority: 'the university international office',
+  conflictNote: null,
+  volatility: 'high',
+  owner: UNKNOWN_OWNER,
+  conflictValues: [],
+};
+
+const UNIVERSITY_GROUP_SOURCE: TaskSourceMetadata = {
+  ...UNIVERSITY_RESIDENCE_SOURCE,
+  sourceLabel: 'University international-office guidance',
+  finalAuthority: 'your university international office',
+};
+
+const UNCONFIRMED_SOURCE: TaskSourceMetadata = {
+  sourceUrl: '',
+  sourceLabel: UNKNOWN_SOURCE_VALUE,
+  checkedAt: null,
+  reviewAfter: null,
+  finalAuthority: 'your university international office',
+  conflictNote: null,
+  volatility: 'unknown',
+  owner: UNKNOWN_OWNER,
+  conflictValues: [],
+};
 
 /** Shared labels for the task page and Journey Home cards. */
 export const TASK_METADATA: readonly TaskMetadata[] = [
@@ -67,28 +168,44 @@ export const TASK_METADATA: readonly TaskMetadata[] = [
     taskId: 'residence-registration',
     title: 'Residence registration',
     summary: 'Assess the documents and timing for foreign resident registration.',
+    source: RESIDENCE_REGISTRATION_SOURCE,
   },
   {
     taskId: 'housing-proof',
     title: 'Housing proof',
     summary: 'Prepare documents for your housing and contract holder.',
     dependsOn: ['residence-registration'],
+    source: UNIVERSITY_RESIDENCE_SOURCE,
   },
   {
     taskId: 'group-registration',
     title: 'Group registration',
     summary: 'Check whether university-supported registration applies to your stay.',
     dependsOn: ['residence-registration'],
+    source: UNIVERSITY_GROUP_SOURCE,
   },
   {
     taskId: 'departure-order',
     title: 'Departure order',
     summary: 'Choose how to handle your deposit and account before leaving Korea.',
+    source: UNCONFIRMED_SOURCE,
   },
 ] as const;
 
 export function taskMetadata(taskId: string): TaskMetadata | undefined {
   return TASK_METADATA.find((task) => task.taskId === taskId);
+}
+
+/** Returns true only when a known review date is today or earlier in KST. */
+export function isSourceReviewDue(
+  source: Pick<TaskSourceMetadata, 'reviewAfter'>,
+  now: Date = kstNow(),
+): boolean {
+  if (!source.reviewAfter) return false;
+  return kstDifferenceInDays(
+    toKstStartOfDay(now),
+    toKstStartOfDay(source.reviewAfter),
+  ) >= 0;
 }
 
 export interface EvaluatedTask {
