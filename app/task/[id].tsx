@@ -636,6 +636,12 @@ function PhotoSpecificationSection() {
           </Text>
         </View>
       </View>
+      <View style={styles.neutralCallout}>
+        <Text role="h4">Keep your residence stable</Text>
+        <Text role="sm" color={palette.meok}>
+          Changing residence is unavailable while your Residence Card is being issued. Confirm any move with your university international office first.
+        </Text>
+      </View>
     </View>
   );
 }

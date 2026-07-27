@@ -9,7 +9,7 @@ import {
   useOnboardingStepGuard,
 } from '../../src/components/onboarding/ConditionStep';
 import { Input, Text } from '../../src/components/ui';
-import { space } from '../../design-tokens';
+import { palette, space } from '../../design-tokens';
 import { UNKNOWN, type HomeCountryInsurance } from '../../src/lib/firebase';
 import { updateUserProfile } from '../../src/lib/firebase';
 import { setOnboardingProgress } from '../../src/lib/storage';
@@ -102,6 +102,9 @@ export default function NationalityScreen() {
               onSelect={setHomeCountryInsurance}
             />
           ))}
+          <Text role="sm" color={palette.ash}>
+            An exclusion from National Health Insurance Service (NHIS) enrollment depends on qualifying medical coverage, not stay length alone. Confirm the documents with NHIS.
+          </Text>
         </View>
       </View>
     </OnboardingStepShell>

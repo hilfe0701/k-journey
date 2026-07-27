@@ -14,6 +14,17 @@ export interface UniversityHousingRule {
   laundry?: string;
 }
 
+export type UniversityVerificationStatus = 'verified' | 'latest_unverified';
+
+export interface UniversityVerification {
+  status: UniversityVerificationStatus;
+  sourceUrl: string;
+  sourceLabel: string;
+  checkedAt: string | null;
+  finalAuthority: string;
+  note: string;
+}
+
 export interface University {
   id: string;
   nameEn: string;
@@ -27,11 +38,20 @@ export interface University {
   nearbyEats: string[];
   /** Several ways to reach campus — subway, bus, shuttle, walk, taxi. */
   transitRoutes: string[];
+  verification: UniversityVerification;
 }
 
 export const UNIVERSITIES: University[] = [
   {
     id: 'cau',
+    verification: {
+      status: 'verified',
+      sourceUrl: 'https://oia.cau.ac.kr/cauoia/exchange/visa.do',
+      sourceLabel: 'Chung-Ang University OIA visa and immigration guidance',
+      checkedAt: '2026-07-27',
+      finalAuthority: 'Chung-Ang University Office of International Affairs',
+      note: 'Official source checked for current exchange-student immigration guidance; campus lifestyle details remain university-specific.',
+    },
     nameEn: 'Chung-Ang University',
     nameKo: '중앙대학교',
     shortName: 'Chung-Ang',
@@ -57,6 +77,14 @@ export const UNIVERSITIES: University[] = [
   },
   {
     id: 'yonsei',
+    verification: {
+      status: 'verified',
+      sourceUrl: 'https://gosc.yonsei.ac.kr/gosc/visa/maintaining.do',
+      sourceLabel: 'Yonsei University Global One-Stop Service Center guidance',
+      checkedAt: '2026-07-27',
+      finalAuthority: 'Yonsei University Office of International Affairs',
+      note: 'Official source checked for current residence-card and group-application guidance; semester dates can change.',
+    },
     nameEn: 'Yonsei University',
     nameKo: '연세대학교',
     shortName: 'Yonsei',
@@ -80,6 +108,14 @@ export const UNIVERSITIES: University[] = [
   },
   {
     id: 'korea',
+    verification: {
+      status: 'verified',
+      sourceUrl: 'https://gsc.korea.ac.kr/gsc/ExchangeVisitingProgram/Visa_Immigration/Visa/Visa.do',
+      sourceLabel: 'Korea University Global Service Center visa guidance',
+      checkedAt: '2026-07-27',
+      finalAuthority: 'Korea University Global Service Center',
+      note: 'Official source checked for exchange and visiting-student residence-card guidance; fees and extra documents can vary by route.',
+    },
     nameEn: 'Korea University',
     nameKo: '고려대학교',
     shortName: 'Korea',
@@ -103,6 +139,14 @@ export const UNIVERSITIES: University[] = [
   },
   {
     id: 'snu',
+    verification: {
+      status: 'verified',
+      sourceUrl: 'https://oga.snu.ac.kr/residence-card',
+      sourceLabel: 'Seoul National University OGA Residence Card guidance',
+      checkedAt: '2026-07-27',
+      finalAuthority: 'Seoul National University Office of Global Affairs',
+      note: 'Official source checked for exchange and visiting-student residence-card guidance; current fees may differ by service route.',
+    },
     nameEn: 'Seoul National University',
     nameKo: '서울대학교',
     shortName: 'SNU',
@@ -126,6 +170,14 @@ export const UNIVERSITIES: University[] = [
   },
   {
     id: 'skku',
+    verification: {
+      status: 'latest_unverified',
+      sourceUrl: '',
+      sourceLabel: 'Not confirmed (미확인)',
+      checkedAt: null,
+      finalAuthority: 'Sungkyunkwan University international office',
+      note: 'No current official source was verified in this audit. Keep this record as reference information only.',
+    },
     nameEn: 'Sungkyunkwan University',
     nameKo: '성균관대학교',
     shortName: 'SKKU',
@@ -148,6 +200,14 @@ export const UNIVERSITIES: University[] = [
   },
   {
     id: 'hanyang',
+    verification: {
+      status: 'verified',
+      sourceUrl: 'https://oia.hanyang.ac.kr/visa',
+      sourceLabel: 'Hanyang University OIA visa guidance',
+      checkedAt: '2026-07-27',
+      finalAuthority: 'Hanyang University Office of International Affairs',
+      note: 'Official source checked for current registration requirements; the page contains fee text that conflicts with the Ministry of Justice notice, so do not treat it as the final fee authority.',
+    },
     nameEn: 'Hanyang University',
     nameKo: '한양대학교',
     shortName: 'Hanyang',
@@ -170,6 +230,14 @@ export const UNIVERSITIES: University[] = [
   },
   {
     id: 'ewha',
+    verification: {
+      status: 'latest_unverified',
+      sourceUrl: '',
+      sourceLabel: 'Not confirmed (미확인)',
+      checkedAt: null,
+      finalAuthority: 'Ewha Womans University international office',
+      note: 'No current official source was verified in this audit. Keep this record as reference information only.',
+    },
     nameEn: 'Ewha Womans University',
     nameKo: '이화여자대학교',
     shortName: 'Ewha',
@@ -192,6 +260,14 @@ export const UNIVERSITIES: University[] = [
   },
   {
     id: 'sogang',
+    verification: {
+      status: 'latest_unverified',
+      sourceUrl: '',
+      sourceLabel: 'Not confirmed (미확인)',
+      checkedAt: null,
+      finalAuthority: 'Sogang University international office',
+      note: 'No current official source was verified in this audit. Keep this record as reference information only.',
+    },
     nameEn: 'Sogang University',
     nameKo: '서강대학교',
     shortName: 'Sogang',
@@ -215,6 +291,14 @@ export const UNIVERSITIES: University[] = [
   },
   {
     id: 'hufs',
+    verification: {
+      status: 'latest_unverified',
+      sourceUrl: '',
+      sourceLabel: 'Not confirmed (미확인)',
+      checkedAt: null,
+      finalAuthority: 'Hankuk University of Foreign Studies international office',
+      note: 'No current official source was verified in this audit. Keep this record as reference information only.',
+    },
     nameEn: 'Hankuk Univ. of Foreign Studies',
     nameKo: '한국외국어대학교',
     shortName: 'HUFS',
@@ -236,5 +320,23 @@ export const UNIVERSITIES: University[] = [
     ],
   },
 ];
+
+export const VERIFIED_UNIVERSITY_IDS = [
+  'cau',
+  'snu',
+  'yonsei',
+  'korea',
+  'hanyang',
+] as const;
+
+export const LATEST_UNVERIFIED_UNIVERSITY_IDS = ['skku', 'ewha', 'sogang', 'hufs'] as const;
+
+export const VERIFIED_UNIVERSITIES = UNIVERSITIES.filter(
+  (university) => university.verification.status === 'verified',
+);
+
+export const LATEST_UNVERIFIED_UNIVERSITIES = UNIVERSITIES.filter(
+  (university) => university.verification.status === 'latest_unverified',
+);
 
 export const universityById = (id: string) => UNIVERSITIES.find((u) => u.id === id);

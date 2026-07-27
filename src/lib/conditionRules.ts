@@ -125,7 +125,7 @@ export type HousingContractEvaluation = HousingContractApplicable | HousingContr
 export type HousingProofEvaluation = HousingContractEvaluation;
 
 const RESIDENCE_REGISTRATION_SOURCE =
-  'https://www.immigration.go.kr/bbs/moj/93/559234/artclView.do';
+  'https://law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1031823049';
 const RESIDENCE_PROOF_SOURCE =
   'https://git.yonsei.ac.kr/git/news/academic.do?mode=download&articleNo=103946&attachNo=88133';
 const UNIVERSITY_INTERNATIONAL_OFFICE = 'the university international office';

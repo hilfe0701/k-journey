@@ -9,7 +9,7 @@
       "step": 1,
       "name": "strip-auth-layer",
       "summary": "인증·사용자별 Firestore/Auth 경로를 제거하고 프로필·미션·버킷을 로컬 MMKV로 전환했으며 원격 sync 상태·문구를 제거함. AC 4/4 충족 — npm run check 통과 · jest 146/146 · grep 2종 0건 · 웹에서 sign-in을 거치지 않고 온보딩 렌더 도달(브라우저 실측). 격리 준수(save_failed·E8 신설 0건) · 범위 이탈 0(docs/adr·SECURITY·PLAY_DATA_SAFETY·missions.ts 무변경). 차단 해소는 DEC-029 — 웹 타깃 부재(react-native-web 미설치)가 원인이었고 패키지 3종 설치로 성립. 이 step이 남긴 결함 2건도 함께 고쳤다: PostHog 생성자 throw(앱이 흰 화면), jest.setup.js의 낡은 @react-native-firebase/auth 목. 커밋 92eb616 + 38ba40c.",
-      "status": "blocked",
+      "status": "completed",
       "docs": [
         "SECURITY",
         "PLAY_DATA_SAFETY"
@@ -17,7 +17,8 @@
       "started_at": "2026-07-27T15:40:51+0900",
       "blocked_reason_resolved": "원 차단 사유 3건 중 2건은 사실, 1건은 거짓이었다. (1) react-native-web 부재 — 사실이고 더 컸다: 저장소 이력 전체에 한 번도 없었다. 설치로 해소. (2) 브라우저 도구 localhost 거부 — codex 샌드박스 정책. 세션 밖에서 실행해 해소. (3) .git 읽기 전용 — 저장소는 쓰기 가능했다(drwxr-xr-x, 쓰기 테스트 통과). 샌드박스 안에서만 참이었다.",
       "completed_at": "2026-07-27T16:01:40+0900",
-      "verified_by": "Claude Opus 5 (별도 레인 · 작성 레인은 codex gpt-5.6-luna)"
+      "verified_by": "Claude Opus 5 (별도 레인 · 작성 레인은 codex)",
+      "note": "2026-07-27: 이 항목이 두 번 blocked로 되돌아갔다. 후속 step의 executor가 index.json을 통째로 덮어쓰면서 이 항목까지 되돌린 것으로 보인다 — 작업 자체는 16:01:40에 끝났고 커밋 92eb616 + 38ba40c로 남아 있다. 차단 사유였던 웹 타깃 부재는 DEC-029로 해소됐다."
     },
     {
       "step": 2,
@@ -81,9 +82,13 @@
     {
       "step": 7,
       "name": "content-audit",
-      "summary": "",
-      "status": "pending",
-      "docs": []
+      "summary": "슬라이스 행정 태스크 4건의 공식 링크·확인일·최종 확인처를 감사하고, NHIS·주거 증빙·수수료 정정을 반영했으며, 중앙대·서울대·연세대·고려대·한양대는 확인분으로, 나머지 4개 대학은 최신성 미확인으로 분리함; not done: 기관 문의·문화 미션 50건·pm-job 문서·신규 테스트는 각 정책/Step 8 범위 밖.",
+      "status": "completed",
+      "docs": [],
+      "started_at": "2026-07-27T17:51:52+0900",
+      "completed_at": "2026-07-27T18:01:24+0900",
+      "verified_by": "Codex — npm run typecheck, npm run lint, npm test, npm run check",
+      "blocked_reason_resolved": "작업은 18:01:24에 끝났고 AC도 통과했다(npm run check · 182 tests · .work/audit-log.md 생성). 막힌 것은 커밋뿐이고, 사유인 「.git이 읽기 전용」은 codex 샌드박스 안에서만 참이다 — 호스트에서는 쓰기 가능하다(DEC-029 · 1차 실행에서 이미 확인한 것과 같은 건). step 6은 같은 상황을 completed로 적었는데 step 7은 blocked로 적었다 — executor가 같은 상황을 다르게 보고했다. 호스트 레인에서 커밋했다."
     },
     {
       "step": 8,

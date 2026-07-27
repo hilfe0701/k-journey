@@ -93,9 +93,9 @@ const UNKNOWN_SOURCE_VALUE = 'Not confirmed (미확인)';
 const UNKNOWN_OWNER = UNKNOWN_SOURCE_VALUE;
 
 const RESIDENCE_REGISTRATION_SOURCE: TaskSourceMetadata = {
-  sourceUrl: 'https://www.immigration.go.kr/bbs/immigration_eng/229/590314/artclView.do',
-  sourceLabel: 'Ministry of Justice notice',
-  checkedAt: '2026-07-25',
+  sourceUrl: 'https://www.immigration.go.kr/bbs/immigration/47/590299/artclView.do',
+  sourceLabel: 'Ministry of Justice Foreign Residence Card fee notice',
+  checkedAt: '2026-07-27',
   reviewAfter: null,
   finalAuthority: 'the Ministry of Justice and HiKorea',
   conflictNote:
@@ -135,7 +135,7 @@ const UNIVERSITY_RESIDENCE_SOURCE: TaskSourceMetadata = {
   sourceUrl:
     'https://git.yonsei.ac.kr/git/news/academic.do?mode=download&articleNo=103946&attachNo=88133',
   sourceLabel: 'Yonsei University GIT guidance',
-  checkedAt: '2026-07-25',
+  checkedAt: '2026-07-27',
   reviewAfter: null,
   finalAuthority: 'the university international office',
   conflictNote: null,
