@@ -9,7 +9,7 @@
       "step": 1,
       "name": "strip-auth-layer",
       "summary": "인증·사용자별 Firestore/Auth 경로를 제거하고 프로필·미션·버킷을 로컬 MMKV로 전환했으며 원격 sync 상태·문구를 제거함. AC 4/4 충족 — npm run check 통과 · jest 146/146 · grep 2종 0건 · 웹에서 sign-in을 거치지 않고 온보딩 렌더 도달(브라우저 실측). 격리 준수(save_failed·E8 신설 0건) · 범위 이탈 0(docs/adr·SECURITY·PLAY_DATA_SAFETY·missions.ts 무변경). 차단 해소는 DEC-029 — 웹 타깃 부재(react-native-web 미설치)가 원인이었고 패키지 3종 설치로 성립. 이 step이 남긴 결함 2건도 함께 고쳤다: PostHog 생성자 throw(앱이 흰 화면), jest.setup.js의 낡은 @react-native-firebase/auth 목. 커밋 92eb616 + 38ba40c.",
-      "status": "completed",
+      "status": "blocked",
       "docs": [
         "SECURITY",
         "PLAY_DATA_SAFETY"
@@ -68,11 +68,15 @@
     {
       "step": 6,
       "name": "source-and-verified-date",
-      "summary": "",
-      "status": "pending",
+      "summary": "TaskMetadata에 sourceUrl·sourceLabel·checkedAt·reviewAfter·finalAuthority·conflictNote·volatility·owner와 conflictValues를 부착하고 TASK-03에 공식 링크·확인일·검토일·최종 권한·변동 가능성·미확인 표시·KST 검토기한 경고·수수료 30,000/34,000/35,000/40,000원 충돌 보존을 구현; npm ci·npm run check(182 tests)·expo export 성공. 번들 성립. 관통 판정은 미실시 — 브라우저 레인이 판정한다. not done: step 7 콘텐츠 정확성 전수 감사(후속 범위), 기관 문의(정책상 금지), 미션 50건 전수 감사(범위 밖), analytics payload(DEC-027 미확정).",
+      "status": "completed",
       "docs": [
         "ERROR_MESSAGES"
-      ]
+      ],
+      "started_at": "2026-07-27T17:40:38+0900",
+      "completed_at": "2026-07-27T17:51:52+0900",
+      "verified_by": "Codex — npm ci · npm run check · npx expo export --platform web; 브라우저 관통 미실시",
+      "blocked_reason": "구현·검증은 완료했지만 sandbox가 .git을 읽기 전용으로 마운트해 git add가 .git/index.lock 생성에서 Operation not permitted로 거부됐다. 사용자 또는 호스트 레인의 .git 쓰기 권한이 필요하므로 feat(p0-slice): step 6 — source-and-verified-date 커밋을 만들지 못했다."
     },
     {
       "step": 7,
