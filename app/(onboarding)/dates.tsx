@@ -136,13 +136,16 @@ export default function DatesScreen() {
   }
 
   const markedDates: Record<string, MarkedDate> = {};
-  if (typeof arrivalDate === 'string') {
+  // `typeof === 'string'` also accepts UNKNOWN, which would key the calendar on
+  // "unknown" and hand an Invalid Date to the range loop below — the loop then
+  // silently marks nothing instead of failing loudly.
+  if (isRealDate(arrivalDate)) {
     markedDates[arrivalDate] = { startingDay: true, color: palette.cheong, textColor: palette.hanji };
   }
-  if (typeof departureDate === 'string') {
+  if (isRealDate(departureDate)) {
     markedDates[departureDate] = { endingDay: true, color: palette.dancheong, textColor: palette.hanji };
   }
-  if (typeof arrivalDate === 'string' && typeof departureDate === 'string' && arrivalDate !== departureDate) {
+  if (isRealDate(arrivalDate) && isRealDate(departureDate) && arrivalDate !== departureDate) {
     let cursor = addDays(parseISO(arrivalDate), 1);
     const end = parseISO(departureDate);
     while (cursor < end) {
@@ -219,7 +222,12 @@ export default function DatesScreen() {
               }}
             />
           </View>
-          {typeof programStartDate === 'string' && typeof arrivalDate === 'string' && typeof departureDate === 'string' ? (
+          {/*
+            UNKNOWN is itself a string, so a `typeof === 'string'` guard let it through
+            to parseISO and format threw `RangeError: Invalid time value`, taking the
+            whole screen down. Marking a date unknown is an allowed answer here.
+          */}
+          {isRealDate(programStartDate) && isRealDate(arrivalDate) && isRealDate(departureDate) ? (
             <Text role="sm" color={palette.ash}>
               {`${format(parseISO(programStartDate), 'MMM d, yyyy')} · ${format(parseISO(arrivalDate), 'MMM d, yyyy')} → ${format(parseISO(departureDate), 'MMM d, yyyy')}`}
             </Text>
@@ -322,3 +330,9 @@ const styles = StyleSheet.create({
     borderColor: semantic.border.hairline,
   },
 });
+
+// A date the calendar actually produced, as opposed to null or the UNKNOWN marker.
+// Only these are safe to hand to parseISO/format.
+function isRealDate(value: string | null | undefined): value is string {
+  return typeof value === 'string' && value !== UNKNOWN && value.length > 0;
+}

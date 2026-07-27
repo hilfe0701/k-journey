@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useMMKVString } from 'react-native-mmkv';
 import { LocalTaskProgress, UserProfile, EMPTY_TASK_PROGRESS } from '../lib/firebase';
 import { getJson, KEYS, storage } from '../lib/storage';
@@ -12,9 +13,17 @@ export interface ProfileState {
 
 export function useProfile(): ProfileState {
   const [profileCacheJson] = useMMKVString(KEYS.profileCache, storage);
-  const profile = profileCacheJson
-    ? parseProfile(profileCacheJson)
-    : getJson<UserProfile>(KEYS.profileCache);
+  // Memoize on the raw JSON. Parsing on every render handed callers a new object
+  // each time, so any `useEffect` depending on `profile` re-ran every render — on
+  // the onboarding condition screens that reset the user's choice back to the
+  // stored value, making six of the eight screens impossible to answer.
+  const profile = useMemo(
+    () =>
+      profileCacheJson
+        ? parseProfile(profileCacheJson)
+        : getJson<UserProfile>(KEYS.profileCache),
+    [profileCacheJson],
+  );
 
   return {
     loading: false,
@@ -30,9 +39,14 @@ export interface TaskProgressState {
 
 export function useTaskProgress(): TaskProgressState {
   const [progressJson] = useMMKVString(KEYS.taskProgressCache, storage);
-  const progress = progressJson
-    ? parseTaskProgress(progressJson)
-    : getJson<LocalTaskProgress>(KEYS.taskProgressCache) ?? EMPTY_TASK_PROGRESS;
+  // Same reasoning as useProfile above — callers put `progress` in dependency arrays.
+  const progress = useMemo(
+    () =>
+      progressJson
+        ? parseTaskProgress(progressJson)
+        : getJson<LocalTaskProgress>(KEYS.taskProgressCache) ?? EMPTY_TASK_PROGRESS,
+    [progressJson],
+  );
 
   return { loading: false, progress };
 }
