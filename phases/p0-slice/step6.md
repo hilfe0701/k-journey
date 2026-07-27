@@ -50,7 +50,7 @@ npx expo export --platform web      # 번들이 성립하는지만 본다
 - [ ] `summary`에 **「번들 성립. 관통 판정은 미실시 — 브라우저 레인이 판정한다」**라고 적는다
 
 **★ 관통 판정은 별도 레인(사람 · 브라우저 접근이 있는 세션)이 한다.**
-`dist`를 정적 서빙하고 실제로 눌러 본 뒤 `46-k-journey-implementation-result-2026-07-31.md`에 적는다.
+`dist`를 정적 서빙하고 실제로 눌러 본 뒤 `46-k-journey-implementation-result-2026-07-27.md`에 적는다.
 **작성 레인이 자기 산출물을 「관통 성립」으로 선언하지 않는다** — `../../CLAUDE.md`와
 `.work/pmjob/k-journey/34-k-journey-role-review-2026-07-25.md` §0.2의 같은 조항이다.
 
