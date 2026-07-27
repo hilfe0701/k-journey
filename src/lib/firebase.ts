@@ -13,6 +13,48 @@ import { getJson, KEYS, setJson, storage } from './storage';
 
 export const LOCAL_PROFILE_ID = 'local-profile';
 
+/** Explicitly unknown is a condition value, not an omitted/null field. */
+export const UNKNOWN = 'unknown' as const;
+export type UnknownValue = typeof UNKNOWN;
+
+export type ProgramType = 'exchange' | 'visiting' | UnknownValue;
+export type VisaTypeOrStatus =
+  | 'D-2-6'
+  | 'D-2-8'
+  | 'visa_free'
+  | 'other'
+  | UnknownValue;
+export type HousingType =
+  | 'dormitory'
+  | 'own_lease'
+  | 'third_party_lease'
+  | 'registered_business'
+  | UnknownValue;
+export type ContractHolder = 'self' | 'third_party' | 'none' | 'undecided' | 'n_a' | UnknownValue;
+export type HomeCountryInsurance = 'yes' | 'no' | UnknownValue;
+export type ResidenceCardStatus =
+  | 'not_started'
+  | 'booked'
+  | 'submitted'
+  | 'issued'
+  | 'rejected'
+  | 'n_a'
+  | UnknownValue;
+
+export type ConditionAxis =
+  | 'universityId'
+  | 'programType'
+  | 'visaTypeOrStatus'
+  | 'housingType'
+  | 'contractHolder'
+  | 'totalStayDays'
+  | 'nationality'
+  | 'homeCountryInsurance'
+  | 'residenceCardStatus'
+  | 'arrivalDate'
+  | 'departureDate'
+  | 'programStartDate';
+
 export interface UserProfile {
   uid: string;
   email: null;
@@ -21,12 +63,25 @@ export interface UserProfile {
   university: string | null;
   stayType: 'exchange-1' | 'exchange-2' | 'language' | 'working-holiday' | null;
   housing: 'dormitory' | 'off-campus' | null;
-  arrivalDate: string | null;
-  departureDate: string | null;
+  /** Condition axes. `UNKNOWN` is intentionally persisted as a value. */
+  universityId: string | UnknownValue;
+  programType: ProgramType;
+  visaTypeOrStatus: VisaTypeOrStatus;
+  housingType: HousingType;
+  contractHolder: ContractHolder;
+  totalStayDays: number | UnknownValue;
+  nationality: string | UnknownValue;
+  homeCountryInsurance: HomeCountryInsurance;
+  residenceCardStatus: ResidenceCardStatus;
+  arrivalDate: (string | UnknownValue) | null;
+  departureDate: (string | UnknownValue) | null;
+  programStartDate: string | UnknownValue;
   era: 'joseon' | 'silla' | 'goryeo' | null;
   onboardingCompletedAt: string | null;
   createdAt: string | null;
 }
+
+export type ConditionProfile = Pick<UserProfile, ConditionAxis>;
 
 export interface DevMockCompletedDoc {
   missionId: string;
@@ -56,8 +111,20 @@ const EMPTY_PROFILE: UserProfile = {
   university: null,
   stayType: null,
   housing: null,
+  universityId: UNKNOWN,
+  programType: UNKNOWN,
+  visaTypeOrStatus: UNKNOWN,
+  housingType: UNKNOWN,
+  contractHolder: UNKNOWN,
+  totalStayDays: UNKNOWN,
+  nationality: UNKNOWN,
+  homeCountryInsurance: UNKNOWN,
+  residenceCardStatus: UNKNOWN,
   arrivalDate: null,
   departureDate: null,
+  // I02 migration/default policy is intentionally deferred: the existing date
+  // fields remain null until the later onboarding slice owns date collection.
+  programStartDate: UNKNOWN,
   era: null,
   onboardingCompletedAt: null,
   createdAt: null,
