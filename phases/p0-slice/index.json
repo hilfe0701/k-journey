@@ -22,9 +22,12 @@
     {
       "step": 2,
       "name": "condition-axes-and-rule-engine",
-      "summary": "",
-      "status": "pending",
-      "docs": []
+      "summary": "UserProfile에 조건 축 10종(날짜 3필드 포함)과 명시적 unknown을 추가하고, UI 비의존 tri-state appliesWhen/dependsOn·차단·조건 재평가 엔진 및 7상태·오류 3상태(E1·E7)와 조합·경계 테스트를 구현함; not done: save_failed/E8은 DEC-026 추가분 미확정이라 구현하지 않았고 화면·콘텐츠·출처 모델·I02 마이그레이션·분석 payload도 이 step 범위 밖이라 구현하지 않음.",
+      "status": "completed",
+      "docs": [],
+      "started_at": "2026-07-27T16:22:57+0900",
+      "completed_at": "2026-07-27T16:40:07+0900",
+      "verified_by": "Codex — npm run check · AC grep"
     },
     {
       "step": 3,
