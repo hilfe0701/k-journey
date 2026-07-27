@@ -5,6 +5,7 @@ import {
   evaluateAppliesWhen,
   evaluateGroupRegistration,
   evaluateHousingContract,
+  getHousingProofDocuments,
   evaluateResidenceRegistration,
   validateConditionProfile,
 } from '../conditionRules';
@@ -134,6 +135,53 @@ describe('housing × contract-holder rules', () => {
     if (undecided.status === 'review_required') {
       expect(undecided.reason).toBeTruthy();
       expect(undecided.finalAuthority).toBeTruthy();
+    }
+  });
+
+  it('removes the third-party lease copy when the provider address matches', () => {
+    const matching = getHousingProofDocuments('own_lease', 'third_party', true);
+    const differing = getHousingProofDocuments('own_lease', 'third_party', false);
+    const unanswered = getHousingProofDocuments('own_lease', 'third_party', null);
+
+    expect(matching).toMatchObject({ status: 'applicable' });
+    expect(differing).toMatchObject({ status: 'applicable' });
+    expect(unanswered).toMatchObject({ status: 'applicable' });
+
+    if (matching.status === 'applicable') {
+      expect(matching.documents.find((document) => document.id === 'contract-holder-lease')?.required).toBe(false);
+    }
+    if (differing.status === 'applicable') {
+      expect(differing.documents.find((document) => document.id === 'contract-holder-lease')?.required).toBe(true);
+    }
+    if (unanswered.status === 'applicable') {
+      expect(unanswered.documents.find((document) => document.id === 'contract-holder-lease')?.required).toBeNull();
+    }
+  });
+
+  it('returns the three requested-provider documents for registered business accommodation', () => {
+    const result = getHousingProofDocuments('registered_business', 'third_party');
+
+    expect(result).toMatchObject({ status: 'applicable', requiresThirdParty: true });
+    if (result.status === 'applicable') {
+      expect(result.documents).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'business-accommodation-proof', requestedFrom: 'Accommodation provider' }),
+          expect.objectContaining({ id: 'business-registration', requestedFrom: 'Accommodation provider' }),
+          expect.objectContaining({ id: 'current-rent-receipt', requestedFrom: 'Accommodation provider or payment service' }),
+        ]),
+      );
+      expect(result.documents).toHaveLength(3);
+    }
+  });
+
+  it('does not add provider documents to a self-held lease', () => {
+    const result = getHousingProofDocuments('own_lease', 'self');
+
+    expect(result).toMatchObject({ status: 'applicable', requiresThirdParty: false });
+    if (result.status === 'applicable') {
+      expect(result.documents).toEqual([
+        expect.objectContaining({ id: 'lease-agreement', requestedFrom: 'You' }),
+      ]);
     }
   });
 });

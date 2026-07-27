@@ -57,7 +57,13 @@ export type KJEvent =
   | 'profile_field_change'
   | 'account_delete_initiated'
   | 'tour_aha_moment_shown'
-  | 'tour_aha_moment_dismissed';
+  | 'tour_aha_moment_dismissed'
+  | 'task_open'
+  | 'task_start'
+  | 'task_complete'
+  | 'task_uncomplete'
+  | 'task_order_choice'
+  | 'task_housing_address_check';
 
 type Props = Record<string, string | number | boolean | null | undefined>;
 

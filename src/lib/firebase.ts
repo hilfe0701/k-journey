@@ -103,6 +103,16 @@ export interface Bucket {
   createdAtIso: string;
 }
 
+export type DepartureOrderChoice = 'deposit-first' | 'account-first';
+
+export interface LocalTaskProgress {
+  completedTaskIds: string[];
+  inProgressTaskIds: string[];
+  completedAtByTaskId: Record<string, string>;
+  housingProviderAddressMatchesProof: boolean | null;
+  departureOrderChoice: DepartureOrderChoice | null;
+}
+
 const EMPTY_PROFILE: UserProfile = {
   uid: LOCAL_PROFILE_ID,
   email: null,
@@ -129,6 +139,40 @@ const EMPTY_PROFILE: UserProfile = {
   onboardingCompletedAt: null,
   createdAt: null,
 };
+
+export const EMPTY_TASK_PROGRESS: LocalTaskProgress = {
+  completedTaskIds: [],
+  inProgressTaskIds: [],
+  completedAtByTaskId: {},
+  housingProviderAddressMatchesProof: null,
+  departureOrderChoice: null,
+};
+
+export function getTaskProgress(): LocalTaskProgress {
+  const stored = getJson<Partial<LocalTaskProgress>>(KEYS.taskProgressCache);
+  return {
+    ...EMPTY_TASK_PROGRESS,
+    ...stored,
+    completedTaskIds: stored?.completedTaskIds ?? [],
+    inProgressTaskIds: stored?.inProgressTaskIds ?? [],
+    completedAtByTaskId: stored?.completedAtByTaskId ?? {},
+    housingProviderAddressMatchesProof: stored?.housingProviderAddressMatchesProof ?? null,
+    departureOrderChoice: stored?.departureOrderChoice ?? null,
+  };
+}
+
+/**
+ * Persists local task state and verifies the write before callers commit any
+ * optimistic UI. MMKV is synchronous, but the explicit verification keeps a
+ * failed local write from leaving a task visibly completed.
+ */
+export function saveTaskProgress(progress: LocalTaskProgress): void {
+  setJson(KEYS.taskProgressCache, progress);
+  const persisted = getJson<LocalTaskProgress>(KEYS.taskProgressCache);
+  if (!persisted || JSON.stringify(persisted) !== JSON.stringify(progress)) {
+    throw new Error('Local task progress was not saved.');
+  }
+}
 
 export async function updateUserProfile(patch: Partial<UserProfile>): Promise<void> {
   const current = getJson<UserProfile>(KEYS.profileCache) ?? EMPTY_PROFILE;
@@ -245,6 +289,7 @@ export function clearLocalJourneyData(): void {
   [
     KEYS.profileCache,
     KEYS.completedMissionsCache,
+    KEYS.taskProgressCache,
     KEYS.bucketsCache,
     KEYS.firedPanelUnlocks,
     KEYS.lastSeenPhase,

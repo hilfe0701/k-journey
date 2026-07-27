@@ -1,5 +1,5 @@
 import { useMMKVString } from 'react-native-mmkv';
-import { UserProfile } from '../lib/firebase';
+import { LocalTaskProgress, UserProfile, EMPTY_TASK_PROGRESS } from '../lib/firebase';
 import { getJson, KEYS, storage } from '../lib/storage';
 
 export type ProfileLoadError = 'profile_load_failed';
@@ -23,10 +23,41 @@ export function useProfile(): ProfileState {
   };
 }
 
+export interface TaskProgressState {
+  loading: boolean;
+  progress: LocalTaskProgress;
+}
+
+export function useTaskProgress(): TaskProgressState {
+  const [progressJson] = useMMKVString(KEYS.taskProgressCache, storage);
+  const progress = progressJson
+    ? parseTaskProgress(progressJson)
+    : getJson<LocalTaskProgress>(KEYS.taskProgressCache) ?? EMPTY_TASK_PROGRESS;
+
+  return { loading: false, progress };
+}
+
 function parseProfile(raw: string): UserProfile | null {
   try {
     return JSON.parse(raw) as UserProfile;
   } catch {
     return null;
+  }
+}
+
+function parseTaskProgress(raw: string): LocalTaskProgress {
+  try {
+    const stored = JSON.parse(raw) as Partial<LocalTaskProgress>;
+    return {
+      ...EMPTY_TASK_PROGRESS,
+      ...stored,
+      completedTaskIds: stored.completedTaskIds ?? [],
+      inProgressTaskIds: stored.inProgressTaskIds ?? [],
+      completedAtByTaskId: stored.completedAtByTaskId ?? {},
+      housingProviderAddressMatchesProof: stored.housingProviderAddressMatchesProof ?? null,
+      departureOrderChoice: stored.departureOrderChoice ?? null,
+    };
+  } catch {
+    return EMPTY_TASK_PROGRESS;
   }
 }

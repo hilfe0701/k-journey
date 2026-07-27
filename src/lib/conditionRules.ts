@@ -102,6 +102,15 @@ export interface HousingContractApplicable {
   status: 'applicable';
   requiredDocuments: readonly string[];
   requiresThirdParty: boolean;
+  documents: readonly HousingDocumentSpec[];
+}
+
+export interface HousingDocumentSpec {
+  id: string;
+  title: string;
+  requestedFrom: string;
+  details: string;
+  required: boolean | null;
 }
 
 export interface HousingContractReview {
@@ -112,6 +121,8 @@ export interface HousingContractReview {
 }
 
 export type HousingContractEvaluation = HousingContractApplicable | HousingContractReview;
+
+export type HousingProofEvaluation = HousingContractEvaluation;
 
 const RESIDENCE_REGISTRATION_SOURCE =
   'https://www.immigration.go.kr/bbs/moj/93/559234/artclView.do';
@@ -249,6 +260,19 @@ export function evaluateHousingContract(
   housingType: HousingType,
   contractHolder: ContractHolder,
 ): HousingContractEvaluation {
+  return getHousingProofDocuments(housingType, contractHolder, null);
+}
+
+/**
+ * Returns the residence-proof checklist, including the nested address rule
+ * for a third-party contract. `null` means the address comparison has not
+ * been answered yet, so the conditional document stays visibly unresolved.
+ */
+export function getHousingProofDocuments(
+  housingType: HousingType,
+  contractHolder: ContractHolder,
+  providerAddressMatchesProof: boolean | null = null,
+): HousingProofEvaluation {
   if (isUnknownConditionValue(housingType) || isUnknownConditionValue(contractHolder)) {
     return {
       status: 'review_required',
@@ -271,38 +295,75 @@ export function evaluateHousingContract(
   }
 
   if (housingType === 'dormitory' && (contractHolder === 'none' || contractHolder === 'n_a')) {
+    const documents = [
+      {
+        id: 'dormitory-confirmation',
+        title: 'Dormitory residence confirmation',
+        requestedFrom: 'Dormitory office',
+        details: 'Confirmation with the residence address and an official stamp.',
+        required: true,
+      },
+    ] as const;
     return {
       status: 'applicable',
-      requiredDocuments: ['dormitory admission confirmation'],
+      requiredDocuments: documents.map((document) => document.title),
       requiresThirdParty: true,
+      documents,
     };
   }
 
   if (housingType === 'own_lease' && contractHolder === 'self') {
+    const documents = [
+      {
+        id: 'lease-agreement',
+        title: 'Lease agreement copy',
+        requestedFrom: 'You',
+        details: 'Include the full address, both parties\' details and signatures, and the stay period.',
+        required: true,
+      },
+    ] as const;
     return {
       status: 'applicable',
-      requiredDocuments: ['lease agreement'],
+      requiredDocuments: documents.map((document) => document.title),
       requiresThirdParty: false,
+      documents,
     };
   }
 
-  if (housingType === 'own_lease' && contractHolder === 'third_party') {
+  if (
+    (housingType === 'own_lease' || housingType === 'third_party_lease') &&
+    contractHolder === 'third_party'
+  ) {
+    const documents = [
+      {
+        id: 'accommodation-confirmation',
+        title: 'Proof of accommodation',
+        requestedFrom: 'Contract holder',
+        details: 'Include the accommodation address and the residence start date.',
+        required: true,
+      },
+      {
+        id: 'contract-holder-id',
+        title: 'Contract holder identification copy',
+        requestedFrom: 'Contract holder',
+        details: 'Provide both sides of the identification document.',
+        required: true,
+      },
+      {
+        id: 'contract-holder-lease',
+        title: 'Contract holder lease agreement copy',
+        requestedFrom: 'Contract holder',
+        details: 'Needed when the identification address differs from the proof-of-accommodation address.',
+        required: providerAddressMatchesProof === null ? null : !providerAddressMatchesProof,
+      },
+    ] as const;
     return {
       status: 'applicable',
-      requiredDocuments: [
-        'lease agreement',
-        'proof of accommodation',
-        'contract holder identification copy',
-      ],
+      requiredDocuments: documents
+        .filter((document) => document.required !== false)
+        .map((document) => document.title),
       requiresThirdParty: true,
-    };
-  }
-
-  if (housingType === 'third_party_lease' && contractHolder === 'third_party') {
-    return {
-      status: 'applicable',
-      requiredDocuments: ['proof of accommodation', 'contract holder identification copy'],
-      requiresThirdParty: true,
+      documents,
     };
   }
 
@@ -310,14 +371,34 @@ export function evaluateHousingContract(
     housingType === 'registered_business' &&
     (contractHolder === 'third_party' || contractHolder === 'n_a')
   ) {
+    const documents = [
+      {
+        id: 'business-accommodation-proof',
+        title: 'Accommodation confirmation',
+        requestedFrom: 'Accommodation provider',
+        details: 'The address must match the business registration certificate and include the residence start date.',
+        required: true,
+      },
+      {
+        id: 'business-registration',
+        title: 'Business registration certificate',
+        requestedFrom: 'Accommodation provider',
+        details: 'Use it to confirm the registered address of the accommodation.',
+        required: true,
+      },
+      {
+        id: 'current-rent-receipt',
+        title: 'Current-month rent receipt',
+        requestedFrom: 'Accommodation provider or payment service',
+        details: 'A bank transfer record can replace the receipt when accepted by the office.',
+        required: true,
+      },
+    ] as const;
     return {
       status: 'applicable',
-      requiredDocuments: [
-        'proof of accommodation',
-        'business registration certificate',
-        'accommodation-use proof',
-      ],
+      requiredDocuments: documents.map((document) => document.title),
       requiresThirdParty: true,
+      documents,
     };
   }
 

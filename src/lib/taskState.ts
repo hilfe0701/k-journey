@@ -54,6 +54,43 @@ export interface TaskProgress {
   errorStateByTaskId?: Readonly<Record<string, TaskErrorState | undefined>>;
 }
 
+export interface TaskMetadata {
+  taskId: string;
+  title: string;
+  summary: string;
+  dependsOn?: readonly string[];
+}
+
+/** Shared labels for the task page and Journey Home cards. */
+export const TASK_METADATA: readonly TaskMetadata[] = [
+  {
+    taskId: 'residence-registration',
+    title: 'Residence registration',
+    summary: 'Assess the documents and timing for foreign resident registration.',
+  },
+  {
+    taskId: 'housing-proof',
+    title: 'Housing proof',
+    summary: 'Prepare documents for your housing and contract holder.',
+    dependsOn: ['residence-registration'],
+  },
+  {
+    taskId: 'group-registration',
+    title: 'Group registration',
+    summary: 'Check whether university-supported registration applies to your stay.',
+    dependsOn: ['residence-registration'],
+  },
+  {
+    taskId: 'departure-order',
+    title: 'Departure order',
+    summary: 'Choose how to handle your deposit and account before leaving Korea.',
+  },
+] as const;
+
+export function taskMetadata(taskId: string): TaskMetadata | undefined {
+  return TASK_METADATA.find((task) => task.taskId === taskId);
+}
+
 export interface EvaluatedTask {
   taskId: string;
   state: TaskState;
@@ -307,7 +344,7 @@ export function transitionTaskState(current: TaskState, action: TaskAction): Tas
         ? { state: 'in_progress', changed: true }
         : { state: current, changed: false, reason: 'Only available tasks can be started.' };
     case 'complete':
-      return current === 'in_progress' || current === 'review_required'
+      return current === 'available' || current === 'in_progress' || current === 'review_required'
         ? { state: 'completed', changed: true }
         : { state: current, changed: false, reason: 'This task is not ready to be completed.' };
     case 'cancel':

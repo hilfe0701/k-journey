@@ -15,6 +15,7 @@ export const KEYS = {
   profileCache: 'profile:cache:v1',
   onboardingProgress: 'onboarding:progress:v1',
   completedMissionsCache: 'missions:completed:v1',
+  taskProgressCache: 'tasks:progress:v1',
   bucketsCache: 'buckets:cache:v1',
   galleryDismissed: 'gallery:dismissed',
   phaseOverride: 'phase:override',

@@ -16,7 +16,7 @@ import {
 import { formatInTimeZone } from 'date-fns-tz';
 
 import { Badge, Card, EmptyState, NetworkIndicator, Text } from '../../src/components/ui';
-import { useProfile } from '../../src/hooks/useProfile';
+import { useProfile, useTaskProgress } from '../../src/hooks/useProfile';
 import { calcPhase, dDay, type Phase } from '../../src/hooks/usePhase';
 import {
   evaluateGroupRegistration,
@@ -27,7 +27,7 @@ import {
 } from '../../src/lib/conditionRules';
 import { KST, kstDifferenceInDays, kstNow, scheduleAtKstMorning, toKstStartOfDay } from '../../src/lib/dates';
 import { track } from '../../src/lib/posthog';
-import type { UserProfile } from '../../src/lib/firebase';
+import type { LocalTaskProgress, UserProfile } from '../../src/lib/firebase';
 import { palette, radius, semantic, space } from '../../design-tokens';
 
 const PHASE_LABEL: Record<Phase, string> = {
@@ -37,10 +37,16 @@ const PHASE_LABEL: Record<Phase, string> = {
   4: 'Pre-departure',
 };
 
-type HomeTaskStatus = 'available' | 'blocked' | 'not_applicable';
+type HomeTaskStatus =
+  | 'available'
+  | 'in_progress'
+  | 'completed'
+  | 'blocked'
+  | 'review_required'
+  | 'not_applicable';
 type HomeTaskKind = 'sequential' | 'eligibility' | 'review';
 
-interface HomeTask {
+export interface HomeTask {
   taskId: string;
   title: string;
   summary: string;
@@ -49,6 +55,7 @@ interface HomeTask {
   reason?: string;
   alternativeMeans?: string;
   sourceUrl?: string;
+  unlocksWhen?: string;
 }
 
 interface TaskSectionProps {
@@ -58,11 +65,13 @@ interface TaskSectionProps {
   icon: React.ReactNode;
   screenName: string;
   emptyMessage: string;
+  router: ReturnType<typeof useRouter>;
 }
 
 export default function Home() {
   const router = useRouter();
   const { profile } = useProfile();
+  const { progress } = useTaskProgress();
 
   const knownArrivalDate = knownDate(profile?.arrivalDate);
   const knownDepartureDate = knownDate(profile?.departureDate);
@@ -74,9 +83,16 @@ export default function Home() {
     [knownArrivalDate, knownDepartureDate],
   );
 
-  const tasks = useMemo(() => (profile ? buildHomeTasks(profile) : []), [profile]);
-  const availableTasks = tasks.filter((task) => task.status === 'available');
-  const blockedTasks = tasks.filter((task) => task.status === 'blocked');
+  const tasks = useMemo(
+    () => (profile ? buildHomeTasks(profile, progress, phase) : []),
+    [profile, progress, phase],
+  );
+  const availableTasks = tasks.filter(
+    (task) => task.status === 'available' || task.status === 'in_progress' || task.status === 'completed',
+  );
+  const blockedTasks = tasks.filter(
+    (task) => task.status === 'blocked' || task.status === 'review_required',
+  );
   const notApplicableTasks = tasks.filter((task) => task.status === 'not_applicable');
   const daysUntilDeparture = knownDepartureDate ? dDay(knownDepartureDate) : null;
 
@@ -139,6 +155,7 @@ export default function Home() {
           icon={<CheckCircle2 size={22} color={palette.jade} strokeWidth={1.6} />}
           screenName="home_available_tasks"
           emptyMessage="No tasks are available yet."
+          router={router}
         />
         <TaskSection
           title="Blocked"
@@ -147,6 +164,7 @@ export default function Home() {
           icon={<LockKeyhole size={22} color={palette.dancheong} strokeWidth={1.6} />}
           screenName="home_blocked_tasks"
           emptyMessage="No tasks are blocked right now."
+          router={router}
         />
         <TaskSection
           title="Not applicable"
@@ -155,6 +173,7 @@ export default function Home() {
           icon={<CircleOff size={22} color={palette.ash} strokeWidth={1.6} />}
           screenName="home_not_applicable_tasks"
           emptyMessage="No tasks are marked not applicable."
+          router={router}
         />
 
         {daysUntilDeparture !== null && daysUntilDeparture < 0 ? (
@@ -326,6 +345,7 @@ function TaskSection({
   icon,
   screenName,
   emptyMessage,
+  router,
 }: TaskSectionProps) {
   return (
     <View style={styles.section} accessibilityRole="summary" accessibilityLabel={`${title} tasks`}>
@@ -349,7 +369,7 @@ function TaskSection({
       ) : (
         <View style={styles.taskList}>
           {tasks.map((task) => (
-            <TaskCard key={task.taskId} task={task} />
+            <TaskCard key={task.taskId} task={task} router={router} />
           ))}
         </View>
       )}
@@ -357,23 +377,42 @@ function TaskSection({
   );
 }
 
-function TaskCard({ task }: { task: HomeTask }) {
-  const isAvailable = task.status === 'available';
+function TaskCard({ task, router }: { task: HomeTask; router: ReturnType<typeof useRouter> }) {
+  const isCompleted = task.status === 'completed';
+  const isAvailable = task.status === 'available' || task.status === 'in_progress' || isCompleted;
   const isNotApplicable = task.status === 'not_applicable';
+  const isReview = task.status === 'review_required';
   const accent = isAvailable ? palette.jade : isNotApplicable ? palette.ash : palette.dancheong;
   const background = isAvailable
     ? palette.hanji
     : isNotApplicable
       ? palette.cloud
       : palette.dancheongLight;
-  const Icon = isAvailable ? CheckCircle2 : isNotApplicable ? CircleOff : LockKeyhole;
-  const label = isAvailable ? 'AVAILABLE' : isNotApplicable ? 'NOT APPLICABLE' : 'BLOCKED';
+  const Icon = isCompleted ? CheckCircle2 : isAvailable ? CheckCircle2 : isNotApplicable ? CircleOff : LockKeyhole;
+  const label = isCompleted
+    ? 'COMPLETED'
+    : task.status === 'in_progress'
+      ? 'IN PROGRESS'
+      : isAvailable
+        ? 'AVAILABLE'
+        : isNotApplicable
+          ? 'NOT APPLICABLE'
+          : isReview
+            ? 'REVIEW'
+            : 'BLOCKED';
 
   return (
     <Card
+      onPress={() => {
+        track('task_open');
+        router.push(`/task/${task.taskId}` as never);
+      }}
       padded
       bg={background}
       style={[styles.taskCard, { borderColor: isAvailable ? palette.hairline : accent }]}
+      accessibilityLabel={`${task.title}. ${label.toLowerCase()}.`}
+      accessibilityHint="Tap to open task details."
+      accessibilityState={{ selected: isCompleted }}
     >
       <View style={styles.taskHeader}>
         <View style={[styles.taskIcon, { backgroundColor: isAvailable ? palette.jadeLight : isNotApplicable ? palette.cloud : palette.dancheongLight }]}>
@@ -410,6 +449,15 @@ function TaskCard({ task }: { task: HomeTask }) {
         </View>
       ) : null}
 
+      {task.unlocksWhen ? (
+        <View style={styles.detailRow}>
+          <Info size={16} color={palette.cheong} strokeWidth={1.6} />
+          <Text role="sm" color={palette.cheong} style={styles.detailCopy}>
+            {`Opens when: ${task.unlocksWhen}`}
+          </Text>
+        </View>
+      ) : null}
+
       {task.sourceUrl ? (
         <View style={styles.sourceRow}>
           <Text role="xs" color={palette.ash}>
@@ -424,7 +472,11 @@ function TaskCard({ task }: { task: HomeTask }) {
   );
 }
 
-function buildHomeTasks(profile: UserProfile): HomeTask[] {
+export function buildHomeTasks(
+  profile: UserProfile,
+  progress: LocalTaskProgress,
+  phase: Phase | null,
+): HomeTask[] {
   const registration = evaluateResidenceRegistration(profile);
   const housing = evaluateHousingContract(profile.housingType, profile.contractHolder);
   const groupRegistration = evaluateGroupRegistration(profile);
@@ -434,6 +486,7 @@ function buildHomeTasks(profile: UserProfile): HomeTask[] {
     'Residence registration',
     'Foreign resident registration assessment',
     registration,
+    progress,
   );
 
   const housingTask: HomeTask =
@@ -454,14 +507,25 @@ function buildHomeTasks(profile: UserProfile): HomeTask[] {
             status: 'blocked',
             kind: 'sequential',
             reason: 'Complete the residence-registration assessment before preparing documents.',
+            unlocksWhen: 'Residence registration is complete.',
           }
         : housing.status === 'applicable'
-          ? {
-              taskId: 'housing-proof',
-              title: 'Housing proof',
-              summary: 'Prepare documents for your housing and contract holder.',
-              status: 'available',
-            }
+          ? taskWithProgress(
+              {
+                taskId: 'housing-proof',
+                title: 'Housing proof',
+                summary: 'Prepare documents for your housing and contract holder.',
+                status: isTaskCompleted(progress, 'residence-registration') ? 'available' : 'blocked',
+                kind: 'sequential',
+                reason: isTaskCompleted(progress, 'residence-registration')
+                  ? undefined
+                  : 'Complete the residence-registration assessment before preparing documents.',
+                unlocksWhen: isTaskCompleted(progress)
+                  ? undefined
+                  : 'Residence registration is complete.',
+              },
+              progress,
+            )
           : {
               taskId: 'housing-proof',
               title: 'Housing proof',
@@ -476,9 +540,24 @@ function buildHomeTasks(profile: UserProfile): HomeTask[] {
     'Group registration',
     'University-supported foreign resident registration',
     groupRegistration,
+    progress,
   );
 
-  return [registrationTask, housingTask, groupTask];
+  const departureTask = phase === 4
+    ? taskWithProgress(
+        {
+          taskId: 'departure-order',
+          title: 'Departure order',
+          summary: 'Choose how to handle your deposit and account before leaving Korea.',
+          status: 'available',
+        },
+        progress,
+      )
+    : null;
+
+  return departureTask
+    ? [registrationTask, housingTask, groupTask, departureTask]
+    : [registrationTask, housingTask, groupTask];
 }
 
 function taskFromVerdict(
@@ -486,9 +565,10 @@ function taskFromVerdict(
   title: string,
   summary: string,
   verdict: RuleVerdict,
+  progress: LocalTaskProgress,
 ): HomeTask {
   if (verdict.status === 'applicable') {
-    return { taskId, title, summary, status: 'available' };
+    return taskWithProgress({ taskId, title, summary, status: 'available' }, progress);
   }
   if (verdict.status === 'not_applicable') {
     return {
@@ -519,7 +599,39 @@ function taskFromVerdict(
     status: 'blocked',
     kind: 'review',
     reason: verdict.reason,
+    unlocksWhen: verdict.pendingFields?.length
+      ? `Provide ${verdict.pendingFields.map(conditionAxisLabel).join(' and ')} to reassess this task.`
+      : undefined,
   };
+}
+
+function conditionAxisLabel(axis: string): string {
+  const labels: Record<string, string> = {
+    universityId: 'your university',
+    programType: 'your program type',
+    visaTypeOrStatus: 'your visa status',
+    housingType: 'your housing type',
+    contractHolder: 'the contract holder',
+    totalStayDays: 'your total stay length',
+    nationality: 'your nationality',
+    homeCountryInsurance: 'home-country insurance',
+    residenceCardStatus: 'your residence card status',
+    arrivalDate: 'your arrival date',
+    departureDate: 'your departure date',
+    programStartDate: 'your program start date',
+  };
+  return labels[axis] ?? axis;
+}
+
+function taskWithProgress(task: HomeTask, progress: LocalTaskProgress): HomeTask {
+  if (task.status !== 'available') return task;
+  if (progress.completedTaskIds.includes(task.taskId)) return { ...task, status: 'completed' };
+  if (progress.inProgressTaskIds.includes(task.taskId)) return { ...task, status: 'in_progress' };
+  return task;
+}
+
+function isTaskCompleted(progress: LocalTaskProgress, taskId?: string): boolean {
+  return taskId ? progress.completedTaskIds.includes(taskId) : progress.completedTaskIds.length > 0;
 }
 
 function knownDate(value: string | null | undefined): string | null {
