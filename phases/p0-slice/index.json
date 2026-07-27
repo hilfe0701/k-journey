@@ -56,11 +56,14 @@
     {
       "step": 5,
       "name": "task-detail-and-blocking",
-      "summary": "",
-      "status": "pending",
+      "summary": "TASK-00 상세를 홈 태스크 카드와 연결하고 조건 축 기반 이유·선행조건·차단 사유, 4종 주거 × 명의 조건부 서류와 요청 대상자, 사진 규격·재사용 금지 경고, 로컬 완료/취소 전이와 출국 전 순서 선택을 구현함; not done: TASK-03 출처·확인일·충돌 경고는 step 6, 콘텐츠 정확성은 step 7, save_failed/E8은 미확정, 오프라인 큐·접근성 전수 점검은 각 범위 밖. npm run check·expo web export 통과.",
+      "status": "completed",
       "docs": [
         "ERROR_MESSAGES"
-      ]
+      ],
+      "started_at": "2026-07-27T17:09:20+0900",
+      "completed_at": "2026-07-27T17:40:38+0900",
+      "verified_by": "Codex — npm run check · expo web export · AC rule tests"
     },
     {
       "step": 6,
