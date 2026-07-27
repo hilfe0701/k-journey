@@ -27,6 +27,7 @@ import { runMigrations } from '../src/lib/storageMigrations';
 import { checkClockSkew } from '../src/lib/clockGuard';
 import { usePushPermissionWatcher } from '../src/lib/permissions';
 import { surfaceError } from '../src/lib/errorAlert';
+import { getOnboardingProgress, onboardingRoutePath } from '../src/lib/storage';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -166,8 +167,8 @@ function RouteGate() {
     const onboardingComplete = !!profile?.onboardingCompletedAt;
 
     if (!onboardingComplete) {
-      if (!inOnboarding || subRoute === 'sign-in') {
-        router.replace('/(onboarding)/profile');
+      if (!inOnboarding || subRoute === 'sign-in' || subRoute === 'profile') {
+        router.replace(onboardingRoutePath(getOnboardingProgress()?.currentRoute ?? 'university'));
       }
       return;
     }

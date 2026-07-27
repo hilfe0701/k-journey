@@ -9,7 +9,7 @@
 
 import { BucketTemplateKey } from '../data/bucketTemplates';
 import { kstNow } from './dates';
-import { getJson, KEYS, setJson, storage } from './storage';
+import { clearOnboardingProgress, getJson, KEYS, setJson, storage } from './storage';
 
 export const LOCAL_PROFILE_ID = 'local-profile';
 
@@ -251,5 +251,7 @@ export function clearLocalJourneyData(): void {
     KEYS.lastFiredDDayMilestones,
     KEYS.phaseOverride,
     KEYS.galleryDismissed,
+    KEYS.onboardingProgress,
   ].forEach((key) => storage.delete(key));
+  clearOnboardingProgress();
 }

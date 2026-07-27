@@ -1,15 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Calendar } from 'react-native-calendars';
-import { ChevronLeft } from 'lucide-react-native';
-import { format, addDays } from 'date-fns';
+import { addDays, format, parseISO } from 'date-fns';
 
-import { Text, Button } from '../../src/components/ui';
-import { palette, space, radius, semantic } from '../../design-tokens';
-import { useProfile } from '../../src/hooks/useProfile';
+import { OnboardingStepShell, UNKNOWN_LABEL, useOnboardingStepGuard } from '../../src/components/onboarding/ConditionStep';
+import { Text } from '../../src/components/ui';
+import { palette, radius, semantic, space } from '../../design-tokens';
+import { UNKNOWN, type UnknownValue } from '../../src/lib/firebase';
 import { updateUserProfile } from '../../src/lib/firebase';
+import { setOnboardingProgress } from '../../src/lib/storage';
+import { kstNow } from '../../src/lib/dates';
 import { rescheduleAllNotifications, getPermissionState } from '../../src/lib/notifications';
 import {
   NotificationPriming,
@@ -19,73 +20,96 @@ import { showOperationError, surfaceError } from '../../src/lib/errorAlert';
 import { validateDates, DATE_ERROR_MESSAGES } from '../../src/lib/validation';
 import { track } from '../../src/lib/posthog';
 
+type DateSelection = string | UnknownValue | null;
+type DateField = 'programStart' | 'arrival' | 'departure';
+
 export default function DatesScreen() {
   const router = useRouter();
-  const { profile } = useProfile();
-  const [pickingFor, setPickingFor] = useState<'arrival' | 'departure'>('arrival');
-  const [arrivalDate, setArrivalDate] = useState<string | null>(null);
-  const [departureDate, setDepartureDate] = useState<string | null>(null);
+  const profile = useOnboardingStepGuard('dates');
+  const [pickingFor, setPickingFor] = useState<DateField>('programStart');
+  const [programStartDate, setProgramStartDate] = useState<DateSelection>(null);
+  const [arrivalDate, setArrivalDate] = useState<DateSelection>(null);
+  const [departureDate, setDepartureDate] = useState<DateSelection>(null);
   const [saving, setSaving] = useState(false);
   const [primingVisible, setPrimingVisible] = useState(false);
-  const restoredRef = useRef(false);
+  const profileProgramStartDate = profile?.programStartDate;
+  const profileArrivalDate = profile?.arrivalDate;
+  const profileDepartureDate = profile?.departureDate;
 
-  // §4.6 — if the user force-quit mid-onboarding after entering dates, restore
-  // the prior input from the useProfile snapshot and tell them gently.
   useEffect(() => {
-    if (restoredRef.current) return;
-    if (profile?.arrivalDate && profile?.departureDate) {
-      restoredRef.current = true;
-      setArrivalDate(profile.arrivalDate);
-      setDepartureDate(profile.departureDate);
-      surfaceError('onboarding-resumed');
-    }
-  }, [profile?.arrivalDate, profile?.departureDate]);
+    if (!profile) return;
+    setProgramStartDate(profileProgramStartDate ?? null);
+    setArrivalDate(profileArrivalDate ?? null);
+    setDepartureDate(profileDepartureDate ?? null);
+    if (profileProgramStartDate) setPickingFor('programStart');
+  }, [profile, profileArrivalDate, profileDepartureDate, profileProgramStartDate]);
 
-  const today = format(new Date(), 'yyyy-MM-dd');
-  // Arrival is unrestricted — students may find the app well before or after
-  // landing, so any date in any year is selectable. Departure stays bounded
-  // below by arrival (a departure can't precede an arrival).
-  const minDate = pickingFor === 'arrival' ? undefined : arrivalDate ?? today;
-  const selected = pickingFor === 'arrival' ? arrivalDate : departureDate;
+  const today = format(kstNow(), 'yyyy-MM-dd');
+  const selected = selectedDateFor(pickingFor, programStartDate, arrivalDate, departureDate);
+  const selectedCalendarDate = typeof selected === 'string' ? selected : today;
+  const departureIsDate = typeof departureDate === 'string';
+  const minDate = pickingFor === 'departure' && typeof arrivalDate === 'string' ? arrivalDate : undefined;
+  const canContinue = !!programStartDate && !!arrivalDate && !!departureDate;
 
   function handleDayPress(day: { dateString: string }) {
+    if (pickingFor === 'programStart') {
+      setProgramStartDate(day.dateString);
+      return;
+    }
     if (pickingFor === 'arrival') {
       setArrivalDate(day.dateString);
-      // Default departure to 4 months later (typical 1-semester exchange)
-      if (!departureDate || departureDate < day.dateString) {
-        setDepartureDate(format(addDays(new Date(day.dateString), 120), 'yyyy-MM-dd'));
+      if (!departureIsDate || (typeof departureDate === 'string' && departureDate < day.dateString)) {
+        setDepartureDate(format(addDays(parseISO(day.dateString), 120), 'yyyy-MM-dd'));
       }
       setPickingFor('departure');
-    } else {
-      setDepartureDate(day.dateString);
+      return;
     }
+    setDepartureDate(day.dateString);
+  }
+
+  function setUnknownForCurrentField() {
+    if (pickingFor === 'programStart') setProgramStartDate(UNKNOWN);
+    if (pickingFor === 'arrival') setArrivalDate(UNKNOWN);
+    if (pickingFor === 'departure') setDepartureDate(UNKNOWN);
   }
 
   async function handleContinue() {
-    if (!arrivalDate || !departureDate) return;
-    const err = validateDates(arrivalDate, departureDate);
-    if (err) {
-      Alert.alert('Check your dates', DATE_ERROR_MESSAGES[err]);
+    if (!programStartDate || !arrivalDate || !departureDate) return;
+
+    const dateError =
+      typeof arrivalDate === 'string' && typeof departureDate === 'string'
+        ? validateDates(arrivalDate, departureDate)
+        : null;
+    if (dateError) {
+      surfaceError('unknown', {
+        messageOverride: DATE_ERROR_MESSAGES[dateError],
+        contextAction: 'check your dates',
+      });
       return;
     }
+
     setSaving(true);
     try {
-      await updateUserProfile({ arrivalDate, departureDate });
+      await updateUserProfile({
+        programStartDate,
+        arrivalDate,
+        departureDate,
+      });
+      setOnboardingProgress('era');
       track('onboarding_step_complete', { step: 'dates' });
 
-      // Push permission: the OS prompt only ever fires from behind the priming
-      // card (ADR-0029). If priming is due, show it and let onClose continue
-      // the flow; otherwise reschedule (if already granted) and move on.
-      if (await shouldShowPriming()) {
-        setPrimingVisible(true);
-        return;
-      }
-      if ((await getPermissionState()) === 'granted') {
-        await rescheduleAllNotifications({ arrivalDate, departureDate });
+      if (typeof arrivalDate === 'string' && typeof departureDate === 'string') {
+        if (await shouldShowPriming()) {
+          setPrimingVisible(true);
+          return;
+        }
+        if ((await getPermissionState()) === 'granted') {
+          await rescheduleAllNotifications({ arrivalDate, departureDate });
+        }
       }
       proceedToEra();
-    } catch (e) {
-      showOperationError('save your dates', e, { onPrimary: handleContinue });
+    } catch (error) {
+      showOperationError('save your dates', error, { onPrimary: handleContinue });
     } finally {
       setSaving(false);
     }
@@ -94,13 +118,14 @@ export default function DatesScreen() {
   async function handlePrimingClose(granted: boolean) {
     setPrimingVisible(false);
     try {
-      if (granted && arrivalDate && departureDate) {
+      if (granted && typeof arrivalDate === 'string' && typeof departureDate === 'string') {
         await rescheduleAllNotifications({ arrivalDate, departureDate });
       } else if ((await getPermissionState()) === 'denied') {
-        // §7.5 denied row — point the user to Settings without blocking onboarding.
         surfaceError('permission-notifications-denied');
       }
-    } finally {
+      proceedToEra();
+    } catch (error) {
+      showOperationError('schedule notifications', error);
       proceedToEra();
     }
   }
@@ -109,65 +134,50 @@ export default function DatesScreen() {
     router.push('/(onboarding)/era');
   }
 
-  const canContinue = !!arrivalDate && !!departureDate;
-
-  const markedDates: Record<string, any> = {};
-  if (arrivalDate) {
-    markedDates[arrivalDate] = {
-      startingDay: true,
-      color: palette.cheong,
-      textColor: palette.hanji,
-    };
+  const markedDates: Record<string, MarkedDate> = {};
+  if (typeof arrivalDate === 'string') {
+    markedDates[arrivalDate] = { startingDay: true, color: palette.cheong, textColor: palette.hanji };
   }
-  if (departureDate) {
-    markedDates[departureDate] = {
-      endingDay: true,
-      color: palette.dancheong,
-      textColor: palette.hanji,
-    };
+  if (typeof departureDate === 'string') {
+    markedDates[departureDate] = { endingDay: true, color: palette.dancheong, textColor: palette.hanji };
   }
-  if (arrivalDate && departureDate && arrivalDate !== departureDate) {
-    let cursor = addDays(new Date(arrivalDate), 1);
-    const end = new Date(departureDate);
+  if (typeof arrivalDate === 'string' && typeof departureDate === 'string' && arrivalDate !== departureDate) {
+    let cursor = addDays(parseISO(arrivalDate), 1);
+    const end = parseISO(departureDate);
     while (cursor < end) {
       const key = format(cursor, 'yyyy-MM-dd');
-      if (!markedDates[key]) {
-        markedDates[key] = { color: palette.cloud, textColor: palette.meok };
-      }
+      if (!markedDates[key]) markedDates[key] = { color: palette.cloud, textColor: palette.meok };
       cursor = addDays(cursor, 1);
     }
   }
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-        >
-          <ChevronLeft size={24} color={palette.meok} />
-        </Pressable>
-        <Text role="body" weight="semibold">
-          When are you in Korea?
-        </Text>
-        <View style={{ width: 24 }} />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.body}>
-        <Text role="body" color={palette.ash}>
-          We&apos;ll calculate your phases and D-Day from these.
-        </Text>
-
-        <View style={styles.dateRow}>
-          <DateChip
-            label="Arrival"
-            value={arrivalDate}
-            active={pickingFor === 'arrival'}
-            color={palette.cheong}
-            onPress={() => setPickingFor('arrival')}
-          />
+    <>
+      <OnboardingStepShell
+        stepNumber={7}
+        title="When will you be in Korea?"
+        description="Add the program start, arrival, and departure dates. You can mark any date unknown."
+        canContinue={canContinue}
+        onContinue={handleContinue}
+        saving={saving}
+      >
+        <View style={styles.content}>
+          <View style={styles.dateRow}>
+            <DateChip
+              label="Program start"
+              value={programStartDate}
+              active={pickingFor === 'programStart'}
+              color={palette.hwanggeum}
+              onPress={() => setPickingFor('programStart')}
+            />
+            <DateChip
+              label="Arrival"
+              value={arrivalDate}
+              active={pickingFor === 'arrival'}
+              color={palette.cheong}
+              onPress={() => setPickingFor('arrival')}
+            />
+          </View>
           <DateChip
             label="Departure"
             value={departureDate}
@@ -175,48 +185,73 @@ export default function DatesScreen() {
             color={palette.dancheong}
             onPress={() => setPickingFor('departure')}
           />
+
+          <Pressable
+            onPress={setUnknownForCurrentField}
+            hitSlop={8}
+            accessibilityRole="radio"
+            accessibilityLabel={`${fieldLabel(pickingFor)} — ${UNKNOWN_LABEL}`}
+            accessibilityState={{ selected: selected === UNKNOWN, disabled: false }}
+            style={[styles.unknownButton, selected === UNKNOWN ? styles.unknownButtonSelected : null]}
+          >
+            <Text role="sm" weight="semibold" color={selected === UNKNOWN ? palette.dancheong : palette.ash}>
+              {`${fieldLabel(pickingFor)} — ${UNKNOWN_LABEL}`}
+            </Text>
+          </Pressable>
+
+          <View style={styles.calendarWrap}>
+            <Calendar
+              current={selectedCalendarDate}
+              minDate={minDate}
+              markedDates={markedDates}
+              markingType="period"
+              onDayPress={handleDayPress}
+              theme={{
+                calendarBackground: palette.hanji,
+                monthTextColor: palette.meok,
+                textMonthFontWeight: '700',
+                dayTextColor: palette.meok,
+                todayTextColor: palette.dancheong,
+                textDayFontWeight: '500',
+                arrowColor: palette.meok,
+                textSectionTitleColor: palette.ash,
+              }}
+            />
+          </View>
+          {typeof programStartDate === 'string' && typeof arrivalDate === 'string' && typeof departureDate === 'string' ? (
+            <Text role="sm" color={palette.ash}>
+              {`${format(parseISO(programStartDate), 'MMM d, yyyy')} · ${format(parseISO(arrivalDate), 'MMM d, yyyy')} → ${format(parseISO(departureDate), 'MMM d, yyyy')}`}
+            </Text>
+          ) : null}
         </View>
-
-        <View style={styles.calendarWrap}>
-          <Calendar
-            current={selected ?? today}
-            minDate={minDate}
-            markedDates={markedDates}
-            markingType="period"
-            onDayPress={handleDayPress}
-            theme={{
-              calendarBackground: palette.hanji,
-              monthTextColor: palette.meok,
-              textMonthFontWeight: '700',
-              dayTextColor: palette.meok,
-              todayTextColor: palette.dancheong,
-              textDayFontWeight: '500',
-              arrowColor: palette.meok,
-              textSectionTitleColor: palette.ash,
-            }}
-          />
-        </View>
-
-        {arrivalDate && departureDate ? (
-          <Text role="sm" color={palette.ash} style={{ marginTop: space[3] }}>
-            {format(new Date(arrivalDate), 'MMM d, yyyy')} → {format(new Date(departureDate), 'MMM d, yyyy')}
-          </Text>
-        ) : null}
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <Button
-          label="Continue"
-          onPress={handleContinue}
-          disabled={!canContinue}
-          loading={saving}
-          fullWidth
-        />
-      </View>
-
+      </OnboardingStepShell>
       <NotificationPriming visible={primingVisible} onClose={handlePrimingClose} />
-    </SafeAreaView>
+    </>
   );
+}
+
+function selectedDateFor(
+  field: DateField,
+  programStartDate: DateSelection,
+  arrivalDate: DateSelection,
+  departureDate: DateSelection,
+): DateSelection {
+  if (field === 'programStart') return programStartDate;
+  if (field === 'arrival') return arrivalDate;
+  return departureDate;
+}
+
+function fieldLabel(field: DateField): string {
+  if (field === 'programStart') return 'Program start';
+  if (field === 'arrival') return 'Arrival';
+  return 'Departure';
+}
+
+interface MarkedDate {
+  startingDay?: boolean;
+  endingDay?: boolean;
+  color: string;
+  textColor: string;
 }
 
 function DateChip({
@@ -227,21 +262,24 @@ function DateChip({
   onPress,
 }: {
   label: string;
-  value: string | null;
+  value: DateSelection;
   active: boolean;
   color: string;
   onPress: () => void;
 }) {
+  const valueLabel = value === UNKNOWN ? UNKNOWN_LABEL : value ? format(parseISO(value), 'MMM d, yyyy') : 'Pick a date';
   return (
     <Pressable
       onPress={onPress}
+      hitSlop={8}
+      accessibilityRole="radio"
+      accessibilityLabel={`${label} — ${valueLabel}`}
+      accessibilityState={{ selected: active, disabled: false }}
       style={({ pressed }) => [
+        styles.dateChip,
         {
-          flex: 1,
-          padding: space[3],
-          borderRadius: radius.card,
-          borderWidth: active ? 2 : 1,
           borderColor: active ? color : palette.hairline,
+          borderWidth: active ? 2 : 1,
           backgroundColor: pressed ? palette.cloud : palette.hanji,
         },
       ]}
@@ -250,42 +288,36 @@ function DateChip({
         {label}
       </Text>
       <Text role="h4" color={value ? palette.meok : palette.stone}>
-        {value ? format(new Date(value), 'MMM d, yyyy') : 'Pick a date'}
+        {valueLabel}
       </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.hanji },
-  header: {
-    flexDirection: 'row',
+  content: { gap: space[3], marginTop: space[5] },
+  dateRow: { flexDirection: 'row', gap: space[3] },
+  dateChip: {
+    flex: 1,
+    minHeight: 68,
+    padding: space[3],
+    borderRadius: radius.card,
+    gap: space[1],
+  },
+  unknownButton: {
+    minHeight: 48,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: palette.hairline,
+    paddingHorizontal: space[3],
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space[5],
-    paddingVertical: space[4],
+    justifyContent: 'center',
   },
-  body: {
-    paddingHorizontal: space[5],
-    paddingBottom: space[8],
-    gap: space[4],
-  },
-  dateRow: {
-    flexDirection: 'row',
-    gap: space[3],
-    marginTop: space[2],
-  },
+  unknownButtonSelected: { borderColor: palette.dancheong, borderWidth: 2 },
   calendarWrap: {
     borderRadius: radius.card,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: palette.hairline,
-  },
-  footer: {
-    paddingHorizontal: space[5],
-    paddingBottom: space[4],
-    paddingTop: space[3],
-    borderTopWidth: 1,
-    borderTopColor: semantic.border.hairline,
+    borderColor: semantic.border.hairline,
   },
 });

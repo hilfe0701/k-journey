@@ -11,6 +11,7 @@ import Animated, {
 import { Text } from '../../src/components/ui';
 import { palette, motion } from '../../design-tokens';
 import { useProfile } from '../../src/hooks/useProfile';
+import { getOnboardingProgress, onboardingRoutePath } from '../../src/lib/storage';
 
 const PANEL_COLORS = [
   palette.dancheong,
@@ -38,7 +39,7 @@ export default function Splash() {
       if (profile?.onboardingCompletedAt) {
         router.replace('/(tabs)');
       } else {
-        router.replace('/(onboarding)/profile');
+        router.replace(onboardingRoutePath(getOnboardingProgress()?.currentRoute ?? 'university'));
       }
     }, motion.splashTotal);
 

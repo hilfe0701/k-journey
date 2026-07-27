@@ -23,6 +23,22 @@ export const KEYS = {
   firedPanelUnlocks: 'panel:fired:v1',
 } as const;
 
+export const ONBOARDING_ROUTES = [
+  'university',
+  'program',
+  'housing',
+  'stay-length',
+  'nationality',
+  'dates',
+  'era',
+] as const;
+
+export type OnboardingRoute = (typeof ONBOARDING_ROUTES)[number];
+
+export interface OnboardingProgress {
+  currentRoute: OnboardingRoute;
+}
+
 export function setJson<T>(key: string, value: T) {
   storage.set(key, JSON.stringify(value));
 }
@@ -39,4 +55,22 @@ export function getJson<T>(key: string): T | null {
 
 export function remove(key: string) {
   storage.delete(key);
+}
+
+export function setOnboardingProgress(currentRoute: OnboardingRoute): void {
+  setJson<OnboardingProgress>(KEYS.onboardingProgress, { currentRoute });
+}
+
+export function getOnboardingProgress(): OnboardingProgress | null {
+  const progress = getJson<OnboardingProgress>(KEYS.onboardingProgress);
+  if (!progress || !ONBOARDING_ROUTES.includes(progress.currentRoute)) return null;
+  return progress;
+}
+
+export function clearOnboardingProgress(): void {
+  remove(KEYS.onboardingProgress);
+}
+
+export function onboardingRoutePath(route: OnboardingRoute): string {
+  return `/(onboarding)/${route}`;
 }
