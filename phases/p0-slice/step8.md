@@ -38,20 +38,63 @@
 
 ⛔ **「오프라인 · 재연결」은 하지 않는다** — `DEC-026` 삭제분으로 그 경로가 없어졌다.
 
+### ★ 명세 ID를 코드에 박는다 — 이것이 없으면 ㈓ 증거 #5를 만들 수 없다
+
+**2026-07-27 실측: step 1~4를 끝낸 시점의 코드에 명세 ID가 거의 없다.**
+
+| ID | 코드에 있는 종수 |
+|---|---|
+| `REQ-*` | **2종**(`REQ-SFR-001`·`REQ-SFR-005`) — 확정 요구사항은 **19건**이다 |
+| `POL-*` | **0종** |
+| `TC-*` | **0종** |
+| 화면 ID(`ONB-`·`HOME-`·`TASK-`) | **0종** |
+
+㈓ 증거 5종의 **#5는 「`SPEC-GAP`·`SPEC-DEFECT` 대장 ↔ 코드의 `REQ`·`POL`·`TC` ID 교차 검증」**이다.
+**코드에 ID가 없으면 대조할 대상이 없어 이 증거가 통째로 사라진다.**
+
+**할 일** — 새 기능을 만들지 말고 **이미 만든 것에 출처를 단다.**
+
+1. **화면 파일 머리에 화면 ID 한 줄.** `app/(onboarding)/university.tsx` → `ONB-02`,
+   `program.tsx` → `ONB-03`, `housing.tsx` → `ONB-04`, `stay-length.tsx` → `ONB-05`,
+   `nationality.tsx` → `ONB-06`, `dates.tsx` → `ONB-07`, `era.tsx` → `ONB-08`,
+   홈·태스크 상세는 `HOME-*`·`TASK-*`. **정본은
+   `.work/pmjob/k-journey/19-k-journey-f03-ia-screen-inventory-2026-07-25.md`다**
+2. **규칙·정책을 구현한 함수 위에 근거 `REQ-*`·`POL-*`.** 정본은
+   `.work/pmjob/k-journey/27-...requirements-spec-2026-07-25.md`와 `28-...service-policy-2026-07-25.md`
+3. **테스트 `it()` 제목이나 바로 위 주석에 대응 `TC-*`.** 정본은 `30-...traceability-matrix-2026-07-25.md`
+4. **대장 `.work/spec-id-map.md`** — 표 4열: `ID` · `종류` · `코드 위치(파일:줄)` · `비고`.
+   **덮지 못한 `REQ`·`POL`은 「구현 안 함 + 왜」로 그 대장에 적는다. 빈칸으로 두지 마라**
+
+⛔ **없는 ID를 지어내지 마라.** 정본에 없는 번호를 달면 교차 검증이 **거짓 통과**한다.
+⛔ **ID를 달려고 코드 동작을 바꾸지 마라.** 주석과 대장만 는다.
+
 ## AC
 
 ```bash
+npm ci                                     # 낡은 node_modules 제거 — DEC-029 사실 ⑥
 npm run typecheck && npm run lint && npm test
-npx jest --listTests | wc -l          # suite 수
+npx jest --listTests | wc -l               # suite 수
 npm test 2>&1 | grep -E "Tests:|Suites:"   # 건수를 그대로 기록한다
+npx expo export --platform web             # 웹 번들 회귀
+
+# 명세 ID 계측 — 눈으로 세지 말고 이 명령의 출력을 summary에 적어라
+for p in 'REQ-[A-Z]{3}-[0-9]{3}' 'POL-[0-9]{3}' 'TC-[0-9]{3}' 'ONB-[0-9]{2}' 'HOME-[0-9]{2}' 'TASK-[0-9]{2}'; do
+  echo "$p : $(grep -rhoE "$p" app/ src/ --include='*.ts' --include='*.tsx' | sort -u | wc -l)"
+done
 ```
 
-- [ ] `npm run check` 통과
+- [ ] `npm run check` 통과 (**`npm ci` 이후에 잰 값이어야 한다**)
 - [ ] `jest` **146건 이상**(`I01` 기준선). **늘어난 건수와 무엇을 덮는지**를 `summary`에 적는다
 - [ ] 위 자동 테스트 **7종**(5번 제외)에 각각 최소 1건이 있다
+- [ ] ★ **명세 ID 계측 명령의 출력을 `summary`에 그대로 적는다.** `REQ`·`POL`·화면 ID가 **전부 0보다 크다**
+- [ ] ★ **`.work/spec-id-map.md`**가 있고, 확정 요구사항 **19건 각각이 「구현함(위치)」 또는 「구현 안 함(이유)」**로 처리돼 있다
 - [ ] 수동 QA 체크리스트를 **`.work/qa-report.md`**에 결과와 함께 남긴다 —
       항목 · Pass/Fail · 재현 절차 · 스크린샷 경로. **Fail도 그대로 적는다**
 - [ ] 남은 이슈를 **`.work/known-issues.md`**에 심각도와 함께 남긴다
+
+> ⚠️ **수동 QA 중 브라우저로 눌러야 하는 항목은 네가 판정하지 못한다** — 샌드박스가 localhost에
+> 접근하지 못한다(`DEC-029`). 그 항목은 **`.work/qa-report.md`에 「미실시 — 브라우저 레인」**으로 적어라.
+> **Pass로 적지 마라.** 코드·테스트로 판정 가능한 항목만 네가 판정한다.
 
 ## ⛔ 이 step이 하지 않는 것
 
