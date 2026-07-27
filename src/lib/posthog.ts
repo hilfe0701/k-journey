@@ -5,8 +5,16 @@
 
 import PostHog from 'posthog-react-native';
 
-const apiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? '';
+const rawKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? '';
 const host = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com';
+
+// A real key is one that exists and is not the .env.example placeholder.
+const hasUsableKey = rawKey.length > 0 && !rawKey.startsWith('phc_REPLACE');
+
+// PostHog's constructor throws on an empty key, so `disabled` below was never
+// reached without one and the app could not boot at all. Pass a placeholder and
+// let `disabled` do the intended work.
+const apiKey = hasUsableKey ? rawKey : 'phc_analytics_disabled';
 
 export const posthog = new PostHog(apiKey, {
   host,
@@ -17,7 +25,7 @@ export const posthog = new PostHog(apiKey, {
   },
   flushAt: 20,
   flushInterval: 30_000,
-  disabled: !apiKey || apiKey.startsWith('phc_REPLACE'),
+  disabled: !hasUsableKey,
 });
 
 export type KJEvent =
