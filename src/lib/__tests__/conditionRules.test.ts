@@ -264,17 +264,40 @@ const VISA_STATUSES = ['D-2-6', 'D-2-8', 'visa_free', 'other', UNKNOWN] as const
 // REQ-DAR-003의 90일 경계 양쪽을 건드린다. 임의의 값을 늘리는 것보다 경계가 잡는다.
 const STAY_DAYS = [0, 27, 28, 29, 90, 91, 120, UNKNOWN] as const;
 
+// universityId 순회 축 — 2026-07-27 ★20 으로 추가했다.
+//
+// DEC-034 반례 ② 는 "순회 밖으로 고정한 축들은 판정에 쓰이지 않는다고 가정했고 확인하지 않았다"
+// 고 적었다. 확인해 보니 그 가정은 틀렸다:
+//   evaluateGroupRegistration 은 totalStayDays < 28 분기에서 universityId 로 3갈래를 낸다
+//   (conditionRules.ts:482-505) — UNKNOWN -> review_required / 'yonsei' -> locked_permanent /
+//   그 외 -> review_required.
+//   'yonsei' 는 이 순회에서 locked_permanent 를 내는 유일한 값이다. 고정값을 'cau' 로 바꾸면
+//   INV-3 의 seenPermanentBlock > 0 이 무너져 TC-158 이 실패한다 — 실제로 재현했다.
+//   즉 INV-3 의 "생존 확인"이 순회 밖 고정값에 의존하고 있었다.
+// 세 값의 뜻: UNKNOWN(미확인) · 'yonsei'(확인된 규칙이 있는 대학) · 'cau'(그 외 — 확인된 규칙이 없다).
+// REQ-SFR-011 이 등급 A 로 "연세대 확인분 한정"이라 적은 그 경계를 그대로 순회한다.
+const UNIVERSITY_IDS = [UNKNOWN, 'yonsei', 'cau'] as const;
+
 // 값은 conditionRules.ts 의 RuleVerdict 유니온에서 그대로 가져온다.
 // 처음에 'permanent_block' 으로 적었다가 이 순회가 틀렸다고 알려 주었다 — 실제 리터럴은 'locked_permanent' 다.
 const RULE_STATUSES = ['applicable', 'not_applicable', 'review_required', 'locked_permanent'];
 
-/** 조합 순회 — 5 × 6 × 5 × 8 = 1200개 프로파일. */
+/** 조합 순회 — 3 × 5 × 6 × 5 × 8 = 3600개 프로파일. (2026-07-27 ★20: 1200 -> 3600) */
+const COMBINATION_COUNT =
+  UNIVERSITY_IDS.length *
+  HOUSING_TYPES.length *
+  CONTRACT_HOLDERS.length *
+  VISA_STATUSES.length *
+  STAY_DAYS.length;
+
 function* everyCombination(): Generator<ConditionProfile> {
-  for (const housingType of HOUSING_TYPES) {
-    for (const contractHolder of CONTRACT_HOLDERS) {
-      for (const visaTypeOrStatus of VISA_STATUSES) {
-        for (const totalStayDays of STAY_DAYS) {
-          yield { ...profile, housingType, contractHolder, visaTypeOrStatus, totalStayDays };
+  for (const universityId of UNIVERSITY_IDS) {
+    for (const housingType of HOUSING_TYPES) {
+      for (const contractHolder of CONTRACT_HOLDERS) {
+        for (const visaTypeOrStatus of VISA_STATUSES) {
+          for (const totalStayDays of STAY_DAYS) {
+            yield { ...profile, universityId, housingType, contractHolder, visaTypeOrStatus, totalStayDays };
+          }
         }
       }
     }
@@ -303,7 +326,9 @@ describe('INV-1 ~ INV-4: property-based invariants over condition combinations',
 
     // 미판정 0건 · 5종 외 결과 0건 (42 §4 TC-156 기대)
     expect(offenders).toEqual([]);
-    expect(checked).toBe(1200 * EVALUATORS.length);
+    // 2026-07-27 ★20: 1200 -> 3600. 숫자를 손으로 적지 않고 축 길이의 곱으로 잰다.
+    expect(COMBINATION_COUNT).toBe(3600);
+    expect(checked).toBe(COMBINATION_COUNT * EVALUATORS.length);
   });
 
   it('TC-157 / INV-2: an unknown axis never yields an applicable verdict for rules that depend on it', () => {
@@ -330,6 +355,10 @@ describe('INV-1 ~ INV-4: property-based invariants over condition combinations',
     const offenders: string[] = [];
     let seenNotApplicable = 0;
     let seenPermanentBlock = 0;
+    // 2026-07-27 ★20: locked_permanent 를 어느 universityId 가 냈는지 기록한다.
+    // 이전에는 이 축이 순회 밖에 'yonsei' 로 고정돼 있어서, 생존 확인이 고정값에 의존한다는 것을
+    // 테스트가 스스로 말할 수 없었다. 이제 순회 안에 있으므로 출처를 셀 수 있다.
+    const permanentBlockBy = new Set<string>();
 
     for (const candidate of everyCombination()) {
       for (const [name, evaluate] of EVALUATORS) {
@@ -337,7 +366,10 @@ describe('INV-1 ~ INV-4: property-based invariants over condition combinations',
         if (verdict.status !== 'not_applicable' && verdict.status !== 'locked_permanent') continue;
 
         if (verdict.status === 'not_applicable') seenNotApplicable += 1;
-        else seenPermanentBlock += 1;
+        else {
+          seenPermanentBlock += 1;
+          permanentBlockBy.add(String(candidate.universityId));
+        }
 
         const grounded =
           Boolean((verdict as { sourceUrl?: string }).sourceUrl) ||
@@ -352,6 +384,10 @@ describe('INV-1 ~ INV-4: property-based invariants over condition combinations',
     // 순회가 실제로 두 상태를 만들었는지 확인한다. 0건이면 이 테스트는 아무것도 보지 않은 것이다.
     expect(seenNotApplicable).toBeGreaterThan(0);
     expect(seenPermanentBlock).toBeGreaterThan(0);
+    // 2026-07-27 ★20: locked_permanent 는 'yonsei' 에서만 나온다 — REQ-SFR-011 이 등급 A 로
+    // "연세대 확인분 한정"이라 적은 그대로다. 다른 대학에서도 나오면 근거 없는 일반화이고,
+    // 아무 데서도 안 나오면 확인된 규칙이 사라진 것이다. 양쪽 다 실패로 잡는다.
+    expect([...permanentBlockBy].sort()).toEqual(['yonsei']);
   });
 
   it('TC-159 / INV-4: the same input yields the same verdict across 10 runs', () => {
