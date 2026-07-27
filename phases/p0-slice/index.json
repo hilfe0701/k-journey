@@ -3,20 +3,21 @@
   "phase": "p0-slice",
   "branch": "v2-conditional-orchestration",
   "basis": "DEC-028 (.work/pmjob/k-journey/31-k-journey-decision-log-2026-07-25.md)",
-  "goal": "P0 슬라이스 하나가 `npm run web` 에서 온보딩 조건 입력 → 홈 → 태스크 상세 → 완료까지 끊김 없이 돈다. step 6 종료 시점이 그 판정 시점이다.",
+  "goal": "P0 슬라이스 하나가 웹 타깃(`npm run web`)에서 온보딩 조건 입력 → 홈 → 태스크 상세 → 완료까지 끊김 없이 돈다. step 6 종료 시점이 그 판정 시점이다. 타깃이 웹인 근거는 DEC-029 — iOS·Android·Expo Go는 이 환경에서 실행 불가다.",
   "steps": [
     {
       "step": 1,
       "name": "strip-auth-layer",
-      "summary": "인증·사용자별 Firestore/Auth 경로를 제거하고 프로필·미션·버킷을 로컬 MMKV로 전환했으며 원격 sync 상태·문구를 제거함; npm run check 146/146 통과. 미실행: 웹 수동 도달 검증, save_failed/E8·조건축·SECURITY/PLAY_DATA_SAFETY·ADR/화면/자산 삭제는 범위 제외.",
-      "status": "blocked",
-      "blocked_reason": "웹 AC에 필요한 react-native-web이 기존 의존성에 없고 레지스트리 접근 제한으로 설치할 수 없음; 브라우저 도구도 localhost 접근을 보안 정책으로 거부함. 또한 현재 환경의 .git이 읽기 전용이라 index.lock 생성이 거부되어 커밋하지 못함.",
+      "summary": "인증·사용자별 Firestore/Auth 경로를 제거하고 프로필·미션·버킷을 로컬 MMKV로 전환했으며 원격 sync 상태·문구를 제거함. AC 4/4 충족 — npm run check 통과 · jest 146/146 · grep 2종 0건 · 웹에서 sign-in을 거치지 않고 온보딩 렌더 도달(브라우저 실측). 격리 준수(save_failed·E8 신설 0건) · 범위 이탈 0(docs/adr·SECURITY·PLAY_DATA_SAFETY·missions.ts 무변경). 차단 해소는 DEC-029 — 웹 타깃 부재(react-native-web 미설치)가 원인이었고 패키지 3종 설치로 성립. 이 step이 남긴 결함 2건도 함께 고쳤다: PostHog 생성자 throw(앱이 흰 화면), jest.setup.js의 낡은 @react-native-firebase/auth 목. 커밋 92eb616 + 38ba40c.",
+      "status": "completed",
       "docs": [
         "SECURITY",
         "PLAY_DATA_SAFETY"
       ],
       "started_at": "2026-07-27T15:40:51+0900",
-      "blocked_at": "2026-07-27T16:01:40+0900"
+      "blocked_reason_resolved": "원 차단 사유 3건 중 2건은 사실, 1건은 거짓이었다. (1) react-native-web 부재 — 사실이고 더 컸다: 저장소 이력 전체에 한 번도 없었다. 설치로 해소. (2) 브라우저 도구 localhost 거부 — codex 샌드박스 정책. 세션 밖에서 실행해 해소. (3) .git 읽기 전용 — 저장소는 쓰기 가능했다(drwxr-xr-x, 쓰기 테스트 통과). 샌드박스 안에서만 참이었다.",
+      "completed_at": "2026-07-27T16:01:40+0900",
+      "verified_by": "Claude Opus 5 (별도 레인 · 작성 레인은 codex gpt-5.6-luna)"
     },
     {
       "step": 2,

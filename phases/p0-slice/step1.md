@@ -44,7 +44,19 @@ grep -rniE "연결되면 반영|동기화됩니다|synced|sync_conflict|save_pen
 - [ ] `npm run check` 통과
 - [ ] `jest` **146건 이상** 통과 (`I01` 기준선. 줄어들면 왜 줄었는지 `summary`에 적어라)
 - [ ] 위 `grep` 2개가 **0건**(legacy 주석 · 이 step이 남긴 주석은 제외)
-- [ ] `npx expo start --web`로 앱이 뜨고 **sign-in 화면을 거치지 않고** 온보딩 첫 화면(`ONB-02` University)에 도달한다
+- [ ] `npx expo start --web`로 앱이 뜨고 **sign-in 화면을 거치지 않고** 온보딩이 렌더된다
+
+> 🔻 **2026-07-27 정정 (`DEC-029`).** 마지막 항목은 원래 「온보딩 첫 화면(**`ONB-02` University**)에 도달한다」였다.
+> **`ONB-02`는 이 시점에 코드에 없다** — `ONB-02`~`ONB-06`은 **step 3**(`onboarding-condition-input`)이 만든다.
+> **step 1의 AC가 step 3의 산출물을 인수조건으로 적고 있었다.** step 1의 목적은 「진입을 연다」이므로
+> 판정은 **「`sign-in`을 거치지 않고 온보딩이 렌더되는가」**로 충분하다.
+> **판정을 낮춘 것이 아니라 잘못 놓인 인수조건을 제 step으로 돌려보낸 것이다.**
+
+> ⚠️ **`jest` 건수는 `npm ci` 이후에 재라. 그러지 않으면 낡은 `node_modules`가 통과를 만든다.**
+> 이 step이 `package.json`에서 지운 4종(`@react-native-firebase/auth`·`/firestore`·`google-signin`·
+> `expo-apple-authentication`)은 **`npm install`을 돌리기 전까지 물리적으로 남아 있다.**
+> 실제로 2026-07-27에 그 상태의 「146/146 통과」가 나왔고, 뒤늦게 정리되자 **16 suites 전부 실패**로 드러났다
+> (`jest.setup.js`의 목만 남아 있었다). 근거는 `DEC-029` 사실 ⑥.
 
 ## ⛔ 이 step이 하지 않는 것
 
