@@ -28,7 +28,21 @@ import {
 } from '../../src/lib/conditionRules';
 import { KST, kstDifferenceInDays, kstNow, scheduleAtKstMorning, toKstStartOfDay } from '../../src/lib/dates';
 import { track } from '../../src/lib/posthog';
-import type { LocalTaskProgress, UserProfile } from '../../src/lib/firebase';
+import {
+  DEPARTURE_TASKS,
+  DEPARTURE_TASK_IDS,
+  evaluateResidenceCardReturn,
+  type DepartureTaskSpec,
+} from '../../src/lib/departureTasks';
+import {
+  DORMITORY_APPLICATION_TASK_ID,
+  evaluateDormitoryApplication,
+} from '../../src/lib/dormitoryApplication';
+import {
+  evaluateDocumentTaskAgainstAppointment,
+  IMMIGRATION_APPOINTMENT_TASK_ID,
+} from '../../src/lib/immigrationAppointment';
+import { UNKNOWN, type LocalTaskProgress, type UserProfile } from '../../src/lib/firebase';
 import { palette, radius, semantic, space } from '../../design-tokens';
 
 const PHASE_LABEL: Record<Phase, string> = {
@@ -486,6 +500,22 @@ export function buildHomeTasks(
   const housing = evaluateHousingContract(profile.housingType, profile.contractHolder);
   const groupRegistration = evaluateGroupRegistration(profile);
 
+  // REQ-SFR-009: the dormitory deadline stays on the home screen after it
+  // passes. Hiding it would remove the only place the overdue state is stated.
+  const dormitoryTask = buildDormitoryTask(profile, progress);
+
+  // REQ-SFR-007: booking precedes paperwork, so the appointment is its own task.
+  const appointmentTask = taskWithProgress(
+    {
+      taskId: IMMIGRATION_APPOINTMENT_TASK_ID,
+      title: 'Book your immigration appointment',
+      summary: 'Secure a visit slot before you start preparing the registration documents.',
+      status: 'available',
+    },
+    progress,
+  );
+  const appointmentCompleted = isTaskCompleted(progress, IMMIGRATION_APPOINTMENT_TASK_ID);
+
   const registrationTask = taskFromVerdict(
     'residence-registration',
     'Residence registration',
@@ -494,51 +524,12 @@ export function buildHomeTasks(
     progress,
   );
 
-  const housingTask: HomeTask =
-    registration.status === 'not_applicable'
-      ? {
-          taskId: 'housing-proof',
-          title: 'Housing proof',
-          summary: 'Documents for the residence registration process',
-          status: 'not_applicable',
-          reason: registration.reason,
-          sourceUrl: registration.sourceUrl,
-        }
-      : registration.status !== 'applicable'
-        ? {
-            taskId: 'housing-proof',
-            title: 'Housing proof',
-            summary: 'Documents for the residence registration process',
-            status: 'blocked',
-            kind: 'sequential',
-            reason: 'Complete the residence-registration assessment before preparing documents.',
-            unlocksWhen: 'Residence registration is complete.',
-          }
-        : housing.status === 'applicable'
-          ? taskWithProgress(
-              {
-                taskId: 'housing-proof',
-                title: 'Housing proof',
-                summary: 'Prepare documents for your housing and contract holder.',
-                status: isTaskCompleted(progress, 'residence-registration') ? 'available' : 'blocked',
-                kind: 'sequential',
-                reason: isTaskCompleted(progress, 'residence-registration')
-                  ? undefined
-                  : 'Complete the residence-registration assessment before preparing documents.',
-                unlocksWhen: isTaskCompleted(progress)
-                  ? undefined
-                  : 'Residence registration is complete.',
-              },
-              progress,
-            )
-          : {
-              taskId: 'housing-proof',
-              title: 'Housing proof',
-              summary: 'Prepare documents for your housing and contract holder.',
-              status: 'blocked',
-              kind: 'review',
-              reason: housing.reason,
-            };
+  const housingTask = buildHousingProofTask(
+    registration,
+    housing,
+    progress,
+    appointmentCompleted,
+  );
 
   const groupTask = taskFromVerdict(
     'group-registration',
@@ -548,21 +539,207 @@ export function buildHomeTasks(
     progress,
   );
 
-  const departureTask = phase === 4
-    ? taskWithProgress(
-        {
-          taskId: 'departure-order',
-          title: 'Departure order',
-          summary: 'Choose how to handle your deposit and account before leaving Korea.',
-          status: 'available',
-        },
-        progress,
-      )
-    : null;
+  const registrationTasks = [
+    dormitoryTask,
+    appointmentTask,
+    registrationTask,
+    housingTask,
+    groupTask,
+  ];
 
-  return departureTask
-    ? [registrationTask, housingTask, groupTask, departureTask]
-    : [registrationTask, housingTask, groupTask];
+  if (phase !== 4) return registrationTasks;
+
+  // REQ-SFR-002 AC1: the nine pre-departure tasks, each with its timing.
+  const departureTasks = DEPARTURE_TASKS.map((spec) =>
+    buildDepartureTask(spec, progress),
+  );
+
+  const orderTask = taskWithProgress(
+    {
+      taskId: 'departure-order',
+      title: 'Departure order',
+      summary: 'Choose how to handle your deposit and account before leaving Korea.',
+      status: 'available',
+    },
+    progress,
+  );
+
+  return [...registrationTasks, ...departureTasks, orderTask];
+}
+
+/** REQ-SFR-009 AC1 · AC2 · AC4 · AC5. */
+function buildDormitoryTask(profile: UserProfile, progress: LocalTaskProgress): HomeTask {
+  const verdict = evaluateDormitoryApplication(profile.universityId);
+  const base = {
+    taskId: DORMITORY_APPLICATION_TASK_ID,
+    title: 'Apply for dormitory housing',
+    summary: 'Applications close before you arrive and places are limited.',
+  };
+
+  if (verdict.status === 'review_required') {
+    return {
+      ...base,
+      status: 'blocked',
+      kind: 'review',
+      reason: verdict.reason,
+      unlocksWhen: `Confirm the date with ${verdict.finalAuthority}.`,
+      sourceUrl: verdict.sourceUrl || undefined,
+    };
+  }
+
+  if (verdict.status === 'overdue') {
+    // AC5: the app never marks this complete on the user's behalf.
+    return {
+      ...base,
+      status: 'blocked',
+      kind: 'review',
+      reason: verdict.reason,
+      unlocksWhen: `Confirm your application status with ${verdict.finalAuthority}.`,
+      sourceUrl: verdict.sourceUrl || undefined,
+    };
+  }
+
+  return taskWithProgress(
+    {
+      ...base,
+      status: 'available',
+      // AC2: both the countdown and the absolute date, never just one.
+      reason:
+        verdict.daysRemaining === null
+          ? verdict.reason
+          : `${verdict.daysRemaining} days left · closes ${verdict.deadlineLabel}`,
+      sourceUrl: verdict.sourceUrl || undefined,
+    },
+    progress,
+  );
+}
+
+/** REQ-SFR-007 AC1 · AC2 · AC5: the document task sits behind the appointment. */
+function buildHousingProofTask(
+  registration: RuleVerdict,
+  housing: ReturnType<typeof evaluateHousingContract>,
+  progress: LocalTaskProgress,
+  appointmentCompleted: boolean,
+): HomeTask {
+  const base = {
+    taskId: 'housing-proof',
+    title: 'Housing proof',
+    summary: 'Prepare documents for your housing and contract holder.',
+  };
+
+  if (registration.status === 'not_applicable') {
+    return {
+      ...base,
+      summary: 'Documents for the residence registration process',
+      status: 'not_applicable',
+      reason: registration.reason,
+      sourceUrl: registration.sourceUrl,
+    };
+  }
+
+  if (registration.status !== 'applicable') {
+    return {
+      ...base,
+      summary: 'Documents for the residence registration process',
+      status: 'blocked',
+      kind: 'sequential',
+      reason: 'Complete the residence-registration assessment before preparing documents.',
+      unlocksWhen: 'Residence registration is complete.',
+    };
+  }
+
+  if (housing.status !== 'applicable') {
+    return { ...base, status: 'blocked', kind: 'review', reason: housing.reason };
+  }
+
+  const documentState = evaluateDocumentTaskAgainstAppointment(
+    appointmentCompleted,
+    isTaskCompleted(progress, 'housing-proof'),
+  );
+
+  if (documentState.state === 'review_required') {
+    // AC5: the completion the user recorded is kept, and flagged for recheck.
+    return {
+      ...base,
+      status: 'review_required',
+      kind: 'review',
+      reason: documentState.reason,
+      unlocksWhen: 'The immigration appointment is marked as booked again.',
+    };
+  }
+
+  if (documentState.state === 'locked') {
+    return {
+      ...base,
+      status: 'blocked',
+      kind: 'sequential',
+      reason: documentState.reason,
+      unlocksWhen: 'The immigration appointment is marked as booked.',
+    };
+  }
+
+  const registrationDone = isTaskCompleted(progress, 'residence-registration');
+  return taskWithProgress(
+    {
+      ...base,
+      status: registrationDone ? 'available' : 'blocked',
+      kind: 'sequential',
+      reason: registrationDone
+        ? undefined
+        : 'Complete the residence-registration assessment before preparing documents.',
+      unlocksWhen: registrationDone ? undefined : 'Residence registration is complete.',
+    },
+    progress,
+  );
+}
+
+/** REQ-SFR-002 AC1 · AC2 · AC5: one card per departure task, timing included. */
+function buildDepartureTask(spec: DepartureTaskSpec, progress: LocalTaskProgress): HomeTask {
+  const base = {
+    taskId: spec.taskId,
+    title: spec.title,
+    summary: `${spec.summary} · ${spec.timingLabel}`,
+  };
+
+  if (spec.taskId === DEPARTURE_TASK_IDS.residenceCardReturn) {
+    const verdict = evaluateResidenceCardReturn(
+      progress.departureType ?? UNKNOWN,
+      progress.reentryException ?? UNKNOWN,
+    );
+    if (verdict.status === 'review_required') {
+      return {
+        ...base,
+        status: 'review_required',
+        kind: 'review',
+        reason: verdict.reason,
+        unlocksWhen: `Confirm with ${verdict.finalAuthority}.`,
+        sourceUrl: verdict.sourceUrl,
+      };
+    }
+    return taskWithProgress(
+      { ...base, status: 'available', reason: verdict.reason, sourceUrl: verdict.sourceUrl },
+      progress,
+    );
+  }
+
+  const incomplete = spec.dependsOn.filter((id) => !isTaskCompleted(progress, id));
+  if (incomplete.length > 0) {
+    return {
+      ...base,
+      status: 'blocked',
+      kind: 'sequential',
+      reason:
+        'Each of these leaves a recurring charge that would go unpaid once the account is closed.',
+      unlocksWhen: incomplete
+        .map((id) => DEPARTURE_TASKS.find((task) => task.taskId === id)?.title ?? id)
+        .join(', '),
+    };
+  }
+
+  return taskWithProgress(
+    { ...base, status: 'available', sourceUrl: spec.source.sourceUrl || undefined },
+    progress,
+  );
 }
 
 function taskFromVerdict(

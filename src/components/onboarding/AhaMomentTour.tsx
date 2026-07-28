@@ -84,7 +84,8 @@ export function AhaMomentTour({
               Your K-Journey begins
             </Text>
             <Text role="body" color={palette.meokMid} align="center">
-              Complete missions over four months. Watch your byeongpung (병풍) reveal panel by panel.
+              Your journey home sorts every administrative task by what applies to your conditions —
+              and says why when something is blocked.
             </Text>
           </View>
         </View>
@@ -92,11 +93,11 @@ export function AhaMomentTour({
           <Pressable
             onPress={handleDismiss}
             accessibilityRole="button"
-            accessibilityLabel="See my missions"
+            accessibilityLabel="See my journey"
             style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.85 : 1 }]}
           >
             <Text role="body" weight="semibold" color={palette.hanji}>
-              See my missions
+              See my journey
             </Text>
           </Pressable>
         </View>

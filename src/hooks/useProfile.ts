@@ -70,6 +70,9 @@ function parseTaskProgress(raw: string): LocalTaskProgress {
       completedAtByTaskId: stored.completedAtByTaskId ?? {},
       housingProviderAddressMatchesProof: stored.housingProviderAddressMatchesProof ?? null,
       departureOrderChoice: stored.departureOrderChoice ?? null,
+      departureType: stored.departureType ?? null,
+      reentryException: stored.reentryException ?? null,
+      appointmentDate: stored.appointmentDate ?? null,
     };
   } catch {
     return EMPTY_TASK_PROGRESS;

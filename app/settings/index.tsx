@@ -47,6 +47,7 @@ type Section =
   | { key: 'notifications'; title: string; data: 'notifications'[] }
   | { key: 'era'; title: string; data: 'era'[] }
   | { key: 'profile'; title: string; data: 'profile'[] }
+  | { key: 'data'; title: string; data: 'data'[] }
   | { key: 'about'; title: string; data: 'about'[] };
 
 export default function SettingsScreen() {
@@ -80,6 +81,7 @@ export default function SettingsScreen() {
       { key: 'notifications', title: 'Notifications', data: ['notifications'] },
       { key: 'era', title: 'Era theme', data: ['era'] },
       { key: 'profile', title: 'Your profile', data: ['profile'] },
+      { key: 'data', title: 'Your data', data: ['data'] },
       { key: 'about', title: 'About', data: ['about'] },
     ],
     [],
@@ -185,6 +187,21 @@ export default function SettingsScreen() {
                       setOpenSheet('departure');
                     }}
                     isLast
+                  />
+                </View>
+              );
+            case 'data':
+              // SET-05 · REQ-SFR-012: no account exists, so the export is the
+              // only way a user carries anything off this device.
+              return (
+                <View style={styles.card}>
+                  <SettingsRow
+                    label="Export your data"
+                    valueText="Conditions and task states as text"
+                    onPress={() => {
+                      trackOpen('data');
+                      router.push('/settings/export' as never);
+                    }}
                   />
                 </View>
               );

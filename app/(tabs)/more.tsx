@@ -22,16 +22,26 @@ import { NotificationPriming } from '../../src/components/onboarding/Notificatio
 export default function MoreTab() {
   const router = useRouter();
   const { profile } = useProfile();
-  const uni = profile?.university ? universityById(profile.university) : null;
+  // v2 stores the school on `universityId`; the legacy `university` field is
+  // no longer written, so reading it left this header permanently blank.
+  const uni = profile?.universityId ? universityById(profile.universityId) : null;
   const [notifState, setNotifState] = useState<PermissionState | null>(null);
   const [primingVisible, setPrimingVisible] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    getPermissionState().then((s) => mounted && setNotifState(s));
+    // The web build ships a no-op notifications shim (`.work/web-gap.md` row 1),
+    // so this read can reject. Unhandled, that rejection left the screen dead —
+    // an unavailable permission API must not cost the user the whole tab.
+    const read = () => {
+      getPermissionState()
+        .then((s) => mounted && setNotifState(s))
+        .catch(() => mounted && setNotifState(null));
+    };
+    read();
     const sub = AppState.addEventListener('change', (state) => {
       // Re-check when user returns from Settings.
-      if (state === 'active') getPermissionState().then((s) => mounted && setNotifState(s));
+      if (state === 'active') read();
     });
     return () => {
       mounted = false;
@@ -46,12 +56,16 @@ export default function MoreTab() {
       return;
     }
     // Granted or denied: deep-link to system Settings so the user can toggle.
-    Linking.openSettings();
+    Linking.openSettings().catch(() => {});
   }
 
   async function handlePrimingClose(_granted: boolean) {
     setPrimingVisible(false);
-    setNotifState(await getPermissionState());
+    try {
+      setNotifState(await getPermissionState());
+    } catch {
+      setNotifState(null);
+    }
   }
 
   const notifSublabel =
@@ -70,7 +84,7 @@ export default function MoreTab() {
               <Text role="h1">{profile?.displayName ?? 'Traveler'}</Text>
               {uni ? (
                 <Text role="body" color={palette.ash}>
-                  {uni.shortName} · {profile?.housing === 'dormitory' ? 'Dormitory' : 'Off-campus'}
+                  {uni.shortName} · {profile?.housingType === 'dormitory' ? 'Dormitory' : 'Off-campus'}
                 </Text>
               ) : null}
             </View>
@@ -92,7 +106,7 @@ export default function MoreTab() {
             label="Campus guide"
             sublabel={
               uni
-                ? `${uni.shortName} · ${profile?.housing === 'dormitory' ? 'Dorm rules + nearby' : 'Off-campus areas + nearby'}`
+                ? `${uni.shortName} · ${profile?.housingType === 'dormitory' ? 'Dorm rules + nearby' : 'Off-campus areas + nearby'}`
                 : 'University-specific info'
             }
             onPress={() => router.push('/campus')}

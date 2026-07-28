@@ -6,6 +6,12 @@ import {
   isUnknownConditionValue,
 } from './conditionRules';
 import { kstDifferenceInDays, kstNow, toKstStartOfDay } from './dates';
+import { DEPARTURE_TASK_METADATA } from './departureTasks';
+import { DORMITORY_APPLICATION_METADATA } from './dormitoryApplication';
+import {
+  IMMIGRATION_APPOINTMENT_METADATA,
+  IMMIGRATION_APPOINTMENT_TASK_ID,
+} from './immigrationAppointment';
 
 export const TASK_STATES = [
   'locked',
@@ -18,6 +24,28 @@ export const TASK_STATES = [
 ] as const;
 
 export type TaskState = (typeof TASK_STATES)[number];
+
+/**
+ * REQ-INR-003 · TC-120 · TC-121: the text label for each state.
+ *
+ * Every state has to be tellable apart by reading, not by colour. `locked` and
+ * `locked_permanent` in particular must not share a label — one clears when a
+ * prerequisite is done and the other never does, and a user who cannot tell
+ * them apart waits for something that will not happen.
+ */
+export const TASK_STATE_LABELS: Readonly<Record<TaskState, string>> = {
+  locked: 'BLOCKED',
+  locked_permanent: 'NOT ELIGIBLE',
+  available: 'AVAILABLE',
+  in_progress: 'IN PROGRESS',
+  completed: 'COMPLETED',
+  not_applicable: 'NOT APPLICABLE',
+  review_required: 'REVIEW',
+};
+
+export function taskStateLabel(state: TaskState): string {
+  return TASK_STATE_LABELS[state];
+}
 
 /** DEC-020 axis 2 after the confirmed DEC-026 deletions. */
 export const TASK_ERROR_STATES = [
@@ -165,8 +193,12 @@ const UNCONFIRMED_SOURCE: TaskSourceMetadata = {
 /**
  * REQ-DAR-002 · REQ-DAR-006 · REQ-DAR-007 · POL-007 · POL-008:
  * shared task metadata for TASK-03 and Journey Home source evidence.
+ *
+ * REQ-SFR-007 puts the immigration appointment ahead of `housing-proof`:
+ * appointment slots, not paperwork, are the scarce resource.
  */
-export const TASK_METADATA: readonly TaskMetadata[] = [
+export const CORE_TASK_METADATA: readonly TaskMetadata[] = [
+  IMMIGRATION_APPOINTMENT_METADATA,
   {
     taskId: 'residence-registration',
     title: 'Residence registration',
@@ -177,7 +209,7 @@ export const TASK_METADATA: readonly TaskMetadata[] = [
     taskId: 'housing-proof',
     title: 'Housing proof',
     summary: 'Prepare documents for your housing and contract holder.',
-    dependsOn: ['residence-registration'],
+    dependsOn: [IMMIGRATION_APPOINTMENT_TASK_ID, 'residence-registration'],
     source: UNIVERSITY_RESIDENCE_SOURCE,
   },
   {
@@ -194,6 +226,18 @@ export const TASK_METADATA: readonly TaskMetadata[] = [
     source: UNCONFIRMED_SOURCE,
   },
 ] as const;
+
+/**
+ * Every task the app can show, in journey order: dormitory application before
+ * arrival, then registration, then the nine pre-departure tasks.
+ */
+export const TASK_METADATA: readonly TaskMetadata[] = [
+  DORMITORY_APPLICATION_METADATA,
+  ...CORE_TASK_METADATA,
+  ...DEPARTURE_TASK_METADATA,
+] as const;
+
+export const ALL_TASK_IDS: readonly string[] = TASK_METADATA.map((task) => task.taskId);
 
 export function taskMetadata(taskId: string): TaskMetadata | undefined {
   return TASK_METADATA.find((task) => task.taskId === taskId);

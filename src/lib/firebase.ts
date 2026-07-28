@@ -105,12 +105,23 @@ export interface Bucket {
 
 export type DepartureOrderChoice = 'deposit-first' | 'account-first';
 
+/**
+ * Task-local answers. These are inputs to a single task's rule, not condition
+ * axes: they do not re-run the whole journey and are not part of the ten-axis
+ * set the rule engine sweeps. See `DEC-040`.
+ */
 export interface LocalTaskProgress {
   completedTaskIds: string[];
   inProgressTaskIds: string[];
   completedAtByTaskId: Record<string, string>;
   housingProviderAddressMatchesProof: boolean | null;
   departureOrderChoice: DepartureOrderChoice | null;
+  /** REQ-SFR-002 AC2 · AC5: leaving for good, or coming back. */
+  departureType: 'permanent' | 'temporary' | UnknownValue | null;
+  /** REQ-SFR-002 AC5: one of the three Article 37(1) re-entry exceptions. */
+  reentryException: 'yes' | 'no' | UnknownValue | null;
+  /** REQ-SFR-007 AC3: may stay null even after the task is marked complete. */
+  appointmentDate: string | null;
 }
 
 const EMPTY_PROFILE: UserProfile = {
@@ -146,6 +157,9 @@ export const EMPTY_TASK_PROGRESS: LocalTaskProgress = {
   completedAtByTaskId: {},
   housingProviderAddressMatchesProof: null,
   departureOrderChoice: null,
+  departureType: null,
+  reentryException: null,
+  appointmentDate: null,
 };
 
 export function getTaskProgress(): LocalTaskProgress {
@@ -158,6 +172,9 @@ export function getTaskProgress(): LocalTaskProgress {
     completedAtByTaskId: stored?.completedAtByTaskId ?? {},
     housingProviderAddressMatchesProof: stored?.housingProviderAddressMatchesProof ?? null,
     departureOrderChoice: stored?.departureOrderChoice ?? null,
+    departureType: stored?.departureType ?? null,
+    reentryException: stored?.reentryException ?? null,
+    appointmentDate: stored?.appointmentDate ?? null,
   };
 }
 

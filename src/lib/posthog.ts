@@ -63,7 +63,12 @@ export type KJEvent =
   | 'task_complete'
   | 'task_uncomplete'
   | 'task_order_choice'
-  | 'task_housing_address_check';
+  | 'task_housing_address_check'
+  // Event names only. DEC-027 is confirmed but its rules have never run in
+  // code, so no condition, task, or cohort payload is attached to these.
+  | 'task_departure_type'
+  | 'data_export_delivered'
+  | 'data_export_failed';
 
 type Props = Record<string, string | number | boolean | null | undefined>;
 

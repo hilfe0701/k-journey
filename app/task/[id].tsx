@@ -7,6 +7,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 import {
   AlertTriangle,
   ArrowDownUp,
+  CalendarClock,
   Check,
   CheckCircle2,
   ChevronLeft,
@@ -29,16 +30,35 @@ import {
 } from '../../src/lib/conditionRules';
 import {
   saveTaskProgress,
+  UNKNOWN,
   type DepartureOrderChoice,
   type LocalTaskProgress,
   type UserProfile,
 } from '../../src/lib/firebase';
+import {
+  DEPARTURE_TASK_IDS,
+  DEPOSIT_ACCOUNT_OUTCOMES,
+  departureTaskSpec,
+  evaluateResidenceCardReturn,
+  telecomOverseasGuidance,
+  type DepartureType,
+  type ReentryException,
+} from '../../src/lib/departureTasks';
+import {
+  DORMITORY_APPLICATION_TASK_ID,
+  evaluateDormitoryApplication,
+} from '../../src/lib/dormitoryApplication';
+import {
+  evaluateImmigrationAppointment,
+  IMMIGRATION_APPOINTMENT_TASK_ID,
+} from '../../src/lib/immigrationAppointment';
 import { showOperationError } from '../../src/lib/errorAlert';
 import { kstNow } from '../../src/lib/dates';
 import { track } from '../../src/lib/posthog';
 import {
   isSourceReviewDue,
   taskMetadata,
+  taskStateLabel,
   type TaskMetadata,
   type TaskSourceMetadata,
   type TaskSourceValue,
@@ -77,7 +97,33 @@ const ORDER_OPTIONS: readonly {
   },
 ];
 
-type BusyAction = 'status' | 'address' | 'order' | null;
+type BusyAction = 'status' | 'address' | 'order' | 'departure' | null;
+
+const DEPARTURE_TYPE_OPTIONS: readonly { value: DepartureType; title: string; description: string }[] = [
+  {
+    value: 'permanent',
+    title: 'Leaving Korea for good',
+    description: 'You do not plan to return under this residence status.',
+  },
+  {
+    value: 'temporary',
+    title: 'Leaving temporarily',
+    description: 'You intend to come back while this residence status is still valid.',
+  },
+];
+
+const REENTRY_EXCEPTION_OPTIONS: readonly { value: ReentryException; title: string; description: string }[] = [
+  {
+    value: 'yes',
+    title: 'One of the three exceptions applies to me',
+    description: 'Re-entry permit, multiple-entry visa or exempt nationality, or a refugee travel document.',
+  },
+  {
+    value: 'no',
+    title: 'None of them applies',
+    description: 'The card is treated the same as a permanent departure.',
+  },
+];
 
 export default function TaskDetail() {
   const router = useRouter();
@@ -99,7 +145,12 @@ export default function TaskDetail() {
   async function persistProgress(
     nextProgress: LocalTaskProgress,
     action: string,
-    eventName: 'task_complete' | 'task_uncomplete' | 'task_order_choice' | 'task_housing_address_check',
+    eventName:
+      | 'task_complete'
+      | 'task_uncomplete'
+      | 'task_order_choice'
+      | 'task_housing_address_check'
+      | 'task_departure_type',
     busy: Exclude<BusyAction, null>,
   ) {
     setBusyAction(busy);
@@ -169,6 +220,32 @@ export default function TaskDetail() {
       'save the task order',
       'task_order_choice',
       'order',
+    );
+  }
+
+  function handleDepartureType(value: DepartureType) {
+    if (busyAction) return;
+    void persistProgress(
+      // Switching to a permanent departure makes the re-entry answer moot, so
+      // it is cleared rather than left behind to contradict the new choice.
+      {
+        ...localProgress,
+        departureType: value,
+        reentryException: value === 'permanent' ? null : localProgress.reentryException,
+      },
+      'save your departure type',
+      'task_departure_type',
+      'departure',
+    );
+  }
+
+  function handleReentryException(value: ReentryException) {
+    if (busyAction) return;
+    void persistProgress(
+      { ...localProgress, reentryException: value },
+      'save the re-entry answer',
+      'task_departure_type',
+      'departure',
     );
   }
 
@@ -247,6 +324,31 @@ export default function TaskDetail() {
             busy={busyAction === 'order'}
           />
         ) : null}
+
+        {task.taskId === IMMIGRATION_APPOINTMENT_TASK_ID ? (
+          <AppointmentSection
+            isCompleted={task.status === 'completed'}
+            appointmentDate={localProgress.appointmentDate}
+          />
+        ) : null}
+
+        {task.taskId === DORMITORY_APPLICATION_TASK_ID ? (
+          <DormitoryDeadlineSection universityId={profile.universityId} />
+        ) : null}
+
+        {task.taskId === DEPARTURE_TASK_IDS.residenceCardReturn ? (
+          <ResidenceCardReturnSection
+            departureType={localProgress.departureType}
+            reentryException={localProgress.reentryException}
+            onSelectDepartureType={handleDepartureType}
+            onSelectReentryException={handleReentryException}
+            busy={busyAction === 'departure'}
+          />
+        ) : null}
+
+        {task.taskId === DEPARTURE_TASK_IDS.telecom ? <TelecomOverseasSection /> : null}
+
+        {task.taskId === DEPARTURE_TASK_IDS.bankAccount ? <DepositAccountSection /> : null}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -685,6 +787,234 @@ function OrderChoiceSection({
   );
 }
 
+/** REQ-SFR-007 AC3 · AC4 · TC-033 · TC-034. */
+function AppointmentSection({
+  isCompleted,
+  appointmentDate,
+}: {
+  isCompleted: boolean;
+  appointmentDate: string | null;
+}) {
+  const verdict = evaluateImmigrationAppointment(isCompleted, appointmentDate);
+
+  return (
+    <View style={styles.section}>
+      <SectionHeading
+        icon={<CalendarClock size={19} color={palette.cheong} strokeWidth={1.5} />}
+        title="Your appointment"
+      />
+      <Card padded bg={palette.cloud} style={styles.sourceCard}>
+        <SourceField label="Booking status" value={verdict.status === 'booked' ? 'Booked' : 'Not booked yet'} />
+        <SourceField label="Appointment date" value={verdict.appointmentDateLabel} />
+        <SourceField label="Final authority" value={verdict.finalAuthority} />
+      </Card>
+      {verdict.status === 'booked' && !verdict.appointmentDate ? (
+        <View style={styles.neutralCallout}>
+          <Text role="sm" color={palette.meok}>
+            You marked this booked without a date. That is fine — the date stays unknown here until you
+            add it, and {verdict.finalAuthority} can confirm your slot.
+          </Text>
+        </View>
+      ) : null}
+      <View style={styles.neutralCallout}>
+        <Text role="h4">How long is the wait?</Text>
+        <Text role="sm" color={palette.meok}>
+          Not confirmed (미확인). No official source states a waiting period, so K-Journey does not
+          estimate one. Check current availability on HiKorea before you plan around it.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/** REQ-SFR-009 AC1 · AC2 · AC4 · AC5 · TC-041 · TC-042 · TC-044 · TC-045. */
+function DormitoryDeadlineSection({ universityId }: { universityId: string }) {
+  const verdict = evaluateDormitoryApplication(universityId);
+
+  return (
+    <View style={styles.section}>
+      <SectionHeading
+        icon={<CalendarClock size={19} color={palette.hwanggeumDeep} strokeWidth={1.5} />}
+        title="Application deadline"
+      />
+      <Card padded bg={palette.cloud} style={styles.sourceCard}>
+        <SourceField label="Deadline" value={verdict.deadlineLabel} />
+        <SourceField
+          label="Days remaining"
+          value={verdict.daysRemaining === null ? 'Not confirmed (미확인)' : String(verdict.daysRemaining)}
+        />
+        <SourceField label="Checked on" value={formatSourceDate(verdict.checkedAt)} />
+        <SourceField label="Final authority" value={verdict.finalAuthority} />
+      </Card>
+      <View style={verdict.status === 'overdue' ? styles.warningCallout : styles.neutralCallout}>
+        <View style={styles.flexCopy}>
+          <Text role="h4">
+            {verdict.status === 'overdue' ? 'The deadline has passed' : 'Confirm the date yourself'}
+          </Text>
+          <Text role="sm" color={palette.meok}>
+            {verdict.reason}
+          </Text>
+          <Text role="xs" color={palette.ash}>
+            K-Journey does not fill in another university&apos;s deadline, and never marks this task
+            complete on your behalf.
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/** REQ-SFR-002 AC2 · AC5 · TC-007 · TC-010. */
+function ResidenceCardReturnSection({
+  departureType,
+  reentryException,
+  onSelectDepartureType,
+  onSelectReentryException,
+  busy,
+}: {
+  departureType: DepartureType | null;
+  reentryException: ReentryException | null;
+  onSelectDepartureType: (value: DepartureType) => void;
+  onSelectReentryException: (value: ReentryException) => void;
+  busy: boolean;
+}) {
+  const verdict = evaluateResidenceCardReturn(
+    departureType ?? UNKNOWN,
+    reentryException ?? UNKNOWN,
+  );
+
+  return (
+    <View style={styles.section}>
+      <SectionHeading
+        icon={<UserRound size={19} color={palette.cheong} strokeWidth={1.5} />}
+        title="Are you coming back?"
+      />
+      <Text role="sm" color={palette.ash}>
+        Handing the card over declares that you are leaving for good, so this answer decides the task.
+      </Text>
+      <View style={styles.choiceList}>
+        {DEPARTURE_TYPE_OPTIONS.map((option) => (
+          <ChoiceCard
+            key={String(option.value)}
+            title={option.title}
+            description={option.description}
+            selected={departureType === option.value}
+            disabled={busy}
+            onPress={() => onSelectDepartureType(option.value)}
+          />
+        ))}
+      </View>
+
+      {departureType === 'temporary' ? (
+        <View style={styles.nestedBlock}>
+          <Text role="h4">Does a re-entry exception apply?</Text>
+          <View style={styles.choiceList}>
+            {REENTRY_EXCEPTION_OPTIONS.map((option) => (
+              <ChoiceCard
+                key={String(option.value)}
+                title={option.title}
+                description={option.description}
+                selected={reentryException === option.value}
+                disabled={busy}
+                onPress={() => onSelectReentryException(option.value)}
+              />
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      <View style={verdict.status === 'review_required' ? styles.warningCallout : styles.neutralCallout}>
+        <View style={styles.flexCopy}>
+          <Text role="h4">
+            {verdict.status === 'return_required' ? 'Return the card at departure' : 'Confirm before you travel'}
+          </Text>
+          <Text role="sm" color={palette.meok}>
+            {verdict.reason}
+          </Text>
+          <Text role="xs" color={palette.ash}>
+            Final authority: {verdict.finalAuthority}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.neutralCallout}>
+        <Text role="h4">The three exceptions in Article 37(1)</Text>
+        {verdict.exceptions.map((exception) => (
+          <Text key={exception} role="sm" color={palette.meok}>
+            · {exception}
+          </Text>
+        ))}
+        <Text role="xs" color={palette.cheong} selectable accessibilityRole="link">
+          {verdict.sourceUrl}
+        </Text>
+        <Text role="xs" color={palette.ash}>
+          Checked on {formatSourceDate(verdict.checkedAt)}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/** REQ-SFR-002 AC4 · TC-009: never state that cancelling from abroad works. */
+function TelecomOverseasSection() {
+  const guidance = telecomOverseasGuidance();
+
+  return (
+    <View style={styles.section}>
+      <SectionHeading
+        icon={<CircleHelp size={19} color={palette.hwanggeumDeep} strokeWidth={1.5} />}
+        title="Can you cancel after you leave?"
+      />
+      <View style={styles.neutralCallout}>
+        <Text role="body" weight="semibold">
+          Not confirmed (미확인).
+        </Text>
+        <Text role="sm" color={palette.meok}>
+          No source confirms that a contract can be cancelled from outside Korea. Treat cancellation as
+          something to finish before you fly, and ask your carrier about these three points:
+        </Text>
+        {guidance.checkBeforeLeaving.map((item) => (
+          <Text key={item} role="sm" color={palette.meok}>
+            · {item}
+          </Text>
+        ))}
+        <Text role="xs" color={palette.ash}>
+          Final authority: {guidance.finalAuthority}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/** REQ-SFR-002 AC3 · TC-008: two outcomes, neither marked correct. */
+function DepositAccountSection() {
+  return (
+    <View style={styles.section}>
+      <SectionHeading
+        icon={<ArrowDownUp size={19} color={palette.cheong} strokeWidth={1.5} />}
+        title="Deposit and account conflict"
+      />
+      <Text role="sm" color={palette.ash}>
+        A deposit can arrive after you leave, but an account can only be closed before. Neither choice
+        breaks a rule — they lead to different outcomes.
+      </Text>
+      <View style={styles.documentList}>
+        {DEPOSIT_ACCOUNT_OUTCOMES.map((option) => (
+          <Card key={option.choice} padded bg={palette.hanji} style={styles.documentCard}>
+            <Text role="h4">{option.title}</Text>
+            <Text role="sm" color={palette.meokMid}>
+              {option.outcome}
+            </Text>
+          </Card>
+        ))}
+      </View>
+      <Text role="xs" color={palette.ash}>
+        K-Journey does not pick one for you. Record your choice on the Departure order task.
+      </Text>
+    </View>
+  );
+}
+
 function ChoiceCard({
   title,
   description,
@@ -779,10 +1109,44 @@ function whyForTask(taskId: string, profile: UserProfile): {
       headline:
         isUnknownConditionValue(profile.totalStayDays) || isUnknownConditionValue(profile.visaTypeOrStatus)
           ? 'Your stay length and visa status decide whether residence registration applies.'
-          : `Your ${stay} stay and ${visa} status put this task on your journey.`,
+          : `Your ${describeStayLength(profile.totalStayDays)} and ${visa} status put this task on your journey.`,
       facts: [
         { label: 'Total stay length', value: stay },
         { label: 'Visa status', value: visa },
+      ],
+    };
+  }
+
+  if (taskId === IMMIGRATION_APPOINTMENT_TASK_ID) {
+    return {
+      headline:
+        'Appointment slots, not paperwork, are the scarce part. Booking first keeps a deadline from arriving before a slot does.',
+      facts: [
+        { label: 'Blocks', value: 'Housing proof documents' },
+        { label: 'Waiting time', value: 'Not confirmed (미확인)' },
+      ],
+    };
+  }
+
+  if (taskId === DORMITORY_APPLICATION_TASK_ID) {
+    const verdict = evaluateDormitoryApplication(profile.universityId);
+    return {
+      headline:
+        'Missing this deadline changes your housing type, which re-runs the residence-proof, address, and group-registration rules.',
+      facts: [
+        { label: 'University', value: displayConditionValue('universityId', profile.universityId) },
+        { label: 'Application deadline', value: verdict.deadlineLabel },
+      ],
+    };
+  }
+
+  const departureSpec = departureTaskSpec(taskId);
+  if (departureSpec) {
+    return {
+      headline: departureSpec.summary,
+      facts: [
+        { label: 'When to do it', value: departureSpec.timingLabel },
+        { label: 'Departure date', value: displayConditionValue('departureDate', profile.departureDate) },
       ],
     };
   }
@@ -805,7 +1169,7 @@ function whyForTask(taskId: string, profile: UserProfile): {
     return {
       headline: isUnknownConditionValue(profile.totalStayDays)
         ? 'Your total stay length decides whether group registration can be assessed.'
-        : `Your ${displayConditionValue('totalStayDays', profile.totalStayDays)} stay is the condition used for this check.`,
+        : `Your ${describeStayLength(profile.totalStayDays)} is the condition used for this check.`,
       facts: [
         { label: 'Total stay length', value: displayConditionValue('totalStayDays', profile.totalStayDays) },
         { label: 'University', value: displayConditionValue('universityId', profile.universityId) },
@@ -822,6 +1186,15 @@ function whyForTask(taskId: string, profile: UserProfile): {
       { label: 'Current phase', value: `Phase ${phaseForProfile(profile)}` },
     ],
   };
+}
+
+/**
+ * The stay length is a bare number, so interpolating it produced "Your 20 stay".
+ * The unit belongs to the sentence, not to the fact-table value beside it.
+ */
+function describeStayLength(value: unknown): string {
+  if (isUnknownConditionValue(value)) return 'stay length';
+  return `${value}-day stay`;
 }
 
 function displayConditionValue(axis: string, value: unknown): string {
@@ -861,11 +1234,14 @@ function knownDate(value: string | null | undefined): string | null {
 }
 
 function statusLabelFor(task: HomeTask): string {
-  if (task.status === 'completed') return 'COMPLETED';
-  if (task.status === 'in_progress') return 'IN PROGRESS';
-  if (task.status === 'available') return 'AVAILABLE';
-  if (task.status === 'not_applicable') return 'NOT APPLICABLE';
-  return task.status === 'review_required' ? 'REVIEW' : 'BLOCKED';
+  if (task.status === 'completed') return taskStateLabel('completed');
+  if (task.status === 'in_progress') return taskStateLabel('in_progress');
+  if (task.status === 'available') return taskStateLabel('available');
+  if (task.status === 'not_applicable') return taskStateLabel('not_applicable');
+  if (task.status === 'review_required') return taskStateLabel('review_required');
+  // An eligibility block never clears by finishing another task, so it must not
+  // read the same as a sequential block (TC-121).
+  return taskStateLabel(task.kind === 'eligibility' ? 'locked_permanent' : 'locked');
 }
 
 function statusAccent(task: HomeTask): string {

@@ -73,6 +73,17 @@ export function clearOnboardingProgress(): void {
   remove(KEYS.onboardingProgress);
 }
 
-export function onboardingRoutePath(route: OnboardingRoute): string {
+/**
+ * Returns the literal route type expo-router generates, not a bare `string`.
+ *
+ * With `string`, `router.replace(onboardingRoutePath(...))` only typechecks
+ * while `.expo/types/router.d.ts` is absent — that file is gitignored, so
+ * `npm run check` passed on a fresh clone and failed on any machine that had
+ * run the dev server. The template literal type makes the result valid in both
+ * states.
+ */
+export function onboardingRoutePath(
+  route: OnboardingRoute,
+): `/(onboarding)/${OnboardingRoute}` {
   return `/(onboarding)/${route}`;
 }
