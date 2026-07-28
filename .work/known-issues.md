@@ -5,11 +5,13 @@ Date: 2026-07-27 (KST)
 | Severity | Issue | Status / reason |
 |---|---|---|
 | Medium | Manual browser QA is incomplete for onboarding, home, task detail, relaunch, responsive layout, and screen-reader interaction. | Not run — the sandbox cannot judge browser interactions; browser lane required. |
-| Medium | `REQ-SFR-002` full pre-departure model is not delivered. | Current slice contains only the departure-order task; the nine-task/three-prerequisite model is outside this step. |
-| Medium | `REQ-SFR-007` independent immigration appointment task is absent. | Not implemented in the current four-task slice. |
-| Medium | `REQ-SFR-009` independent dormitory application deadline task is absent. | Not implemented in the current four-task slice. |
-| Medium | `REQ-SFR-012` / `SET-05` data export is absent. | No new feature was added in Step 8; export remains a separate scope item. |
-| Low | `REQ-QUR-001` 50-item cultural mission audit is not performed. | `MEM-01` is `Won't` under `DEC-024`; Step 7 covered only the administrative slice. |
+| ~~Medium~~ | ~~`REQ-SFR-002` full pre-departure model is not delivered.~~ | ✅ **Resolved 2026-07-28.** Nine tasks, three prerequisites, and the Article 37(1) branch shipped. |
+| ~~Medium~~ | ~~`REQ-SFR-007` independent immigration appointment task is absent.~~ | ✅ **Resolved 2026-07-28.** |
+| ~~Medium~~ | ~~`REQ-SFR-009` independent dormitory application deadline task is absent.~~ | ✅ **Resolved 2026-07-28** — with every deadline value empty, because none was verified. |
+| ~~Medium~~ | ~~`REQ-SFR-012` / `SET-05` data export is absent.~~ | ✅ **Resolved 2026-07-28.** |
+| Low | `REQ-QUR-001` 50-item cultural mission audit is not performed. | `MEM-01` is `Won't` under `DEC-024`. **This is a decision, not a gap** — building it would reverse a confirmed decision. |
+| Medium | No university's dormitory application deadline is confirmed. | `REQ-SFR-009` ships with the structure and no values. Only Chung-Ang's page was verified, and it publishes no dormitory deadline. Every record reads `미확인` with the office to ask. |
+| Low | `TC-122`, `TC-123`, `TC-124` have no coverage. | Screen-reader announcement, 60-second banner persistence, and maximum font size need assistive technology and a timed render; neither exists in this environment. `TC-120`/`TC-121` cover only the *text* half of the criteria. |
 | Low | `REQ-TER-003` full offline/relaunch manual matrix is not executed. | Offline/reconnect was deleted by confirmed `DEC-026` deletions; relaunch still needs the browser lane. |
 | Low | The full `TC` inventory (156 cases) is not automated in this step. | Step 8 requires the current slice first; only the seven applicable automatic-test categories were executed. Count corrected 2026-07-27: `TC-160` was split by cause into `TC-160` / `TC-161` (`44` §2.1 ★1), so the inventory is 156, not 155. |
 | Low | `save_failed` / `E8` and `TC-160` / `TC-161` are not implemented or used as a basis. | Only `DEC-026` deletions are confirmed; additions remain isolated. The 2026-07-27 cause split (`storage_full` / `write_permission_denied`) stays isolated on the same grounds. |
