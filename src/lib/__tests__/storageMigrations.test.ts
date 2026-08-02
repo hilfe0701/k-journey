@@ -1,4 +1,5 @@
-import { storage } from '../storage';
+import { getJson, KEYS, storage } from '../storage';
+import type { Bucket, DevMockCompletedDoc, UserProfile } from '../firebase';
 import {
   backupAndReset,
   currentSchemaVersion,
@@ -19,23 +20,78 @@ describe('storage migrations', () => {
 
     it('returns the persisted version after a run', () => {
       runMigrations();
-      expect(currentSchemaVersion()).toBe(1);
+      expect(currentSchemaVersion()).toBe(2);
     });
   });
 
-  describe('runMigrations with no pending migrations', () => {
-    it('reports zero ran migrations and no failures', () => {
+  describe('runMigrations', () => {
+    it('reports the pending migration and no failures', () => {
       const result = runMigrations();
-      expect(result.ranMigrations).toBe(0);
+      expect(result.ranMigrations).toBe(1);
       expect(result.failedKeys).toEqual([]);
-      expect(result.finalVersion).toBe(1);
+      expect(result.finalVersion).toBe(2);
     });
 
     it('is idempotent across multiple calls', () => {
       runMigrations();
       const second = runMigrations();
       expect(second.ranMigrations).toBe(0);
-      expect(second.finalVersion).toBe(1);
+      expect(second.finalVersion).toBe(2);
+    });
+
+    it('normalizes a v1 profile without guessing off-campus contract details', () => {
+      storage.set(
+        KEYS.profileCache,
+        JSON.stringify({
+          uid: 'legacy-user',
+          email: 'legacy@example.com',
+          university: 'yonsei',
+          housing: 'off-campus',
+          displayName: 'Mina',
+          onboardingCompletedAt: '2026-05-01T00:00:00.000Z',
+        }),
+      );
+
+      runMigrations();
+
+      const profile = getJson<UserProfile>(KEYS.profileCache);
+      expect(profile?.uid).toBe('local-profile');
+      expect(profile?.email).toBeNull();
+      expect(profile?.universityId).toBe('yonsei');
+      expect(profile?.housing).toBe('off-campus');
+      expect(profile?.housingType).toBe('unknown');
+      expect(profile?.contractHolder).toBe('unknown');
+      expect(profile?.onboardingCompletedAt).toBeNull();
+    });
+
+    it('merges legacy mission and bucket progress without replacing current data', () => {
+      const currentMission: DevMockCompletedDoc = {
+        missionId: 'p1_pack',
+        completedAtIso: '2026-01-01T00:00:00.000Z',
+      };
+      const legacyMission: DevMockCompletedDoc = {
+        missionId: 'p2_tmoney',
+        completedAtIso: '2026-01-02T00:00:00.000Z',
+      };
+      const bucket: Bucket = {
+        id: 'bkt_legacy',
+        themeName: 'Food',
+        templateKey: 'peony',
+        maxItems: 3,
+        items: [],
+        createdAtIso: '2026-01-01T00:00:00.000Z',
+      };
+      storage.set(KEYS.completedMissionsCache, JSON.stringify([currentMission]));
+      storage.set('dev:missions:v1', JSON.stringify([legacyMission]));
+      storage.set('dev:buckets:v1', JSON.stringify([bucket]));
+
+      runMigrations();
+
+      expect(getJson<DevMockCompletedDoc[]>(KEYS.completedMissionsCache)).toEqual([
+        currentMission,
+        legacyMission,
+      ]);
+      expect(getJson<Bucket[]>(KEYS.bucketsCache)).toEqual([bucket]);
     });
   });
 

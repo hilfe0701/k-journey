@@ -9,7 +9,7 @@ import { resolveIcon } from '../src/lib/icons';
 import { Text, EmptyState } from '../src/components/ui';
 import { palette, space, radius, categoryColors } from '../design-tokens';
 import { useTheme } from '../src/theme/ThemeProvider';
-import { calcPhase, dDay } from '../src/hooks/usePhase';
+import { calcDatePhase, dDay } from '../src/hooks/usePhase';
 import { useCompletedMissions } from '../src/hooks/useCompletedMissions';
 import { useBuckets } from '../src/hooks/useBuckets';
 import { useTotalCompletions } from '../src/hooks/useTotalCompletions';
@@ -22,6 +22,7 @@ import {
 } from '../src/components/byeongpung/motifs';
 import { track } from '../src/lib/posthog';
 import { shareByeongpungImage } from '../src/lib/share';
+import { knownProfileDate } from '../src/lib/profileCompat';
 
 export default function Gallery() {
   const router = useRouter();
@@ -47,11 +48,10 @@ export default function Gallery() {
   }, [completed]);
 
   const panels = BYEONGPUNG_PANEL_IMAGES[theme.era.key];
-  const phase = calcPhase({
-    arrivalDate: profile?.arrivalDate ?? null,
-    departureDate: profile?.departureDate ?? null,
-  });
-  const daysLeft = dDay(profile?.departureDate ?? null);
+  const arrivalDate = knownProfileDate(profile?.arrivalDate);
+  const departureDate = knownProfileDate(profile?.departureDate);
+  const phase = calcDatePhase({ arrivalDate, departureDate });
+  const daysLeft = dDay(departureDate);
   const isPostDeparture = phase === 4 && daysLeft !== null && daysLeft < 0;
   const chaekgeoriPanel = panels[7];
   const completedPanels = panels.filter(

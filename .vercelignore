@@ -1,0 +1,8 @@
+.work/
+.omc/
+coverage/
+dist/
+docs/
+phases/
+reference/
+store-assets/

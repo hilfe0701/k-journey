@@ -19,12 +19,14 @@ import { Text, EmptyState } from '../src/components/ui';
 import { palette, space, radius } from '../design-tokens';
 import { useProfile } from '../src/hooks/useProfile';
 import { universityById, University } from '../src/data/universities';
+import { selectMissionHousing, selectUniversityId } from '../src/lib/profileCompat';
 
 export default function Campus() {
   const router = useRouter();
   const { profile } = useProfile();
-  const uni = profile?.university ? universityById(profile.university) : null;
-  const housing = profile?.housing ?? null;
+  const universityId = selectUniversityId(profile);
+  const uni = universityId ? universityById(universityId) : null;
+  const housing = selectMissionHousing(profile);
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>

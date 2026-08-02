@@ -1,114 +1,51 @@
-# Performance Budgets & Quotas
+# Performance budget
 
-> Per-metric budgets, the rationale, and how each is measured. Authority: PRD v1.1 §11.8. For monitoring/alerting see `MONITORING.md`.
+## Measured asset correction
 
-## 1. App performance budgets
+Before the 2026-08-02 audit, the 24 byeongpung panels were about 49MB and the six bucket templates about 27MB. They were cropped to remove repeated edge marks and resized for their rendered dimensions.
 
-| Metric | Budget | Measured by | Rationale |
-|---|---|---|---|
-| Cold start (iPhone 13, Wi-Fi, fresh install) | **P75 ≤ 3.0 s** | Firebase Performance Monitoring `app_start` trace | Splash → first interactable home tab. Brand calm should not feel slow. |
-| First paint after splash | ≤ 1.0 s | Reanimated frame timing + manual stopwatch | Splash → byeongpung visible. |
-| Time to interactive (tab tap → response) | ≤ 200 ms P95 | Manual / `useTrace` | RN bridge constraint. |
-| Animation frame rate (mission complete) | ≥ 55 fps over the 2.4 s window | Reanimated frame stats | Brand hero moment. |
-| JS bundle (release, gz, single platform) | ≤ 4.5 MB | EAS build report | Keeps install size sane after PNG bundling. |
-| Total app size (release IPA / AAB) | ≤ 60 MB | App Store / Play Console | 24 byeongpung PNG ≈ 6–8 MB; rest is fonts + JS + native. |
-| Memory (idle, after 60 s home tab) | ≤ 250 MB | Xcode Instruments / Android Studio Profiler | Headroom for image caches. |
-| Memory (during mission complete animation) | ≤ 400 MB | Xcode Instruments | Worst-case spike. |
+Current source-asset targets and approximate post-optimization totals:
 
-## 2. Backend quotas (Firebase free tier headroom)
+| Asset group | Count | Target | Current approximate total |
+|---|---:|---:|---:|
+| byeongpung panels | 24 | normally <700KB each | ~13MB |
+| bucket templates | 6 | normally <900KB each | ~3.9MB |
+| combined | 30 | <20MB | ~17MB |
 
-K-Journey uses Firebase Blaze plan (pay as you go). MVP scale (1k users × 6-month run) should comfortably stay within free-tier limits. Track these per MAU:
+The web audit also found about 35MB of full Korean font files. Runtime fonts are now local
+subsets covering every glyph used by `app/` and `src/` plus Latin Extended (858 characters):
+roughly 0.8MB total instead of 35MB. User-authored characters outside that subset rely on the
+platform fallback font; regenerate the subsets whenever shipped UI/data introduces new glyphs.
 
-| Quota | Budget per MAU | Measured by | Source |
-|---|---|---|---|
-| Firestore reads | ≤ 500 / MAU | Firebase Usage tab | Snapshot subscriptions; tight if user re-opens app frequently. |
-| Firestore writes | ≤ 150 / MAU | Firebase Usage tab | Mission completions + bucket toggles. |
-| Firestore stored bytes | ≤ 200 KB / user | Firebase Usage tab | Profile + 50 missions + ~6 buckets × ~10 items. |
-| Storage egress | ≤ 5 MB / MAU | Firebase Usage tab | Byeongpung PNG exports (rare). |
-| FCM messages | ≤ 12 / MAU | scheduler logs | D-30/14/7 + 3 phase transitions + up to 8 panel unlocks. |
-| Auth verifications | ≤ 5 / MAU | Firebase Auth dashboard | One per cold start auth refresh. |
-| Crashlytics events | ≤ 10 / MAU | Crashlytics dashboard | Aim for crash-free 99.5%+. |
+Fresh 2026-08-02 production export after optimization: `dist/` 23MB; JavaScript
+4,960,536 bytes raw / 1,017,350 bytes gzip. The previous output was 55MB before font
+subsetting and 114MB before artwork optimization.
 
-**Alert** when monthly usage projection > 80% of any free-tier limit.
+## Budgets
 
-## 3. Analytics quotas (PostHog free tier)
+| Metric | Target | Block release at |
+|---|---:|---:|
+| artwork assets combined | <20MB | >25MB |
+| single panel | <700KB typical | >1MB without documented reason |
+| bucket template | <900KB | >1.2MB |
+| initial web JS gzip | <1MB goal | >1.25MB |
+| first actionable content | initial viewport or short scroll | more than one full viewport below mode control |
+| interaction feedback | <100ms local response | >250ms |
 
-| Quota | Budget | Notes |
-|---|---|---|
-| Events / month | ≤ 1 M | Far above expected scale at 1k users. |
-| Session replays / month | ≤ 5 k | Sampling 30% of sessions sufficient. |
-| Cohorts | ≤ 50 | More than enough for our funnels. |
+## Practices
 
-## 4. Bundle size discipline
+- Match source dimensions to maximum rendered size and high-density needs.
+- Avoid loading/exporting all full-resolution artwork on the first tab unless needed.
+- Keep wide web cards in the 760px app shell.
+- Do not enable session replay or high-volume autocapture as an invisible performance cost.
+- Measure after production static export, not from development Metro behavior.
 
-Top size contributors:
+## Release measurement
 
-| Dependency | Approx. install delta | Notes |
-|---|---|---|
-| `@react-native-firebase/*` (8 modules) | ~3 MB JS | Modular — only imported services bundled. |
-| `react-native-reanimated` | ~500 KB | Native; required for byeongpung animations. |
-| 24 byeongpung PNGs | ~6 MB | One per (era, panel). Optimised at delivery. |
-| 6 bucket template PNGs | ~1.5 MB | Same. |
-| Pretendard variable font | ~250 KB | All weights in one file. |
-| `posthog-react-native` | ~200 KB | Acceptable. |
-| `date-fns` + `date-fns-tz` | ~150 KB | KST helpers — ADR-0022. |
-
-**Adding a dependency > 200 KB** requires:
-1. Justification in PR description.
-2. Update this section.
-3. Re-run `npm run build` and confirm budget intact.
-
-## 5. Image asset rules
-
-* PNG only for byeongpung panels (ADR-0008).
-* Each panel ≤ 400 KB target. Source PNGs are larger; optimisation pass (pngquant + zopflipng) before commit.
-* `resizeMode="cover"` for byeongpung panels; do not load images larger than the layout requires.
-* `<Image>` defaults — RN handles native caching.
-
-## 6. Measurement: cold start
-
-Manual:
-1. Force-quit app.
-2. Stopwatch from tap on icon to "tab interactable" (first home tab tap responds).
-3. Repeat 5x, take median.
-
-Automated (Firebase Performance Monitoring):
-* `_app_start` automatic trace.
-* Custom trace `byeongpung_first_paint` from `app/_layout.tsx` mount to first byeongpung frame.
-
-Sample acceptance: P75 across 1k user sessions, gathered weekly.
-
-## 7. Measurement: animation
-
-Reanimated has built-in frame stats. For the mission complete animation:
-
-```ts
-import { measure } from 'react-native-reanimated';
-// In the worklet: measure() returns layout info; combine with frame timestamps for fps.
+```bash
+npm run build:web
+du -sh dist
+find dist -type f -print0 | xargs -0 du -h | sort -h | tail
 ```
 
-Manual check: `Show FPS Monitor` in dev menu, run the animation. Should stay ≥ 55 fps on iPhone 13.
-
-## 8. Memory leaks — known gotchas
-
-* **Firestore snapshot subscriptions** must `unsubscribe` on unmount (each hook does this). Verify on inspection.
-* **Reanimated shared values** in hooks must be created once (use refs / `useSharedValue` at the top of the hook body, not inside `useEffect`).
-* **`useEffect` cleanups** for `useFocusEffect` callbacks must guard against late state updates.
-
-## 9. Quarterly performance review
-
-Each quarter, run through:
-* Firebase Usage trends (per-user growth).
-* Crashlytics velocity (any new top crashers?).
-* P75 cold start (regressed?).
-* PostHog onboarding funnel (drop-off shifted?).
-
-Document in `docs/STATUS.md` (after STATUS.md is updated to have a cadence — Part K).
-
-## 10. Links
-
-* PRD v1.1 §11.8
-* `docs/MONITORING.md`
-* `docs/RELEASE.md` (release checklist includes performance smoke test)
-* [Firebase Performance](https://firebase.google.com/docs/perf-mon)
-* [PostHog free tier](https://posthog.com/pricing)
+Also record raw and gzip size of emitted JavaScript and test first load with a cold cache at mobile and desktop widths.

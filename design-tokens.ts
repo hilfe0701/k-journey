@@ -18,7 +18,7 @@ export const palette = {
 
   // 황 (Hwang) — Yellow-Gold / Center / Earth
   hwanggeum: '#C4952A',
-  hwanggeumDeep: '#9A7120',
+  hwanggeumDeep: '#8B6419',
   hwanggeumLight: '#F5E8C4',
 
   // 백 (Baek) — White / West / Metal
@@ -38,7 +38,7 @@ export const palette = {
 
   // Neutrals
   ash: '#6E6458',
-  stone: '#9E9080',
+  stone: '#76695C',
   hairline: '#DDD5C4',
   cloud: '#F5EFE3',
 

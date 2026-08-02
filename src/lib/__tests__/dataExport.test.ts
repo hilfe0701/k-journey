@@ -135,4 +135,26 @@ describe('REQ-SFR-012 data export', () => {
     );
     expect(oneTask.status).toBe('ready');
   });
+
+  it('exports cultural missions, Want-to text, and era in the user-owned copy', () => {
+    const payload = buildExportPayload(EMPTY_PROFILE, progressWith({}), {
+      completedMissions: [{ missionId: 'p2_tteokbokki', completedAt: new Date('2026-09-03T00:00:00.000Z') }],
+      era: 'silla',
+      buckets: [{
+        id: 'bkt_1',
+        themeName: 'My Seoul days',
+        templateKey: 'tiger',
+        maxItems: 8,
+        createdAtIso: '2026-09-01T00:00:00.000Z',
+        items: [{ id: 'itm_1', text: 'Walk along the Han River', completedAtIso: null }],
+      }],
+    });
+
+    expect(payload.status).toBe('ready');
+    expect(payload.missions).toHaveLength(1);
+    expect(payload.buckets).toHaveLength(1);
+    expect(payload.text).toContain('p2_tteokbokki');
+    expect(payload.text).toContain('Walk along the Han River');
+    expect(payload.text).toContain('Era: silla');
+  });
 });

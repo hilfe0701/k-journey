@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { Linking, View, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, ChevronDown, ChevronUp, AlertTriangle, AlertCircle } from 'lucide-react-native';
@@ -10,6 +10,7 @@ import { palette, space, radius } from '../design-tokens';
 import { EMERGENCY_SECTIONS } from '../src/data/emergency';
 import { setJson, getJson, KEYS } from '../src/lib/storage';
 import { track } from '../src/lib/posthog';
+import { surfaceError } from '../src/lib/errorAlert';
 
 // Cache emergency data on first render so it's available offline.
 setJson(KEYS.emergencyCache, EMERGENCY_SECTIONS);
@@ -26,7 +27,12 @@ export default function Emergency() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
           <ChevronLeft size={24} color={palette.meok} />
         </Pressable>
         <Text role="body" weight="semibold">
@@ -78,14 +84,25 @@ export default function Emergency() {
               {isOpen ? (
                 <View style={styles.sectionItems}>
                   {section.items.map((item, idx) => (
-                    <View key={idx} style={styles.item}>
-                      <Text role="body" weight="semibold">
+                    <Pressable
+                      key={idx}
+                      disabled={!item.href}
+                      accessibilityRole={item.href ? 'link' : undefined}
+                      accessibilityLabel={item.href ? `Call ${item.label}` : undefined}
+                      accessibilityHint={item.href ? 'Opens your phone dialer.' : undefined}
+                      onPress={() => {
+                        if (!item.href) return;
+                        Linking.openURL(item.href).catch(() => surfaceError('unknown'));
+                      }}
+                      style={({ pressed }) => [styles.item, item.href && pressed ? styles.itemPressed : null]}
+                    >
+                      <Text role="body" weight="semibold" color={item.href ? palette.cheong : undefined}>
                         {item.label}
                       </Text>
                       <Text role="sm" color={palette.ash}>
                         {item.detail}
                       </Text>
-                    </View>
+                    </Pressable>
                   ))}
                 </View>
               ) : null}
@@ -151,5 +168,8 @@ const styles = StyleSheet.create({
   },
   item: {
     gap: 2,
+  },
+  itemPressed: {
+    opacity: 0.72,
   },
 });

@@ -8,6 +8,8 @@ import { AlertTriangle, ChevronLeft, Download, ShieldCheck } from 'lucide-react-
 
 import { Button, Card, Text } from '../../src/components/ui';
 import { useProfile, useTaskProgress } from '../../src/hooks/useProfile';
+import { useCompletedMissions } from '../../src/hooks/useCompletedMissions';
+import { useBuckets } from '../../src/hooks/useBuckets';
 import {
   buildExportPayload,
   resolveExportResult,
@@ -20,10 +22,15 @@ export default function DataExportScreen() {
   const router = useRouter();
   const { profile } = useProfile();
   const { progress } = useTaskProgress();
+  const { completed } = useCompletedMissions();
+  const { buckets } = useBuckets();
   const [result, setResult] = useState<ExportResultView | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const payload = useMemo(() => buildExportPayload(profile, progress), [profile, progress]);
+  const payload = useMemo(
+    () => buildExportPayload(profile, progress, { completedMissions: completed, buckets, era: profile?.era }),
+    [profile, progress, completed, buckets],
+  );
 
   async function handleExport() {
     if (busy) return;
@@ -67,8 +74,9 @@ export default function DataExportScreen() {
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
           <Text role="body" color={palette.ash}>
-            K-Journey keeps everything on this device and has no account to sign in to. This export is
-            how you keep a copy — and the only way to carry your progress to another phone.
+            K-Journey keeps your journey on this device. This readable text includes profile
+            conditions, administrative task states, cultural completions, and Want-to lists.
+            It is not an importable app backup.
           </Text>
         </View>
 
@@ -101,6 +109,20 @@ export default function DataExportScreen() {
                 </Text>
               </View>
             ))}
+          </Card>
+        </View>
+
+        <View style={styles.section}>
+          <Text role="h4">{`Culture (${payload.missions.length} completed)`}</Text>
+          <Card padded bg={palette.cloud} style={styles.listCard}>
+            <View style={styles.row}>
+              <Text role="xs" color={palette.ash} style={styles.rowLabel}>Era</Text>
+              <Text role="sm" weight="semibold" style={styles.rowValue}>{payload.era}</Text>
+            </View>
+            <View style={styles.row}>
+              <Text role="xs" color={palette.ash} style={styles.rowLabel}>Want-to lists</Text>
+              <Text role="sm" weight="semibold" style={styles.rowValue}>{payload.buckets.length}</Text>
+            </View>
           </Card>
         </View>
 

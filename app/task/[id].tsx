@@ -1,6 +1,6 @@
 // Screen IDs: TASK-00 (Task Detail); regions TASK-01 through TASK-04.
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatInTimeZone } from 'date-fns-tz';
@@ -22,7 +22,7 @@ import {
 
 import { Badge, Button, Card, Text } from '../../src/components/ui';
 import { useProfile, useTaskProgress } from '../../src/hooks/useProfile';
-import { calcPhase, type Phase } from '../../src/hooks/usePhase';
+import { calcDatePhase, type Phase } from '../../src/hooks/usePhase';
 import {
   getHousingProofDocuments,
   isUnknownConditionValue,
@@ -63,7 +63,7 @@ import {
   type TaskSourceMetadata,
   type TaskSourceValue,
 } from '../../src/lib/taskState';
-import { buildHomeTasks, type HomeTask } from '../(tabs)';
+import { buildHomeTasks, type HomeTask } from '../(tabs)/checklist';
 import { palette, radius, semantic, space } from '../../design-tokens';
 import { KST, toKstStartOfDay } from '../../src/lib/dates';
 
@@ -507,7 +507,7 @@ function SourceSection({ metadata }: { metadata: TaskMetadata }) {
         <SourceField
           label="Official link"
           value={source.sourceUrl || 'Not confirmed (미확인)'}
-          selectable={Boolean(source.sourceUrl)}
+          href={source.sourceUrl || undefined}
           accessibilityLabel={source.sourceUrl ? `Official source: ${source.sourceUrl}` : undefined}
         />
         <SourceField label="Checked on" value={formatSourceDate(source.checkedAt)} />
@@ -555,28 +555,43 @@ function SourceField({
   label,
   value,
   selectable = false,
+  href,
   accessibilityLabel,
 }: {
   label: string;
   value: string;
   selectable?: boolean;
+  href?: string;
   accessibilityLabel?: string;
 }) {
+  const valueText = (
+    <Text
+      role="sm"
+      weight="semibold"
+      selectable={selectable || Boolean(href)}
+      color={href ? palette.cheong : undefined}
+      style={styles.sourceValue}
+    >
+      {value}
+    </Text>
+  );
+
   return (
     <View style={styles.sourceField}>
       <Text role="xs" color={palette.ash} style={styles.sourceLabel}>
         {label}
       </Text>
-      <Text
-        role="sm"
-        weight="semibold"
-        selectable={selectable}
-        accessibilityRole={selectable ? 'link' : undefined}
-        accessibilityLabel={accessibilityLabel}
-        style={styles.sourceValue}
-      >
-        {value}
-      </Text>
+      {href ? (
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={accessibilityLabel ?? `Open ${value}`}
+          accessibilityHint="Opens the official source in your browser."
+          onPress={() => Linking.openURL(href).catch((error) => showOperationError('open the official source', error))}
+          hitSlop={8}
+        >
+          {valueText}
+        </Pressable>
+      ) : valueText}
     </View>
   );
 }
@@ -592,9 +607,16 @@ function ConflictValueRow({ value }: { value: TaskSourceValue }) {
           {value.sourceLabel} · checked {formatSourceDate(value.checkedAt)}
         </Text>
       </View>
-      <Text role="xs" color={palette.cheong} selectable accessibilityRole="link">
-        {value.sourceUrl}
-      </Text>
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={`Open source from ${value.sourceLabel}`}
+        onPress={() => Linking.openURL(value.sourceUrl).catch((error) => showOperationError('open the source', error))}
+        hitSlop={8}
+      >
+        <Text role="xs" color={palette.cheong} selectable>
+          {value.sourceUrl}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -1223,7 +1245,7 @@ function displayConditionValue(axis: string, value: unknown): string {
 }
 
 function phaseForProfile(profile: UserProfile | null): Phase {
-  return calcPhase({
+  return calcDatePhase({
     arrivalDate: knownDate(profile?.arrivalDate),
     departureDate: knownDate(profile?.departureDate),
   });

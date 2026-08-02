@@ -1,5 +1,7 @@
 # K-Journey
 
+> **역사 문서:** 현재 제품 정본은 `reference/K-Journey_PRD_v2_0_KR.md`다.
+
 **제품 요구사항 정의서 (PRD)**
 
 *교환학생을 위한 한국 여정 큐레이션 앱*

@@ -4,6 +4,12 @@ This directory captures the architectural decisions behind K-Journey. Each ADR f
 
 ## How to use
 
+> **Current applicability:** ADR-0036 implements `DEC-040`. ADRs 0003, 0005, 0006, 0013,
+> 0014, 0021, 0031, 0033, and 0034 describe removed Auth/Firestore/sync/account/upload designs.
+> ADRs 0008–0011 are active again only as narrowed by `DEC-040`: 8 PNG panels, single-fire
+> thresholds, housing filtering for cultural content, and mission+bucket aggregation. Historical
+> status labels below are frozen records, not permission to reintroduce server user data.
+
 * **Reading:** if you're wondering *why* a piece of K-Journey works the way it does, search this index first. ADRs explain *why* the codebase looks the way it does — `CLAUDE.md` enforces *what* (the locked rules), but the *why* lives here.
 * **Writing:** when introducing a new architectural decision (new stack component, security model change, irreversible data shape, cross-cutting policy), copy `template.md` to `NNNN-short-title.md` (next available number) and fill it in. Add a one-line entry to the table below. Reference it from `CLAUDE.md` *Source-of-truth files* if the decision is load-bearing.
 * **Superseding:** never edit an *accepted* ADR's decision retroactively. If the decision changes, write a new ADR with status `accepted` and update the old one's status to `superseded by ADR-NNNN`.
@@ -90,12 +96,18 @@ This directory captures the architectural decisions behind K-Journey. Each ADR f
 | [0034](0034-photo-upload-pipeline.md) | Photo upload pipeline (compression · EXIF · moderation) | proposed | 2026-05-14 |
 | [0035](0035-dark-mode-explicit-rejection.md) | Dark mode explicit rejection (MVP) | proposed | 2026-05-14 |
 
+### Product integration (2026-08-02)
+| ADR | Title | Status | Date |
+|---|---|---|---|
+| [0036](0036-unified-journey-experience.md) | Unified administrative essentials and cultural journey | accepted | 2026-08-02 |
+
 ---
 
 ## Cross-references
 
 * **Project rules:** `CLAUDE.md` (locked decisions, MUST/NEVER lists — operates as a quick checklist over the ADRs)
-* **Product spec:** `reference/K-Journey_PRD_v1_1_KR.md` (v1.2 in-place revision, 2026-05-14)
+* **Current product spec:** `reference/K-Journey_PRD_v2_0_KR.md` (unified local-first product, 2026-08-02)
+* **Historical product specs:** `reference/K-Journey_PRD_v1_0_KR.md`, `reference/K-Journey_PRD_v1_1_KR.md`
 * **Architecture overview:** `docs/architecture/ARCHITECTURE.md`
 * **Security model:** `docs/SECURITY.md` (links to ADR-0021)
 * **Accessibility:** `docs/ACCESSIBILITY.md` (links to ADR-0025)

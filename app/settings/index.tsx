@@ -13,6 +13,7 @@ import {
   Linking,
   TextInput,
   Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -24,12 +25,19 @@ import Constants from 'expo-constants';
 import { Text, Button } from '../../src/components/ui';
 import { palette, space, radius, semantic, elevation } from '../../design-tokens';
 import { useProfile } from '../../src/hooks/useProfile';
-import { updateUserProfile, type UserProfile } from '../../src/lib/firebase';
+import {
+  UNKNOWN,
+  updateUserProfile,
+  type ContractHolder,
+  type HousingType,
+  type ResidenceCardStatus,
+  type UserProfile,
+} from '../../src/lib/firebase';
 import { clearLocalJourneyData } from '../../src/lib/firebase';
 import { UNIVERSITIES } from '../../src/data/universities';
 import { ERA_LIST } from '../../src/theme/eras';
 import { BYEONGPUNG_PANEL_IMAGES } from '../../src/components/byeongpung/motifs';
-import { calcPhase } from '../../src/hooks/usePhase';
+import { calcDatePhase } from '../../src/hooks/usePhase';
 import {
   getPermissionState,
   rescheduleAllNotifications,
@@ -42,6 +50,12 @@ import { emitError } from '../../src/lib/errors/host';
 import { ERROR_CATALOG } from '../../src/lib/errors/catalog';
 import { track } from '../../src/lib/posthog';
 import { resetAhaMoment } from '../../src/components/onboarding/AhaMomentTour';
+import {
+  housingProfilePatch,
+  knownProfileDate,
+  selectUniversityId,
+  universityProfilePatch,
+} from '../../src/lib/profileCompat';
 
 type Section =
   | { key: 'notifications'; title: string; data: 'notifications'[] }
@@ -58,6 +72,8 @@ export default function SettingsScreen() {
     | 'name'
     | 'university'
     | 'housing'
+    | 'contractHolder'
+    | 'residenceCard'
     | 'arrival'
     | 'departure'
     | 'era'
@@ -157,7 +173,7 @@ export default function SettingsScreen() {
                   />
                   <SettingsRow
                     label="University"
-                    valueText={uniLabel(profile?.university)}
+                    valueText={uniLabel(selectUniversityId(profile))}
                     onPress={() => {
                       trackOpen('profile');
                       setOpenSheet('university');
@@ -165,10 +181,30 @@ export default function SettingsScreen() {
                   />
                   <SettingsRow
                     label="Housing"
-                    valueText={housingLabel(profile?.housing)}
+                    valueText={housingLabel(
+                      profile?.housingType && profile.housingType !== UNKNOWN
+                        ? profile.housingType
+                        : profile?.housing,
+                    )}
                     onPress={() => {
                       trackOpen('profile');
                       setOpenSheet('housing');
+                    }}
+                  />
+                  <SettingsRow
+                    label="Contract holder"
+                    valueText={contractHolderLabel(profile?.contractHolder)}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('contractHolder');
+                    }}
+                  />
+                  <SettingsRow
+                    label="Residence card"
+                    valueText={residenceCardLabel(profile?.residenceCardStatus)}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('residenceCard');
                     }}
                   />
                   <SettingsRow
@@ -197,10 +233,34 @@ export default function SettingsScreen() {
                 <View style={styles.card}>
                   <SettingsRow
                     label="Export your data"
-                    valueText="Conditions and task states as text"
+                    valueText="Journey data as readable text"
                     onPress={() => {
                       trackOpen('data');
                       router.push('/settings/export' as never);
+                    }}
+                  />
+                  <SettingsRow
+                    label="Delete all local data"
+                    valueText="Cannot be undone"
+                    destructive
+                    isLast
+                    onPress={() => {
+                      Alert.alert(
+                        'Delete this journey?',
+                        'This permanently removes profile answers, task progress, cultural missions, Want-to lists, and byeongpung progress from this device. Export first if you need a readable copy.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Delete everything',
+                            style: 'destructive',
+                            onPress: () => {
+                              clearLocalJourneyData();
+                              resetAhaMoment();
+                              router.replace('/(onboarding)/university' as never);
+                            },
+                          },
+                        ],
+                      );
                     }}
                   />
                 </View>
@@ -235,11 +295,11 @@ export default function SettingsScreen() {
         visible={openSheet === 'university'}
         title="Pick your university"
         options={UNIVERSITIES.map((u) => ({ value: u.id, label: u.shortName, hint: u.campusArea }))}
-        selected={profile?.university ?? null}
+        selected={selectUniversityId(profile)}
         onClose={() => setOpenSheet(null)}
         onSelect={async (value) => {
           try {
-            await updateUserProfile({ university: value });
+            await updateUserProfile(universityProfilePatch(value));
             track('profile_field_change', { field: 'university' });
             setOpenSheet(null);
             surfaceError('profile-updated');
@@ -255,18 +315,80 @@ export default function SettingsScreen() {
         title="Pick your housing"
         options={[
           { value: 'dormitory', label: 'Dormitory', hint: 'On-campus residence' },
-          { value: 'off-campus', label: 'Off-campus', hint: 'Goshiwon, sublet, or share' },
+          { value: 'own_lease', label: 'Private lease', hint: 'You hold the housing lease' },
+          { value: 'third_party_lease', label: 'Shared housing', hint: 'Someone else holds the lease' },
+          { value: 'registered_business', label: 'Business accommodation', hint: 'A registered stay provider' },
         ]}
-        selected={profile?.housing ?? null}
+        selected={
+          profile?.housingType && profile.housingType !== UNKNOWN
+            ? profile.housingType
+            : profile?.housing ?? null
+        }
         onClose={() => setOpenSheet(null)}
         onSelect={async (value) => {
           try {
-            await updateUserProfile({ housing: value as 'dormitory' | 'off-campus' });
+            const housingType = value as HousingType;
+            await updateUserProfile({
+              ...housingProfilePatch(housingType),
+              ...(housingType !== profile?.housingType ? { contractHolder: UNKNOWN } : {}),
+            });
             track('profile_field_change', { field: 'housing' });
             setOpenSheet(null);
             surfaceError('profile-updated');
           } catch (err) {
             showOperationError('save your housing', err);
+          }
+        }}
+      />
+
+      {/* Contract-holder picker */}
+      <PickerSheet
+        visible={openSheet === 'contractHolder'}
+        title="Who holds the housing contract?"
+        options={[
+          { value: 'self', label: 'I hold it' },
+          { value: 'third_party', label: 'Someone else or a company' },
+          { value: 'none', label: 'There is no contract' },
+          { value: 'undecided', label: 'Not decided yet' },
+          { value: 'n_a', label: 'Not applicable' },
+          { value: UNKNOWN, label: 'Unknown / not sure' },
+        ]}
+        selected={profile?.contractHolder ?? UNKNOWN}
+        onClose={() => setOpenSheet(null)}
+        onSelect={async (value) => {
+          try {
+            await updateUserProfile({ contractHolder: value as ContractHolder });
+            track('profile_field_change', { field: 'contractHolder' });
+            setOpenSheet(null);
+            surfaceError('profile-updated');
+          } catch (err) {
+            showOperationError('save your contract holder', err);
+          }
+        }}
+      />
+
+      <PickerSheet
+        visible={openSheet === 'residenceCard'}
+        title="Residence card status"
+        options={[
+          { value: 'not_started', label: 'Not started' },
+          { value: 'booked', label: 'Appointment booked' },
+          { value: 'submitted', label: 'Application submitted' },
+          { value: 'issued', label: 'Card issued' },
+          { value: 'rejected', label: 'Rejected or needs action' },
+          { value: 'n_a', label: 'Not applicable' },
+          { value: UNKNOWN, label: 'Unknown / not sure' },
+        ]}
+        selected={profile?.residenceCardStatus ?? UNKNOWN}
+        onClose={() => setOpenSheet(null)}
+        onSelect={async (value) => {
+          try {
+            await updateUserProfile({ residenceCardStatus: value as ResidenceCardStatus });
+            track('profile_field_change', { field: 'residenceCardStatus' });
+            setOpenSheet(null);
+            surfaceError('profile-updated');
+          } catch (err) {
+            showOperationError('save your residence card status', err);
           }
         }}
       />
@@ -315,8 +437,10 @@ async function handleDateSave(
   next: string,
   setOpenSheet: (v: null) => void,
 ) {
-  const arrival = kind === 'arrival' ? next : profile?.arrivalDate ?? null;
-  const departure = kind === 'departure' ? next : profile?.departureDate ?? null;
+  const currentArrival = knownProfileDate(profile?.arrivalDate);
+  const currentDeparture = knownProfileDate(profile?.departureDate);
+  const arrival = kind === 'arrival' ? next : currentArrival;
+  const departure = kind === 'departure' ? next : currentDeparture;
   if (arrival && departure) {
     const err = validateDates(arrival, departure);
     if (err) {
@@ -329,9 +453,9 @@ async function handleDateSave(
       return;
     }
   }
-  const phaseBefore = calcPhase({
-    arrivalDate: profile?.arrivalDate ?? null,
-    departureDate: profile?.departureDate ?? null,
+  const phaseBefore = calcDatePhase({
+    arrivalDate: currentArrival,
+    departureDate: currentDeparture,
   });
   try {
     await updateUserProfile({
@@ -345,7 +469,7 @@ async function handleDateSave(
       surfaceError('dates-updated');
       // PRD §4.7 — if the new dates move the user to an earlier phase, follow
       // the toast with a modal so the phase shift is not a silent surprise.
-      const phaseAfter = calcPhase({ arrivalDate: arrival, departureDate: departure });
+      const phaseAfter = calcDatePhase({ arrivalDate: arrival, departureDate: departure });
       if (phaseAfter < phaseBefore) {
         surfaceError('phase-changed', {
           messageOverride: `Your new dates put you in Phase ${phaseAfter}. Existing missions stay completed.`,
@@ -370,12 +494,34 @@ function uniLabel(id: string | null | undefined): string {
 
 function housingLabel(h: string | null | undefined): string {
   if (h === 'dormitory') return 'Dormitory';
+  if (h === 'own_lease') return 'Private lease';
+  if (h === 'third_party_lease') return 'Shared housing';
+  if (h === 'registered_business') return 'Business accommodation';
   if (h === 'off-campus') return 'Off-campus';
   return '—';
 }
 
+function contractHolderLabel(holder: string | null | undefined): string {
+  if (holder === 'self') return 'You';
+  if (holder === 'third_party') return 'Someone else or a company';
+  if (holder === 'none') return 'No contract';
+  if (holder === 'undecided') return 'Not decided';
+  if (holder === 'n_a') return 'Not applicable';
+  return '—';
+}
+
+function residenceCardLabel(status: string | null | undefined): string {
+  if (status === 'not_started') return 'Not started';
+  if (status === 'booked') return 'Appointment booked';
+  if (status === 'submitted') return 'Submitted';
+  if (status === 'issued') return 'Issued';
+  if (status === 'rejected') return 'Needs action';
+  if (status === 'n_a') return 'Not applicable';
+  return 'Unknown / not sure';
+}
+
 function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
+  if (!iso || iso === UNKNOWN) return '—';
   try {
     return format(new Date(iso), 'MMM d, yyyy');
   } catch {
@@ -698,8 +844,9 @@ function DateSheet({
   onClose: () => void;
   onSave: (date: string) => Promise<void> | void;
 }) {
-  const initial =
-    (kind === 'arrival' ? profile?.arrivalDate : profile?.departureDate) ?? null;
+  const initial = knownProfileDate(
+    kind === 'arrival' ? profile?.arrivalDate : profile?.departureDate,
+  );
   const [selected, setSelected] = useState<string | null>(initial);
   useEffect(() => {
     if (visible) setSelected(initial);
@@ -707,7 +854,7 @@ function DateSheet({
 
   const today = format(new Date(), 'yyyy-MM-dd');
   const minDate = kind === 'departure'
-    ? profile?.arrivalDate ?? today
+    ? knownProfileDate(profile?.arrivalDate) ?? today
     : today;
 
   return (

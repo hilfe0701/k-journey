@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, ScrollView, StyleSheet, Pressable, Linking, AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import {
   ShieldAlert,
   Image as ImageIcon,
@@ -18,13 +19,14 @@ import { useProfile } from '../../src/hooks/useProfile';
 import { universityById } from '../../src/data/universities';
 import { getPermissionState, PermissionState } from '../../src/lib/notifications';
 import { NotificationPriming } from '../../src/components/onboarding/NotificationPriming';
+import { selectUniversityId } from '../../src/lib/profileCompat';
 
 export default function MoreTab() {
+  const isFocused = useIsFocused();
   const router = useRouter();
   const { profile } = useProfile();
-  // v2 stores the school on `universityId`; the legacy `university` field is
-  // no longer written, so reading it left this header permanently blank.
-  const uni = profile?.universityId ? universityById(profile.universityId) : null;
+  const universityId = selectUniversityId(profile);
+  const uni = universityId ? universityById(universityId) : null;
   const [notifState, setNotifState] = useState<PermissionState | null>(null);
   const [primingVisible, setPrimingVisible] = useState(false);
 
@@ -76,7 +78,13 @@ export default function MoreTab() {
         : 'Tap to enable phase + D-Day reminders';
 
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
+    <SafeAreaView
+      style={styles.root}
+      edges={['top']}
+      accessibilityElementsHidden={!isFocused}
+      importantForAccessibility={isFocused ? 'auto' : 'no-hide-descendants'}
+      aria-hidden={!isFocused}
+    >
       <ScrollView contentContainerStyle={{ paddingBottom: space[16] }}>
         <View style={styles.header}>
           <View style={styles.headerRow}>

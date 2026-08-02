@@ -3,7 +3,7 @@ import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
 import type { ImageSourcePropType } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, MapPin, Lightbulb, Check, Building2, X } from 'lucide-react-native';
+import { ChevronLeft, MapPin, Lightbulb, Check, Building2, X, CircleCheckBig } from 'lucide-react-native';
 import { resolveIcon } from '../../src/lib/icons';
 
 import { Text, Button, Badge } from '../../src/components/ui';
@@ -20,6 +20,7 @@ import { track } from '../../src/lib/posthog';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { MissionCompleteOverlay } from '../../src/components/mission/MissionCompleteOverlay';
 import { BYEONGPUNG_PANEL_IMAGES } from '../../src/components/byeongpung/motifs';
+import { selectUniversityId } from '../../src/lib/profileCompat';
 
 interface OverlayState {
   iconName: string;
@@ -41,7 +42,8 @@ export default function MissionDetail() {
   const [overlay, setOverlay] = useState<OverlayState | null>(null);
 
   const mission = id ? missionById(id) : null;
-  const uni = profile?.university ? universityById(profile.university) : undefined;
+  const universityId = selectUniversityId(profile);
+  const uni = universityId ? universityById(universityId) : undefined;
 
   async function toggleComplete(m: NonNullable<typeof mission>) {
     const isCompleting = !completedSet.has(m.id);
@@ -170,6 +172,21 @@ export default function MissionDetail() {
           ))}
         </View>
 
+        <View style={styles.completionBlock}>
+          <View style={styles.sectionHead}>
+            <CircleCheckBig size={18} color={palette.jade} strokeWidth={1.6} />
+            <Text role="body" weight="semibold">
+              Complete when
+            </Text>
+          </View>
+          <Text role="sm" color={palette.meokMid}>
+            {completionStandard(mission)}
+          </Text>
+          <Text role="xs" color={palette.ash}>
+            This is a planning guide. Prices, hours, requirements, and local rules can change.
+          </Text>
+        </View>
+
         {mission.mapHint ? (
           <View style={styles.mapBlock}>
             <View style={styles.sectionHead}>
@@ -189,7 +206,7 @@ export default function MissionDetail() {
 
       <View style={styles.footer}>
         <Button
-          label={isCompleted ? 'Mark as not done' : 'Mark complete'}
+          label={isCompleted ? 'Undo completion' : 'I did this'}
           onPress={() => toggleComplete(mission)}
           loading={busy}
           variant={isCompleted ? 'secondary' : 'primary'}
@@ -210,6 +227,28 @@ export default function MissionDetail() {
       />
     </SafeAreaView>
   );
+}
+
+function completionStandard(mission: Mission): string {
+  if (mission.id === 'p1_pack') {
+    return 'You have created and saved a packing list that matches your travel dates.';
+  }
+  if (mission.id === 'p1_visa') {
+    return 'You have checked the current requirements with the Korean mission handling your application.';
+  }
+  if (mission.id === 'p1_apps') {
+    return 'The apps you need are installed and you can open them before travel.';
+  }
+  if (mission.category === 'food') {
+    return 'You have tried the food or place yourself—not only read the guide.';
+  }
+  if (mission.category === 'activity') {
+    return 'You have taken part in the activity or completed the visit.';
+  }
+  if (mission.category === 'culture') {
+    return 'You have practiced, visited, or experienced this cultural moment.';
+  }
+  return 'You have finished the preparation and saved any details you will need later.';
 }
 
 function UniversityContextBlock({
@@ -326,6 +365,14 @@ const styles = StyleSheet.create({
     backgroundColor: palette.cloud,
     padding: space[4],
     borderRadius: radius.card,
+  },
+  completionBlock: {
+    gap: space[2],
+    padding: space[4],
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: palette.jade + '55',
+    backgroundColor: palette.jadeLight,
   },
   mapBlock: {
     gap: space[2],

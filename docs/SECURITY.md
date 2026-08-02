@@ -1,130 +1,69 @@
-# Security & Privacy
+# Security and privacy engineering
 
-> ⛔ **(legacy — not injected into harness steps by default.)** the account and Firestore ACL sections sit on `ADR-0021`, superseded by `DEC-001`/`DEC-022` — the per-user ACL model in `firestore.rules` is in scope for removal. The threat model, secret handling, and key-rotation runbook survive. Basis: `CLAUDE.md` Decision precedence · `.work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md` (2026-07-27).
+> Current local-first threat model. Account, Auth, Firestore ACL, and server deletion designs in older ADRs are historical only.
 
-> Threat model, rules, PII policy, and key-rotation runbook for K-Journey. Decision authority for the rules model: [ADR-0021](adr/0021-firestore-rules-acl-model.md). For the runtime threat surface, see [`architecture/ARCHITECTURE.md`](architecture/ARCHITECTURE.md) §8.
+## Security boundary
 
-## 1. Threat model summary
+User-owned K-Journey data is persisted in MMKV inside the operating-system app sandbox. There is no authentication, per-user Firestore document, Storage upload, or K-Journey cloud restore path.
 
-| # | Threat | Surface | Mitigation | Owner |
-|---|---|---|---|---|
-| T1 | User A reads User B's progress | Firestore | `firestore.rules` `isOwner(uid)` | ADR-0021 |
-| T2 | Anonymous client writes user data | Firestore | `isSignedIn()` rejects anonymous tokens | ADR-0014, ADR-0021 |
-| T3 | PII leaked to Crashlytics / PostHog | Telemetry | `setUserId(uid)` only; KJEvent union excludes PII | ADR-0004, ADR-0012 |
-| T4 | Clock manipulation gives early phase / D-Day | App | `serverTimestamp()` for write times; `clockGuard.ts` records skew | ADR-0022 |
-| T5 | Public catalogue write spam | Firestore | `write: if false` on catalogues | ADR-0021 |
-| T6 | Apple Sign-In token replay | Auth | Nonce verification handled by Firebase Auth | ADR-0013 |
-| T7 | MMKV cache corruption → crash loop | Local storage | `getJson` returns null on parse failure; migration runner backs up + resets corrupt keys | ADR-0023 |
-| T8 | Secrets in repo | Build | `.env`, `GoogleService-Info.plist`, `google-services.json` in `.gitignore`; EAS Secrets for prod | CLAUDE.md NEVER #16 |
-| T9 | Firestore Rules misconfiguration locks out real users | Deploy | Emulator-based rules tests before deploy (§4) | ADR-0021 |
-| T10 | Reanimated worklet crash → app force-close | Animation | Inline-only rule for `useAnimatedStyle` callbacks | ADR-0019 |
+MMKV currently has no application-supplied encryption key. The product must therefore minimize sensitive input and never describe local values as end-to-end encrypted or suitable for storing identity-document numbers.
 
-## 2. Firestore Rules
+## Threat model
 
-Authoritative file: [`firestore.rules`](../firestore.rules) at repo root.
-
-Summary:
-* `users/{uid}/**` — owner read/write only (Apple or Google signed-in).
-* `universities/{id}`, `missions_catalog/{id}` — signed-in read only; admin write via Console.
-* `emergency/{id}` — open read (even anonymous, for emergency-borrowed-phone case); admin write only.
-
-Deploy:
-```bash
-firebase deploy --only firestore:rules
-firebase deploy --only firestore:indexes
-```
-
-Per environment (ADR-0024): deploy to dev → staging → prod separately. **Never** deploy rules to prod without running the emulator tests first.
-
-## 3. PII classification
-
-| Field | Class | May appear in |
+| Threat | Current mitigation | Remaining risk |
 |---|---|---|
-| `uid` | Internal identifier | Firestore (own user doc), Crashlytics (`setUserId`), PostHog (`distinctId`) |
-| `email` | PII | Firestore (own user doc only). **Never** in Crashlytics. **Never** in PostHog event properties. |
-| `displayName` | PII | Firestore (own user doc only). Same prohibitions as email. |
-| `mission completion timestamps` | Behavioural | Firestore (own), PostHog as `phase` + `category` only (not the timestamp itself per event) |
-| `bucket item text (user-typed)` | User content | Firestore (own) only. **Never** in PostHog (the `bucket_item_complete` event must carry `bucketId` + `itemId`, never the text) |
-| `device location / coordinates` | Sensitive PII | **Not collected.** K-Journey does not request location permission. |
-| `app crashes / stack traces` | Internal | Crashlytics — with PII stripped (no email/name) |
+| Device loss or another person using an unlocked phone | OS lock and app sandbox | no app PIN; visible local profile and progress |
+| Local database corruption | defensive JSON reads and versioned storage migrations | no remote recovery; reset may be required |
+| Sensitive conditions leaked in analytics | typed event allowlist, forbidden-property policy, no replay | call sites can still attach unsafe props; review and tests needed |
+| User-authored text in crash reports | generic error wrapping | third-party/native errors may contain unexpected strings |
+| Secrets committed or exposed | `.env` and native service files ignored; public keys treated as public | build configuration must be audited before release |
+| Stale administrative guidance causes harm | content evidence and review policy | source ledger is not complete yet |
+| Oversized/malformed local input | validation and bounded UI fields | add explicit length limits where missing |
+| Generated artwork licensing/provenance gap | art provenance requirement | current provenance sheet still needs completion |
 
-Code locations to inspect when changing the schema:
-* `src/lib/posthog.ts` — `KJEvent` union and `track()` shape.
-* `src/lib/errorAlert.ts` — Crashlytics `recordError` call (PII-free message wrapping).
-* `src/hooks/useAuth.ts` — `identify(uid, props)` call: ensure props never carry PII beyond the uid.
+## Data classification
 
-## 4. Rules unit testing
-
-Use `@firebase/rules-unit-testing` and the Firestore emulator. Test scenarios (also in `docs/TESTING.md` §Firestore Rules):
-
-| # | Setup | Action | Expected |
+| Data | Class | Allowed locations | Telemetry |
 |---|---|---|---|
-| R1 | Anonymous token | Read `users/anyuid` | DENY |
-| R2 | Apple-signed-in as uid=A | Read `users/A/missions/m1` | ALLOW |
-| R3 | Apple-signed-in as uid=A | Read `users/B/missions/m1` | DENY |
-| R4 | Apple-signed-in as uid=A | Write `universities/Yonsei` | DENY |
-| R5 | Apple-signed-in as uid=A | Read `universities/Yonsei` | ALLOW |
-| R6 | Anonymous (no token) | Read `emergency/police` | ALLOW |
-| R7 | Apple-signed-in | Write a 2 MB blob to `users/A` | DENY (size limit 100 KB) |
+| journey dates and condition answers | sensitive profile context | local MMKV only | forbidden as raw values |
+| administrative task IDs/status | behavioral | local MMKV | ID and coarse status allowed |
+| mission IDs/completion | behavioral | local MMKV | enumerated ID/phase/category allowed |
+| Want-to names/items | user-authored | local MMKV | raw text forbidden |
+| selected era/preferences | low sensitivity | local MMKV | enumerated value allowed |
+| generated byeongpung image | user-requested local artifact | memory, Photos, OS share destination | no upload event payload |
+| crash stack/device metadata | diagnostic | configured Crashlytics processor | must exclude user text |
 
-CI step: run rules tests before `firebase deploy --only firestore:rules`. **Do not skip.**
+## Telemetry requirements
 
-## 5. Secret management
+- PostHog remains disabled when no real project key exists.
+- Session replay remains disabled until a separate consent and redaction decision.
+- Never call `identify` with profile fields. There is no account identity to bind.
+- Event properties must not include email, name, dates, university answer, nationality/visa/insurance values, raw bucket text, coordinates, or document data.
+- Diagnostics must use stable internal codes instead of concatenating user input into exceptions.
 
-| Secret | Where it lives | Rotation |
-|---|---|---|
-| `GoogleService-Info.plist` (iOS) | `.gitignore`'d locally; EAS Secret for builds | Per Firebase project create/delete |
-| `google-services.json` (Android) | same | same |
-| Firebase API key | embedded in plist/json (public — but restricted to bundle ID by Firebase) | n/a |
-| PostHog write key | `.env` local; `EXPO_PUBLIC_POSTHOG_KEY` via EAS Secret | Quarterly |
-| Apple Developer credentials | App Store Connect | n/a (per-developer) |
+## Local-data requirements
 
-**Never** copy a prod plist into the repo, even with `_prod` suffix. EAS Secrets only.
+- All new persisted keys need a schema owner, default, migration, reset behavior, and export decision.
+- A migration must be idempotent and must not invent unknown profile facts.
+- Reset operations need target-key enumeration and confirmation; never delete unrelated application or device data.
+- A future portable backup requires authenticated encryption, versioning, import validation, and round-trip tests before the UI may call it a backup.
 
-## 6. Crashlytics PII filter
+## Build and secret handling
 
-`src/lib/errorAlert.ts:showOperationError` is the single recording surface. Rules:
+- Do not commit `.env`, `GoogleService-Info.plist`, `google-services.json`, signing credentials, or store API keys.
+- `EXPO_PUBLIC_*` values are embedded in the client and are not secrets. Restrict public provider keys by app/bundle/domain where supported.
+- Review dependency and permission diffs before each store build.
+- Pin the source commit/tag used for a release; a dirty, uncommitted deployment is not reproducible.
 
-* `setUserId(uid)` only — never `setUserName` / `setUserEmail`.
-* `recordError(err)` — `err.message` must not contain `email`, `displayName`, or user-typed strings (mission text, bucket item text, free-form input).
-* `setAttribute(key, value)` — keys like `era`, `phase`, `university` are OK; never `displayName`.
+## Incident response
 
-If a thrown error includes user input in its message, wrap it: `throw new Error('User input failed validation')` — the validation code already produced the specific error code (`validation.ts`), so the user input doesn't need to round-trip through the exception.
+If telemetry contains prohibited data:
 
-## 7. Anonymous-auth permanent removal
+1. Disable the affected key or capture path.
+2. Preserve minimal evidence without copying the leaked value into tickets.
+3. Remove the unsafe property and ship a verified fix.
+4. Request processor-side deletion where available.
+5. Assess notification duties with the operator/legal owner.
+6. Record root cause, affected versions, and a regression test.
 
-ADR-0014. **Never** re-add `signInAnonymously()`. Firestore Rules `isSignedIn()` would silently allow anonymous tokens if we ever switch back — explicit provider whitelist (`apple.com`, `google.com`) blocks this from drifting.
-
-## 8. Privacy disclosure (App Store / Play Console)
-
-| Data type | Collected? | Linked to user? | Purpose |
-|---|---|---|---|
-| Email | Yes (provided by Apple/Google sign-in) | Yes | Account |
-| Name | Yes (provided by Apple/Google sign-in, optional) | Yes | Display only |
-| App functionality data (mission completion) | Yes | Yes | Core product |
-| Diagnostics (crashes) | Yes | Yes (uid) | Crashlytics |
-| Product interaction (events) | Yes | Yes (uid) | PostHog — funnel/retention |
-| Location | **No** | n/a | n/a |
-| Contacts | **No** | n/a | n/a |
-| Photos | Yes (when user shares byeongpung image) | No (only the captured image is written to library) | Share feature |
-
-Store-listing privacy form must match the above. Mismatch is grounds for App Store review rejection.
-
-## 9. Incident: PII leak found in event properties
-
-If a code review or production telemetry shows PII in a PostHog event:
-
-1. **Immediately** revoke PostHog event by editing the event in the dashboard (PostHog supports event deletion).
-2. Open a hotfix PR removing the PII from the event payload.
-3. Deploy.
-4. Notify users only if the leak was substantive (per GDPR/CCPA thresholds). Document the incident in `docs/INCIDENT_RESPONSE.md`.
-
-## 10. Links
-
-* [ADR-0021 Firestore Rules ACL](adr/0021-firestore-rules-acl-model.md)
-* [ADR-0014 Anonymous auth removed](adr/0014-anonymous-auth-removed.md)
-* [ADR-0013 Apple primary, Google deferred](adr/0013-apple-primary-google-deferred.md)
-* [ADR-0022 KST timezone single source](adr/0022-kst-timezone-single-source.md)
-* [ADR-0012 Async mutator error contract](adr/0012-async-mutator-error-contract.md)
-* `firestore.rules` (repo root)
-* `docs/INCIDENT_RESPONSE.md` (sister doc)
+See `docs/LOCAL_DATA_LIFECYCLE.md`, `docs/CONTENT_GOVERNANCE.md`, and `docs/INCIDENT_RESPONSE.md`.

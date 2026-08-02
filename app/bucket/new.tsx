@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, ScrollView, StyleSheet, Pressable, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Plus, Minus } from 'lucide-react-native';
 
 import { Text, Button, Input } from '../../src/components/ui';
@@ -16,9 +16,13 @@ const MAX_OPTIONS = [5, 8, 10, 12, 15, 20];
 
 export default function NewBucket() {
   const router = useRouter();
+  const { template: templateParam } = useLocalSearchParams<{ template?: string }>();
+  const initialTemplate = BUCKET_TEMPLATES.some((tpl) => tpl.key === templateParam)
+    ? (templateParam as BucketTemplateKey)
+    : 'peony';
   const [themeName, setThemeName] = useState('');
   const [maxItems, setMaxItems] = useState(10);
-  const [templateKey, setTemplateKey] = useState<BucketTemplateKey>('peony');
+  const [templateKey, setTemplateKey] = useState<BucketTemplateKey>(initialTemplate);
   const [items, setItems] = useState<string[]>(['']);
   const [busy, setBusy] = useState(false);
 
@@ -65,7 +69,12 @@ export default function NewBucket() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
           <ChevronLeft size={24} color={palette.meok} />
         </Pressable>
         <Text role="body" weight="semibold">

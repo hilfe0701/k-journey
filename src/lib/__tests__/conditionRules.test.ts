@@ -304,7 +304,7 @@ function* everyCombination(): Generator<ConditionProfile> {
   }
 }
 
-const EVALUATORS: ReadonlyArray<[string, (p: ConditionProfile) => RuleVerdict]> = [
+const EVALUATORS: readonly [string, (p: ConditionProfile) => RuleVerdict][] = [
   ['evaluateResidenceRegistration', evaluateResidenceRegistration],
   ['evaluateGroupRegistration', evaluateGroupRegistration],
 ];

@@ -47,9 +47,9 @@ export default function DatesScreen() {
 
   const today = format(kstNow(), 'yyyy-MM-dd');
   const selected = selectedDateFor(pickingFor, programStartDate, arrivalDate, departureDate);
-  const selectedCalendarDate = typeof selected === 'string' ? selected : today;
-  const departureIsDate = typeof departureDate === 'string';
-  const minDate = pickingFor === 'departure' && typeof arrivalDate === 'string' ? arrivalDate : undefined;
+  const selectedCalendarDate = isRealDate(selected) ? selected : today;
+  const departureIsDate = isRealDate(departureDate);
+  const minDate = pickingFor === 'departure' && isRealDate(arrivalDate) ? arrivalDate : undefined;
   const canContinue = !!programStartDate && !!arrivalDate && !!departureDate;
 
   function handleDayPress(day: { dateString: string }) {
@@ -59,7 +59,7 @@ export default function DatesScreen() {
     }
     if (pickingFor === 'arrival') {
       setArrivalDate(day.dateString);
-      if (!departureIsDate || (typeof departureDate === 'string' && departureDate < day.dateString)) {
+      if (!departureIsDate || (isRealDate(departureDate) && departureDate < day.dateString)) {
         setDepartureDate(format(addDays(parseISO(day.dateString), 120), 'yyyy-MM-dd'));
       }
       setPickingFor('departure');
@@ -78,7 +78,7 @@ export default function DatesScreen() {
     if (!programStartDate || !arrivalDate || !departureDate) return;
 
     const dateError =
-      typeof arrivalDate === 'string' && typeof departureDate === 'string'
+      isRealDate(arrivalDate) && isRealDate(departureDate)
         ? validateDates(arrivalDate, departureDate)
         : null;
     if (dateError) {
@@ -99,7 +99,7 @@ export default function DatesScreen() {
       setOnboardingProgress('era');
       track('onboarding_step_complete', { step: 'dates' });
 
-      if (typeof arrivalDate === 'string' && typeof departureDate === 'string') {
+      if (isRealDate(arrivalDate) && isRealDate(departureDate)) {
         if (await shouldShowPriming()) {
           setPrimingVisible(true);
           return;
@@ -119,7 +119,7 @@ export default function DatesScreen() {
   async function handlePrimingClose(granted: boolean) {
     setPrimingVisible(false);
     try {
-      if (granted && typeof arrivalDate === 'string' && typeof departureDate === 'string') {
+      if (granted && isRealDate(arrivalDate) && isRealDate(departureDate)) {
         await rescheduleAllNotifications({ arrivalDate, departureDate });
       } else if ((await getPermissionState()) === 'denied') {
         surfaceError('permission-notifications-denied');

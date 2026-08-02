@@ -44,11 +44,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: config.slug ?? 'k-journey',
   ios: {
     ...config.ios,
-    googleServicesFile: firebaseFiles[APP_ENV].ios,
+    ...(process.env.KJ_WEB_BUILD === '1'
+      ? { googleServicesFile: undefined }
+      : { googleServicesFile: firebaseFiles[APP_ENV].ios }),
   },
   android: {
     ...config.android,
-    googleServicesFile: firebaseFiles[APP_ENV].android,
+    ...(process.env.KJ_WEB_BUILD === '1'
+      ? { googleServicesFile: undefined }
+      : { googleServicesFile: firebaseFiles[APP_ENV].android }),
   },
   plugins: config.plugins,
   extra: {

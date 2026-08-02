@@ -1,5 +1,12 @@
 # K-Journey Design System
 
+> **2026-08-02 current-use note:** visual tokens and brand principles remain active, but
+> account management, server photo upload, and remote sync/conflict sections are historical.
+> The current product has `Journey: Essentials / Culture`, Byeongpung, Want to, and More;
+> user state is local. Use `reference/K-Journey_PRD_v2_0_KR.md`,
+> `docs/JOURNEY_INTEGRATION_SPEC.md`, and `docs/BYEONGPUNG_ART_DIRECTION.md` for integrated
+> layout and artwork contracts. They take precedence where this older document conflicts.
+
 > A pocket-sized cultural curator for foreign exchange students in Seoul.
 > Visual language rooted in **한국 전통 회화 (Korean Traditional Painting)** —
 > minhwa folk art, obangsaek five colors, and the slow unfolding of a scroll painting.
@@ -314,7 +321,7 @@ All buttons: radius `md` (8) for normal, `pill` (28) for search-style. Press: sc
 - Theme provider: `/src/theme/ThemeProvider.tsx`
 - Component primitives: `/src/components/ui/`
 - Byeongpung PNG panels (full paintings, era-specific): `/assets/byeongpung/{era}/panel-{n}.png` (ADR-0008)
-- Bucket template PNGs: `/assets/byeongpung/buckets/{template}.png`
+- Bucket template PNGs: `/assets/bucket-templates/bucket_{template}.png`
 - Brand imagery: `/assets/images/`
 - Pretendard variable font: `/assets/fonts/PretendardVariable.ttf`
 
@@ -562,7 +569,7 @@ When a row's prerequisite is missing (e.g. Notifications toggles when OS push pe
 
 ---
 
-## 18. Account management pattern
+## 18. Account management pattern (historical — no current account)
 
 Authority: [ADR-0033](docs/adr/0033-account-deletion-and-export.md). Sign-out / Delete / Export flows live under Settings § 4 Account (per `docs/SETTINGS.md`).
 
@@ -641,7 +648,7 @@ Full-screen modal (or full-bleed bottom sheet on Android), centered:
 
 ---
 
-## 20. Photo & sharing guidelines
+## 20. Photo & sharing guidelines (local save/share only; upload is historical)
 
 Authority for upload: [ADR-0034](docs/adr/0034-photo-upload-pipeline.md). Authority for sharing: deferred to ADR-0036 (V1.1 candidate); this section captures MVP visual rules.
 
@@ -682,7 +689,7 @@ Authority for upload: [ADR-0034](docs/adr/0034-photo-upload-pipeline.md). Author
 
 ---
 
-## 21. Offline & sync conflict visuals
+## 21. Offline & sync conflict visuals (historical remote-sync design)
 
 Authority: [ADR-0031](docs/adr/0031-offline-state-visibility.md).
 

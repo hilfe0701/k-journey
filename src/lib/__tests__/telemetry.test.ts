@@ -1,10 +1,10 @@
+import { trackOnce, _resetTelemetryForTesting } from '../telemetry';
+import { track } from '../posthog';
+
 // Mock the PostHog re-export so trackOnce sees a controlled track() spy.
 jest.mock('../posthog', () => ({
   track: jest.fn(),
 }));
-
-import { trackOnce, _resetTelemetryForTesting } from '../telemetry';
-import { track } from '../posthog';
 
 const trackMock = track as jest.Mock;
 

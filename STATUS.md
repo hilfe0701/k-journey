@@ -1,150 +1,56 @@
-# K-Journey — Build status
+# K-Journey current status
 
-Last updated: 2026-05-14 (Round 2 review — PRD v1.1, 26 ADRs, Part E~G/J code + tests)
+- Updated: 2026-08-02
+- Branch: `v2-conditional-orchestration`
+- Base HEAD before the current working changes: `4626ad1f4bf3`
+- Product SSOT: `reference/K-Journey_PRD_v2_0_KR.md` + `DEC-040`
+- Current model: unified local-first product; no account or per-user server data
 
-**Refresh cadence:** weekly while pre-launch, per release post-launch.
-For full setup: `SETUP.md`. For current product spec: `reference/K-Journey_PRD_v1_1_KR.md`.
-For architecture: `docs/architecture/ARCHITECTURE.md`. For decisions: `docs/adr/README.md`.
-For visual system: `DESIGN.md`. For locked rules: `CLAUDE.md`.
+## Product
 
----
+The current working tree unifies two axes:
 
-## Play Store readiness (2026-05-22 audit)
+- Journey → Essentials: condition-based administrative checklist
+- Journey → Culture: 55 cultural/life missions across four phases
+- Byeongpung: eight-panel progress from cultural missions + completed Want-to items
+- Want to: six image-led templates and user-authored lists
+- More: campus, gallery, emergency guide, settings, and data controls
 
-Code/config + launch docs prepared; only external account actions remain.
+Administrative task status does not unlock artwork. User-owned state is stored in MMKV on the current device.
 
-**Done (no external action — `npm run check` 141/141, `expo-doctor` 18/18):**
-- Env separation: `app.config.ts` + `eas.json` (dev/preview/production) + `firebase.json`.
-- Google Sign-In wired (`@react-native-google-signin/google-signin` v16); iOS URL scheme verified via `expo config --type introspect`.
-- **Android `targetSdkVersion` 34→35** (Play hard requirement since Aug 2025) via `expo-build-properties`. ⚠️ Android 15 edge-to-edge — needs sim QA.
-- `async-storage` 2.2.0→`1.23.1` (Expo-expected) → fixed the one doctor failure.
-- Launch docs: `docs/PRIVACY_POLICY.md` (draft), `docs/PLAY_DATA_SAFETY.md`, `docs/STORE_LISTING.md`. 512² store icon → `store-assets/`.
-- Confirmed: byeongpung images are device-local (no Storage upload).
+## Quality work in this working tree
 
-**Remaining — external accounts (you):** create `k-journey-prod` Firebase (+configs, Apple+Google providers, Firestore prod+rules); Google Play dev account; `eas login`+`eas init`; fill `app.config.ts` `googleAuth.prod`; register build Android SHA-1; host privacy URL + fill Data Safety; feature graphic + screenshots + reviewer test login; native rebuild → AAB → internal track. See `project_play_store_prep_2026_05_22` memory.
+- consolidated missing-date UX and surfaced a first Culture action;
+- added responsive 760px web shell;
+- improved physical byeongpung framing, locked-state visibility, progress, and export affordances;
+- replaced Want-to color swatches with artwork thumbnails and preselected templates;
+- added mission completion criteria and changeable-information notice;
+- made official sources and emergency numbers actionable;
+- preserved browser deep links on refresh and detached inactive tabs;
+- added residence-card editing and corrected unknown-state warning behavior;
+- expanded text export to cultural missions and Want-to lists;
+- exposed production local-data deletion;
+- disabled session replay and documented the real local-data boundary;
+- optimized 24 panel and 6 bucket images from about 76MB to about 17MB combined.
+- subset runtime fonts from about 35MB to about 0.8MB; fresh web output is 23MB with
+  4.96MB raw / 1.02MB gzip JavaScript.
 
-## MVP feature code — complete (PRD §13.1)
+## Deployment
 
-12 of 14 must-have features fully coded, typechecked, linted, and unit-tested.
+The previously deployed web version is [k-journey-three.vercel.app](https://k-journey-three.vercel.app), deployment `dpl_6DHArMDvrJvYYWakQ4TenHDVKrPC`.
 
-| # | Feature | Where |
-|---|---|---|
-| 1 | 4-phase journey system (auto + manual override) | `src/hooks/usePhase.ts`, `app/(tabs)/index.tsx` |
-| 2 | Have To missions — 55 total (incl. dorm/off-campus branch) | `src/data/missions.ts` |
-| 3 | Want To buckets (6 minhwa templates) | `app/bucket/new.tsx`, `app/bucket/[id].tsx` |
-| 4 | 8-panel byeongpung — joseon / silla / goryeo eras | `app/(tabs)/byeongpung.tsx`, `src/theme/eras.ts` |
-| 5 | University-specific content (Seoul) | `app/campus.tsx`, `src/data/universities.ts` |
-| 6 | Housing branching (dormitory vs off-campus) | `appliesTo` field, `missionsForHousing()` |
-| 7 | D-Day counter + auto-priority | `DDayBanner`, `usePhase` |
-| 8 | Behavior-triggered push notifications | `src/lib/notifications.ts` (D-30/D-14/D-7, phase boundary, panel unlock) |
-| 9 | Emergency guide (FAQ) | `app/emergency.tsx`, `src/data/emergency.ts` |
-| 10 | Post-departure gallery + timeline | `app/gallery.tsx`, `JourneyCompletePrompt` |
-| 11 | SNS share (byeongpung image) | `src/lib/share.ts` |
-| 12 | Offline support (MMKV cache) | `src/lib/storage.ts` + hook cache layer |
-| 13 | Apple Sign-In + Google Sign-In | Apple done; **Google wired 2026-05-22** (`@react-native-google-signin/google-signin` v16). dev OAuth real; prod/staging TODO. Needs native rebuild + Android SHA-1 + Google provider enable to function. |
-| 14 | Paid download ($2–3 USD) | Store-stage, not code |
+That deployment predates the current audit and reinforcement changes. Do not describe it as equivalent to this working tree. The current changes have not been committed or redeployed yet.
 
-## Pre-QA verification
+## Known release blockers
 
-- `npm run check` — typecheck + lint + **82/82 tests** green (Round 2 added 31 tests)
-- 0 unsanctioned `as any` (PostHog 3 sanctioned per `CLAUDE.md` NEVER #19)
-- 0 `TODO` / `FIXME` / `HACK` / `@ts-ignore` / `.only` / `.skip` in `src/` + `app/`
-- 0 empty `catch {}` without `// intentional swallow: <reason>` comment (per ADR-0012)
-- Native modules linked via `pod install`: **ExpoMediaLibrary 17.0.6** + **ExpoSharing 13.0.1**
-- `date-fns-tz` installed — KST timezone helpers active (ADR-0022)
+- complete `npm run check` and resolve all new failures/warnings;
+- rebuild static web output after asset optimization;
+- verify 390×844 and 1440×900 layouts, direct detail URL refresh, tabs, links, export, and reset;
+- pin a clean commit SHA to any new deployment;
+- finish production privacy operator/contact/processor details;
+- complete source metadata audit for volatile cultural, university, and emergency content;
+- replace the independent-panel artwork with connected 8-panel masters when art production is authorized.
 
-## Sim QA — 7/7 passed (2026-05-06)
+## Historical documents
 
-All seven scenarios verified on iPhone 17 Pro sim, iOS 26.4, dev-client build:
-
-1. ✅ Dev-mock login → 6 missions → panel 1 unlock overlay
-2. ✅ Wantto tab → bucket → 6th total (mission + bucket) → next panel unlock animation
-3. ✅ Byeongpung tab → Share → iOS share sheet
-4. ✅ Byeongpung tab → Save image → image lands in Photos
-5. ✅ Gallery → header Share → 720px composed card shared
-6. ✅ More → era switch joseon → silla → progress preserved, only panels re-render
-7. ✅ Past `departureDate` → JourneyCompletePrompt banner → Open gallery
-
-### Fixes applied during QA (2026-05-06)
-
-- **`Info.plist` missing `NSPhotoLibraryAddUsageDescription`** — manually added to `ios/KJourney/Info.plist` (regenerated by `app.json` plugin on next `expo prebuild`). Save image now succeeds. Same patch-vs-prebuild caveat as the fmt patch.
-- **`updateUserProfile` missing `isDevMock()` branch** (`src/lib/firebase.ts:99`) — was the only mutator without dev-mock branching, caused era switch to hang infinitely on Firestore offline queue. Added MMKV merge into `KEYS.profileCache`.
-- **`useProfile` reactive cache reads** — switched to `useMMKVString(KEYS.profileCache)` so era changes propagate to mounted screens without a reload. Removed the per-mount `DEV_MOCK_PROFILE` overwrite that was clobbering patches.
-- **`era.tsx` `handleStart` wrapped in `try/catch + showOperationError`** — CLAUDE.md MUST #17 compliance. Hang is now an Alert + crashlytics, not a stuck spinner.
-- **`share.ts` resilience pass** — `file://` URI normalization, `createAssetAsync` fallback (iOS-sim quirk where `saveToLibraryAsync` is flaky), `console.warn` logging in all three catch blocks.
-- **Cold-start splash gate** (`app/_layout.tsx`) — Expo Router persists nav state across launches, which made returning users skip the splash entirely. Added `coldStartHandledRef` to force one trip through `/(onboarding)/splash` per session. Splash itself now does the 3-way post-animation routing (sign-in / profile / tabs) instead of relying on AuthGate to redirect.
-- **Bucket copy polish** — "item" → "wish" across 7 user-facing strings in `app/bucket/new.tsx` + `app/bucket/[id].tsx` (matches "Want to" / wishlist tone).
-
-## External ship — 5 items remaining
-
-| Item | Owner | Notes |
-|---|---|---|
-| Google Sign-In OAuth (prod) | Engineer | **Code wired 2026-05-22** (lib + `app.config.ts` extra + plugin; placeholder removed). Remaining: fill prod OAuth IDs in `app.config.ts` `googleAuth.prod`, register the build's Android SHA-1 in Firebase, enable Google provider, native rebuild. |
-| 8-panel real artwork (3 eras × 8 panels) | Illustrator | Current ink-line motif set is placeholder |
-| App icon / splash / adaptive icon | Designer | Removed from `app.json` (no source artwork). Need 1024×1024 icon, 1242×2436 splash, 1024×1024 adaptive foreground. |
-| `EAS_PROJECT_ID` | Engineer | `app.json` has `PLACEHOLDER_EAS_PROJECT_ID` — set via `eas init` before first EAS Build |
-| Production Firebase project | Eng + decision | `k-journey` = dev (confirmed 2026-05-05). Create `k-journey-prod` **before** TestFlight / internal testing. |
-
-## Build prerequisites (Xcode 26)
-
-Three constraints unique to this stack — see project memory:
-
-- **fmt 11.1.4 patch** in `node_modules/react-native/third-party-podspecs/fmt.podspec`. RN 0.76.9 ships fmt 11.0.2 which fails on Xcode 26.4 Clang's stricter consteval. `npm install` wipes the patch — reapply after every fresh install.
-- **Build via Xcode IDE (Cmd+R)**, not `expo run:ios` (broken on Xcode 26) and not ad-hoc `xcodebuild` (skips entitlement embedding → Apple Sign-In silent fail).
-- **Personal Team signing** in Xcode → Signing & Capabilities → automatic codesigning bakes `com.apple.developer.applesignin` into the binary signature.
-
-## Tech debt cleared (2026-05-06)
-
-- **Firebase namespaced API → modular API** — migrated all 8 RNFB call sites (`src/lib/firebase.ts`, `src/lib/errorAlert.ts`, `src/hooks/useAuth.ts` + `useProfile.ts` + `useCompletedMissions.ts` + `useBuckets.ts`, `app/_layout.tsx` ErrorBoundary, `app/(onboarding)/sign-in.tsx`). Verified zero `This method is deprecated` warnings in Metro after a clean relaunch. RNFB v22-ready — no code changes required when upgrading.
-
-## Round 2 review — 2026-05-13/14
-
-Comprehensive PRD/architecture/ADR/error-coverage pass. Delivered:
-
-### Documentation (28 new files)
-- **PRD v1.1** (`reference/K-Journey_PRD_v1_1_KR.md`) — 18 sections, §11 stack rewrite (Flutter→RN), §11.4–§11.10 new (error/security/a11y/i18n/perf/build/ops), §16 analytics schema, §17 edge-case matrix, §18 changelog. v1.0 marked superseded.
-- **26 ADRs** in `docs/adr/` (MADR format) — 20 retroactive + 6 new (Firestore Rules, KST timezone, MMKV migration, env separation, WCAG 2.1 AA, EAS channel strategy).
-- **Architecture** (`docs/architecture/`) — ARCHITECTURE, DATA_FLOW (5 sequence diagrams), MODULE_OWNERSHIP table.
-- **Supporting docs** (`docs/`) — SECURITY, ACCESSIBILITY, OPERATIONS, TESTING, MONITORING, RELEASE, INCIDENT_RESPONSE, I18N_TIMEZONE, PERFORMANCE, EDGE_CASES, ANALYTICS_SCHEMA.
-- **`firestore.rules`** + `firestore.indexes.json` — ACL model (ADR-0021).
-
-### Code — Part E (error/edge case foundation)
-- **KST timezone**: `src/lib/dates.ts`. `usePhase`, `notifications`, `DDayBanner` migrated. `date-fns-tz` installed.
-- **Date validation**: `src/lib/validation.ts`. Wired in `(onboarding)/dates.tsx`.
-- **Empty `catch {}`** fixed in `dates.tsx`. Firebase auth callback wrapped in try/catch + Crashlytics record. `useProfile` surfaces `error` state.
-- **MMKV migration runner**: `src/lib/storageMigrations.ts` + boot path in `app/_layout.tsx`.
-- **Clock guard**: `src/lib/clockGuard.ts` records ±2-day skew to telemetry without blocking UI.
-- **Push permission watcher**: `src/lib/permissions.ts` re-checks on foreground.
-- **Image fallback**: `src/components/byeongpung/PanelImage.tsx` ink-color solid on PNG load fail.
-
-### Code — Part F (analytics wiring)
-- All 17 `KJEvent` members wired. `gallery_open` enriched with `completedTotal`. `onboarding_complete` enriched with `university` + `housing`. Doc payload shapes reconciled with code.
-- `src/lib/telemetry.ts` adds `trackOnce(event, dedupeKey)` for view-event dedupe.
-
-### Code — Part G (accessibility WCAG 2.1 AA baseline)
-- `Button`, `Card` UI primitives carry `accessibilityRole`/`Label`/`State` from props.
-- `DDayBanner` carries semantic summary label.
-- `MissionCompleteOverlay` — reduce-motion variant (cross-fade ~600 ms vs. ~2400 ms), `accessibilityViewIsModal`, `accessibilityLiveRegion="polite"` for panel announcement.
-- `src/lib/a11y.ts` exposes `useReduceMotion`, `useScreenReaderEnabled`.
-- DESIGN.md §13–§15 added: accessibility contract, state variants, dark-mode unsupported.
-
-### Code — dev experience
-- Sign-in screen adds `[Dev] Fresh onboarding` button — bypasses auth but routes through onboarding flow (clears profile cache + sets `devMockFreshOnboarding` flag).
-
-### Tests — Part J
-- 4 new test files: `dates.test.ts`, `validation.test.ts`, `telemetry.test.ts`, `storageMigrations.test.ts`. Total **82/82 tests** passing (was 51).
-
-### Governance — Part K
-- `CLAUDE.md` Source-of-truth table extended to docs/architecture, docs/adr, docs/*, firestore.rules. MUST #19–21 added (KST helpers, a11y rollout, boot migrations). NEVER #21–23 added (no system Date for phase, no silent async catch, no panel-unlock fire outside `claimPanelUnlock`).
-- `STATUS.md` refresh cadence policy.
-- `reference/prototype` (0 B empty file) deleted.
-
-## Deferred to next iteration (external dependencies)
-- **Google Sign-In (prod) activation** — code wired 2026-05-22; remaining is per-env OAuth provisioning (prod/staging web client ID + iOS URL scheme into `app.config.ts`, the build's Android SHA-1 in Firebase, and enabling the Google Auth provider).
-- **Production Firebase project** (`k-journey-prod`) creation — blocker for first TestFlight.
-- **Environment separation** — code scaffolded 2026-05-22 (prod-add scope): `app.config.ts` (env branch layered over `app.json`), `eas.json` (`dev`/`preview`/`production`), `firebase.json`. `npm run check` green + `expo config` resolves both envs. Activation pending: create `k-journey-prod` → drop `config/firebase/*.prod.*` → `eas init`. staging profile present but not provisioned.
-- **Staging PostHog** + **EAS Project ID** provisioning.
-
-## Outstanding tech debt (non-blocking)
-
-_None at the moment._
+Old Auth/Firestore/EAS instructions, PRD v1.x, and `DEC-024` cultural `Won't` language are historical. `CLAUDE.md` explains precedence. Do not execute those instructions as current release work.

@@ -14,7 +14,7 @@
  */
 
 import { CONDITION_AXES, CONDITION_AXIS_GROUPS } from './conditionRules';
-import { UNKNOWN, type ConditionProfile, type LocalTaskProgress } from './firebase';
+import { UNKNOWN, type Bucket, type ConditionProfile, type LocalTaskProgress } from './firebase';
 import { ALL_TASK_IDS, taskMetadata } from './taskState';
 
 const UNKNOWN_VALUE_LABEL = 'Not confirmed (미확인)';
@@ -47,12 +47,34 @@ export interface ExportedTask {
   completedAt: string;
 }
 
+export interface ExportedMission {
+  missionId: string;
+  completedAt: string;
+}
+
+export interface ExportedBucket {
+  bucketId: string;
+  themeName: string;
+  templateKey: string;
+  createdAt: string;
+  items: readonly { itemId: string; text: string; completedAt: string }[];
+}
+
+export interface CultureExportInput {
+  completedMissions?: readonly { missionId: string; completedAt: Date | null }[];
+  buckets?: readonly Bucket[];
+  era?: string | null;
+}
+
 export type ExportStatus = 'ready' | 'empty';
 
 export interface ExportPayload {
   status: ExportStatus;
   conditions: readonly ExportedCondition[];
   tasks: readonly ExportedTask[];
+  missions: readonly ExportedMission[];
+  buckets: readonly ExportedBucket[];
+  era: string;
   text: string;
   /** AC3 · TC-058: stated on every successful export, never implied. */
   custodyNotice: string;
@@ -98,6 +120,7 @@ function taskStateFor(
 export function buildExportPayload(
   profile: ConditionProfile | null,
   progress: LocalTaskProgress,
+  culture: CultureExportInput = {},
 ): ExportPayload {
   const conditions: ExportedCondition[] = CONDITION_AXIS_GROUPS.map((key) => ({
     key,
@@ -112,6 +135,22 @@ export function buildExportPayload(
     // AC2: a completed task with no recorded time keeps its state and says so.
     completedAt: progress.completedAtByTaskId[taskId] ?? UNKNOWN_VALUE_LABEL,
   }));
+  const missions: ExportedMission[] = (culture.completedMissions ?? []).map((mission) => ({
+    missionId: mission.missionId,
+    completedAt: mission.completedAt?.toISOString() ?? UNKNOWN_VALUE_LABEL,
+  }));
+  const buckets: ExportedBucket[] = (culture.buckets ?? []).map((bucket) => ({
+    bucketId: bucket.id,
+    themeName: bucket.themeName,
+    templateKey: bucket.templateKey,
+    createdAt: bucket.createdAtIso,
+    items: bucket.items.map((item) => ({
+      itemId: item.id,
+      text: item.text,
+      completedAt: item.completedAtIso ?? 'not completed',
+    })),
+  }));
+  const era = culture.era ?? UNKNOWN_VALUE_LABEL;
 
   // AC5: "no profile" and "every condition unknown with no task touched" are
   // both empty. Writing either one out as a successful file would hand the user
@@ -123,13 +162,17 @@ export function buildExportPayload(
   // rendered strings marked a fully empty profile as ready to export.
   const hasCondition = profile !== null && CONDITION_AXES.some((axis) => hasValue(profile[axis]));
   const hasTaskActivity = tasks.some((task) => task.state !== 'not_started');
-  const status: ExportStatus = hasCondition || hasTaskActivity ? 'ready' : 'empty';
+  const hasCultureActivity = missions.length > 0 || buckets.length > 0;
+  const status: ExportStatus = hasCondition || hasTaskActivity || hasCultureActivity ? 'ready' : 'empty';
 
   return {
     status,
     conditions,
     tasks,
-    text: status === 'empty' ? EMPTY_NOTICE : renderExportText(conditions, tasks),
+    missions,
+    buckets,
+    era,
+    text: status === 'empty' ? EMPTY_NOTICE : renderExportText(conditions, tasks, missions, buckets, era),
     custodyNotice: CUSTODY_NOTICE,
   };
 }
@@ -137,6 +180,9 @@ export function buildExportPayload(
 function renderExportText(
   conditions: readonly ExportedCondition[],
   tasks: readonly ExportedTask[],
+  missions: readonly ExportedMission[],
+  buckets: readonly ExportedBucket[],
+  era: string,
 ): string {
   const conditionLines = conditions.map(
     (condition) => `- ${condition.label}: ${condition.value}`,
@@ -144,6 +190,15 @@ function renderExportText(
   const taskLines = tasks.map(
     (task) => `- ${task.title} (${task.taskId}): ${task.state} · completed at ${task.completedAt}`,
   );
+  const missionLines = missions.map(
+    (mission) => `- ${mission.missionId}: completed at ${mission.completedAt}`,
+  );
+  const bucketLines = buckets.flatMap((bucket) => [
+    `- ${bucket.themeName} (${bucket.bucketId}, ${bucket.templateKey}) · created ${bucket.createdAt}`,
+    ...bucket.items.map(
+      (item) => `  - ${item.text} (${item.itemId}) · completed at ${item.completedAt}`,
+    ),
+  ]);
 
   return [
     'K-Journey export',
@@ -153,6 +208,14 @@ function renderExportText(
     '',
     `Tasks (${tasks.length})`,
     ...taskLines,
+    '',
+    `Era: ${era}`,
+    '',
+    `Completed cultural missions (${missions.length})`,
+    ...(missionLines.length ? missionLines : ['- None']),
+    '',
+    `Want-to lists (${buckets.length})`,
+    ...(bucketLines.length ? bucketLines : ['- None']),
     '',
     CUSTODY_NOTICE,
   ].join('\n');

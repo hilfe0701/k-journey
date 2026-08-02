@@ -18,11 +18,10 @@ const apiKey = hasUsableKey ? rawKey : 'phc_analytics_disabled';
 
 export const posthog = new PostHog(apiKey, {
   host,
-  enableSessionReplay: true,
-  sessionReplayConfig: {
-    maskAllTextInputs: true,
-    maskAllImages: false,
-  },
+  // Profiles contain visa, housing, insurance, and date conditions. Event
+  // analytics may be enabled with an explicit project key, but replay remains
+  // off until a separate consent and redaction design is approved.
+  enableSessionReplay: false,
   flushAt: 20,
   flushInterval: 30_000,
   disabled: !hasUsableKey,
@@ -34,6 +33,7 @@ export type KJEvent =
   | 'panel_unlock'
   | 'phase_transition'
   | 'phase_manual_override'
+  | 'journey_view_change'
   | 'bucket_create'
   | 'bucket_item_complete'
   | 'era_switch'

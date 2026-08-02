@@ -28,6 +28,12 @@ export function calcPhase({ arrivalDate, departureDate, today }: PhaseInputs): P
     return override;
   }
 
+  return calcDatePhase({ arrivalDate, departureDate, today });
+}
+
+/** Natural date phase for administrative rules; deliberately ignores Culture preview state. */
+export function calcDatePhase({ arrivalDate, departureDate, today }: PhaseInputs): Phase {
+
   if (!arrivalDate || !departureDate) return 1;
 
   const now = toKstStartOfDay(today ?? kstNow());

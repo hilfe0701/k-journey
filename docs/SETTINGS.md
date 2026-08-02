@@ -1,6 +1,8 @@
 # Settings — Per-Row Master Spec
 
-> ⛔ **(legacy — not injected into harness steps by default.)** **the whole page is `ADR-0032` legacy.** §4 Account, the Firestore/MMKV mirror, the signed-in email, and `ADR-0033` soft-delete/export cannot be kept. Which of §1–§3 survives as local settings needs a new DEC — do not decide it inside an implementation step. Basis: `CLAUDE.md` Decision precedence · `.work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md` (2026-07-27).
+> **Current-use note:** notification, era, profile, local export, and local deletion settings are
+> active. Account, signed-in email, Firestore mirror, soft-delete, and server export sections are
+> historical. `docs/LOCAL_DATA_LIFECYCLE.md` owns current data behavior.
 
 > Implementation guide for [ADR-0032](adr/0032-settings-screen-architecture.md). Voice rules: `MICROCOPY.md`. Account flows: [ADR-0033](adr/0033-account-deletion-and-export.md). Notification toggles: [ADR-0029](adr/0029-push-copy-library-and-priming.md).
 

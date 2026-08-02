@@ -124,7 +124,7 @@ export interface LocalTaskProgress {
   appointmentDate: string | null;
 }
 
-const EMPTY_PROFILE: UserProfile = {
+export const EMPTY_PROFILE: UserProfile = {
   uid: LOCAL_PROFILE_ID,
   email: null,
   displayName: null,
@@ -184,29 +184,41 @@ export function getTaskProgress(): LocalTaskProgress {
  * failed local write from leaving a task visibly completed.
  */
 export function saveTaskProgress(progress: LocalTaskProgress): void {
-  setJson(KEYS.taskProgressCache, progress);
-  const persisted = getJson<LocalTaskProgress>(KEYS.taskProgressCache);
-  if (!persisted || JSON.stringify(persisted) !== JSON.stringify(progress)) {
-    throw new Error('Local task progress was not saved.');
+  writeJsonVerified(KEYS.taskProgressCache, progress, 'Local task progress');
+}
+
+function writeJsonVerified<T>(key: string, value: T, label: string): void {
+  setJson(key, value);
+  const persisted = getJson<T>(key);
+  if (persisted === null || JSON.stringify(persisted) !== JSON.stringify(value)) {
+    throw new Error(`${label} was not saved.`);
   }
 }
 
 export async function updateUserProfile(patch: Partial<UserProfile>): Promise<void> {
   // REQ-DAR-001 · REQ-DAR-003 · REQ-DAR-005 · POL-003: persist condition axes locally.
   const current = getJson<UserProfile>(KEYS.profileCache) ?? EMPTY_PROFILE;
-  setJson(KEYS.profileCache, { ...current, ...patch, uid: LOCAL_PROFILE_ID });
+  writeJsonVerified(
+    KEYS.profileCache,
+    { ...current, ...patch, uid: LOCAL_PROFILE_ID },
+    'Local profile',
+  );
 }
 
 export async function markMissionComplete(missionId: string): Promise<void> {
   const list = getJson<DevMockCompletedDoc[]>(KEYS.completedMissionsCache) ?? [];
   if (list.some((item) => item.missionId === missionId)) return;
   list.unshift({ missionId, completedAtIso: kstNow().toISOString() });
-  setJson(KEYS.completedMissionsCache, list);
+  writeJsonVerified(KEYS.completedMissionsCache, list, 'Mission progress');
 }
 
 export async function unmarkMission(missionId: string): Promise<void> {
   const list = getJson<DevMockCompletedDoc[]>(KEYS.completedMissionsCache) ?? [];
-  setJson(KEYS.completedMissionsCache, list.filter((item) => item.missionId !== missionId));
+  writeJsonVerified(
+    KEYS.completedMissionsCache,
+    list.filter((item) => item.missionId !== missionId),
+    'Mission progress',
+  );
 }
 
 function newId(prefix: string): string {
@@ -218,7 +230,7 @@ function readBuckets(): Bucket[] {
 }
 
 function writeBuckets(list: Bucket[]): void {
-  setJson(KEYS.bucketsCache, list);
+  writeJsonVerified(KEYS.bucketsCache, list, 'Want-to progress');
 }
 
 export interface CreateBucketInput {
@@ -302,7 +314,7 @@ export async function deleteBucketItem(bucketId: string, itemId: string): Promis
   writeBuckets(list);
 }
 
-/** Clears all local journey state for the development reset control. */
+/** Clears user-owned local journey state for Settings reset and development onboarding. */
 export function clearLocalJourneyData(): void {
   [
     KEYS.profileCache,
@@ -315,6 +327,11 @@ export function clearLocalJourneyData(): void {
     KEYS.phaseOverride,
     KEYS.galleryDismissed,
     KEYS.onboardingProgress,
+    'settings:notifications:dDay30',
+    'settings:notifications:dDay14',
+    'settings:notifications:dDay7',
+    'settings:notifications:phaseTransitions',
+    'settings:notifications:panelUnlocks',
   ].forEach((key) => storage.delete(key));
   clearOnboardingProgress();
 }

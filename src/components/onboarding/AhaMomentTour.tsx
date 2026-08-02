@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Modal, StyleSheet, Pressable, Image, Animated } from 'react-native';
+import { View, Modal, StyleSheet, Pressable, Image, Animated, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '../ui';
@@ -54,7 +54,9 @@ export function AhaMomentTour({
     Animated.timing(reveal, {
       toValue: 1,
       duration: 1200,
-      useNativeDriver: true,
+      // React Native Web has no native animation driver. Keeping this platform-aware
+      // avoids a noisy console warning without changing the native animation path.
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [visible, reduceMotion, reveal]);
 
@@ -84,8 +86,8 @@ export function AhaMomentTour({
               Your K-Journey begins
             </Text>
             <Text role="body" color={palette.meokMid} align="center">
-              Your journey home sorts every administrative task by what applies to your conditions —
-              and says why when something is blocked.
+              Complete cultural missions and bucket-list moments to reveal your byeongpung. Your
+              administrative checklist stays alongside them, sorted by what applies to you.
             </Text>
           </View>
         </View>

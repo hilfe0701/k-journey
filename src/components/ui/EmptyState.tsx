@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Easing, Pressable } from 'react-native';
+import { View, StyleSheet, Animated, Easing, Pressable, Platform } from 'react-native';
 import { Text } from './Text';
 import { palette, space, radius } from '../../../design-tokens';
 import { useReduceMotion } from '../../lib/a11y';
@@ -46,7 +46,7 @@ export function EmptyState({
       toValue: 1,
       duration: 200,
       easing: Easing.out(Easing.ease),
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [opacity, reduceMotion]);
 

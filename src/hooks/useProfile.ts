@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useMMKVString } from 'react-native-mmkv';
 import { LocalTaskProgress, UserProfile, EMPTY_TASK_PROGRESS } from '../lib/firebase';
 import { getJson, KEYS, storage } from '../lib/storage';
+import { normalizeUserProfile } from '../lib/profileCompat';
 
 export type ProfileLoadError = 'profile_load_failed';
 
@@ -21,7 +22,7 @@ export function useProfile(): ProfileState {
     () =>
       profileCacheJson
         ? parseProfile(profileCacheJson)
-        : getJson<UserProfile>(KEYS.profileCache),
+        : normalizeStoredProfile(getJson<UserProfile>(KEYS.profileCache)),
     [profileCacheJson],
   );
 
@@ -53,10 +54,14 @@ export function useTaskProgress(): TaskProgressState {
 
 function parseProfile(raw: string): UserProfile | null {
   try {
-    return JSON.parse(raw) as UserProfile;
+    return normalizeUserProfile(JSON.parse(raw) as Partial<UserProfile>);
   } catch {
     return null;
   }
+}
+
+function normalizeStoredProfile(profile: UserProfile | null): UserProfile | null {
+  return profile ? normalizeUserProfile(profile) : null;
 }
 
 function parseTaskProgress(raw: string): LocalTaskProgress {

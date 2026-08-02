@@ -105,10 +105,12 @@ export function Text({ role = 'body', color, weight, align, style, children, ...
   const baseStyle = ROLE_STYLES[role];
   const finalWeight = typography.weight[weight ?? DEFAULT_WEIGHT_BY_ROLE[role]];
   const finalColor = color ?? palette.meok;
+  const isHeading = ['hero', 'display', 'h1', 'h2', 'h3', 'h4'].includes(role);
 
   return (
     <RNText
       {...rest}
+      accessibilityRole={rest.accessibilityRole ?? (isHeading ? 'header' : undefined)}
       style={[
         baseStyle,
         {

@@ -8,12 +8,14 @@ import {
   ActionSheetIOS,
   Alert,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import type { RefObject } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Share2, Download } from 'lucide-react-native';
+import { Share2, Download, Sparkles } from 'lucide-react-native';
+import { useIsFocused } from '@react-navigation/native';
 
-import { Text } from '../../src/components/ui';
+import { ProgressBar, Text } from '../../src/components/ui';
 import { palette, space, radius } from '../../design-tokens';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useTotalCompletions } from '../../src/hooks/useTotalCompletions';
@@ -25,6 +27,9 @@ import { shareByeongpungImage, saveByeongpungImage } from '../../src/lib/share';
 import { track } from '../../src/lib/posthog';
 
 export default function ByeongpungTab() {
+  const isFocused = useIsFocused();
+  const { width: windowWidth } = useWindowDimensions();
+  const visiblePanelWidth = Platform.OS === 'web' && windowWidth >= 760 ? 88 : 104;
   const theme = useTheme();
   const { total: totalCompleted } = useTotalCompletions();
   const shareRef = useRef<View>(null);
@@ -37,7 +42,10 @@ export default function ByeongpungTab() {
     return panels.filter((_, i) => (totalCompleted - i * 6) / 6 >= 1).length;
   }, [panels, totalCompleted]);
 
-  const canExport = completedPanels > 0;
+  const canExport = totalCompleted > 0;
+  const totalProgress = Math.min(1, totalCompleted / 48);
+  const nextPanelNumber = Math.min(8, completedPanels + 1);
+  const remainingForNext = totalCompleted >= 48 ? 0 : 6 - (totalCompleted % 6);
 
   async function handleShare() {
     if (!canExport || busy) return;
@@ -111,12 +119,44 @@ export default function ByeongpungTab() {
   }
 
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
+    <SafeAreaView
+      style={styles.root}
+      edges={['top']}
+      accessibilityElementsHidden={!isFocused}
+      importantForAccessibility={isFocused ? 'auto' : 'no-hide-descendants'}
+      aria-hidden={!isFocused}
+    >
       <View style={styles.header}>
         <Text role="h1">Your folding screen</Text>
         <Text role="body" color={palette.ash} style={{ marginTop: 4 }}>
           {theme.era.nameEn} ({theme.era.nameKo}) · {theme.era.tagline}
         </Text>
+      </View>
+
+      <View style={styles.progressWrap}>
+        <View style={styles.progressCard}>
+          <View style={styles.progressTitleRow}>
+            <View style={styles.progressIcon}>
+              <Sparkles size={18} color={theme.era.primary} strokeWidth={1.6} />
+            </View>
+            <View style={styles.progressCopy}>
+              <Text role="h4">
+                {completedPanels === 8
+                  ? 'Your eight-panel story is complete'
+                  : `Panel ${nextPanelNumber} is taking shape`}
+              </Text>
+              <Text role="sm" color={palette.ash}>
+                {completedPanels === 8
+                  ? 'Every cultural mission and wish remains in your local journey.'
+                  : `${remainingForNext} more moment${remainingForNext === 1 ? '' : 's'} to reveal the next panel.`}
+              </Text>
+            </View>
+            <Text role="badge" color={theme.era.primary}>
+              {Math.min(totalCompleted, 48)}/48
+            </Text>
+          </View>
+          <ProgressBar value={totalProgress} color={theme.era.primary} />
+        </View>
       </View>
 
       <ScrollView
@@ -129,11 +169,24 @@ export default function ByeongpungTab() {
             const reveal = Math.max(0, Math.min(1, (totalCompleted - i * 6) / 6));
             const motifName = PANEL_MOTIF_NAMES[i];
             return (
-              <View key={i} style={[styles.panel, { backgroundColor: theme.era.panelBg }]}>
+              <View
+                key={i}
+                style={[
+                  styles.panel,
+                  { width: visiblePanelWidth, backgroundColor: theme.era.panelBg },
+                ]}
+              >
                 <Image
                   source={source}
-                  style={[styles.panelImage, { opacity: 0.15 + reveal * 0.85 }]}
+                  style={[styles.panelImage, { opacity: 0.32 + reveal * 0.68 }]}
                   resizeMode="cover"
+                />
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.lockedWash,
+                    { backgroundColor: theme.era.panelBg, opacity: (1 - reveal) * 0.34 },
+                  ]}
                 />
                 <View style={styles.panelLabel}>
                   <Text role="badge" color={palette.hanji}>
@@ -183,6 +236,9 @@ export default function ByeongpungTab() {
         <Pressable
           onPress={handleShare}
           disabled={!canExport || busy !== null}
+          accessibilityRole="button"
+          accessibilityLabel="Share current folding screen"
+          accessibilityState={{ disabled: !canExport || busy !== null }}
           style={({ pressed }) => [
             styles.actionBtn,
             { opacity: !canExport || busy !== null ? 0.4 : pressed ? 0.7 : 1 },
@@ -196,6 +252,9 @@ export default function ByeongpungTab() {
         <Pressable
           onPress={handleSave}
           disabled={!canExport || busy !== null}
+          accessibilityRole="button"
+          accessibilityLabel="Save current folding screen image"
+          accessibilityState={{ disabled: !canExport || busy !== null }}
           style={({ pressed }) => [
             styles.actionBtn,
             { opacity: !canExport || busy !== null ? 0.4 : pressed ? 0.7 : 1 },
@@ -224,30 +283,67 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: space[5],
     paddingTop: space[3],
-    paddingBottom: space[5],
+    paddingBottom: space[3],
+  },
+  progressWrap: {
+    paddingHorizontal: space[5],
+    paddingVertical: space[2],
+  },
+  progressCard: {
+    gap: space[3],
+    padding: space[4],
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: palette.hairline,
+    backgroundColor: palette.cloud,
+  },
+  progressTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[3],
+  },
+  progressIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.hanji,
+  },
+  progressCopy: {
+    flex: 1,
+    gap: space[1],
   },
   scrollContainer: {
+    paddingHorizontal: space[5],
     paddingVertical: space[4],
   },
   shareCanvas: {
     flexDirection: 'row',
-    gap: space[2],
-    paddingHorizontal: space[5],
+    alignSelf: 'flex-start',
+    height: 364,
+    overflow: 'hidden',
+    borderRadius: radius.sm,
+    borderWidth: 5,
+    borderColor: palette.meok,
     backgroundColor: palette.hanji,
   },
   panel: {
-    width: 110,
-    height: 380,
-    borderRadius: radius.card,
+    width: 104,
+    height: 354,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: palette.hwanggeum,
+    borderRightWidth: 3,
+    borderRightColor: palette.hwanggeumDeep,
     justifyContent: 'flex-end',
   },
   panelImage: {
     ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
+    transform: [{ scale: 1.035 }],
+  },
+  lockedWash: {
+    ...StyleSheet.absoluteFillObject,
   },
   panelLabel: {
     padding: space[2],
@@ -261,6 +357,7 @@ const styles = StyleSheet.create({
     paddingTop: space[3],
   },
   actionBtn: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: space[2],
@@ -272,7 +369,7 @@ const styles = StyleSheet.create({
   },
   legend: {
     paddingHorizontal: space[5],
-    paddingVertical: space[4],
+    paddingVertical: space[3],
   },
   offscreen: {
     position: 'absolute',
