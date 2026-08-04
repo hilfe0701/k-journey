@@ -3,20 +3,24 @@ import { View, ScrollView, StyleSheet, Pressable, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Plus, BookmarkPlus } from 'lucide-react-native';
+import { useIsFocused } from '@react-navigation/native';
 
-import { Text, ProgressBar, EmptyState } from '../../src/components/ui';
+import { Text, ProgressBar, EmptyState, IconButton } from '../../src/components/ui';
 import { palette, space, radius } from '../../design-tokens';
 import { BUCKET_TEMPLATES } from '../../src/data/bucketTemplates';
 import { BUCKET_TEMPLATE_IMAGES } from '../../src/components/byeongpung/motifs';
 import { useBuckets } from '../../src/hooks/useBuckets';
+import { useInactiveScreen } from '../../src/lib/inactiveScreen';
 
 export default function WantToTab() {
+  const isFocused = useIsFocused();
+  const inactiveProps = useInactiveScreen(isFocused);
   const router = useRouter();
   const { buckets } = useBuckets();
   const hasBuckets = buckets.length > 0;
 
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
+    <SafeAreaView style={styles.root} edges={['top']} {...inactiveProps}>
       <ScrollView contentContainerStyle={{ paddingBottom: space[16] }}>
         <View style={styles.header}>
           <View style={styles.headerRow}>
@@ -24,15 +28,14 @@ export default function WantToTab() {
               <Text role="h1">Your bucket lists</Text>
             </View>
             {hasBuckets ? (
-              <Pressable
-                onPress={() => router.push('/bucket/new')}
-                hitSlop={8}
-                style={styles.headerAdd}
-                accessibilityRole="button"
+              <IconButton
+                icon={Plus}
+                size={20}
+                tone="inverse"
                 accessibilityLabel="Add bucket"
-              >
-                <Plus size={20} color={palette.hanji} strokeWidth={2} />
-              </Pressable>
+                onPress={() => router.push('/bucket/new')}
+                style={styles.headerAdd}
+              />
             ) : null}
           </View>
           <Text role="body" color={palette.ash} style={{ marginTop: 4 }}>
@@ -103,15 +106,32 @@ export default function WantToTab() {
           </Text>
           <View style={styles.templateGrid}>
             {BUCKET_TEMPLATES.map((tpl) => (
-              <View key={tpl.key} style={[styles.templateCard, { borderColor: tpl.primaryColor }]}>
-                <View style={[styles.templateSwatch, { backgroundColor: tpl.primaryColor }]} />
+              <Pressable
+                key={tpl.key}
+                onPress={() =>
+                  router.push({ pathname: '/bucket/new', params: { template: tpl.key } } as never)
+                }
+                accessibilityRole="button"
+                accessibilityLabel={`Create a bucket with the ${tpl.nameEn} painting`}
+                style={({ pressed }) => [
+                  styles.templateCard,
+                  { borderColor: tpl.primaryColor, opacity: pressed ? 0.82 : 1 },
+                ]}
+              >
+                <View style={[styles.templateSwatch, { backgroundColor: tpl.primaryColor + '14' }]}>
+                  <Image
+                    source={BUCKET_TEMPLATE_IMAGES[tpl.key]}
+                    style={styles.templateSwatchImage}
+                    resizeMode="cover"
+                  />
+                </View>
                 <Text role="body" weight="semibold">
                   {tpl.nameEn}
                 </Text>
                 <Text role="xs" color={palette.ash}>
                   {tpl.symbolism}
                 </Text>
-              </View>
+              </Pressable>
             ))}
           </View>
         </View>
@@ -133,12 +153,8 @@ const styles = StyleSheet.create({
     gap: space[2],
   },
   headerAdd: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    borderRadius: radius.full,
     backgroundColor: palette.meok,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   section: {
     paddingHorizontal: space[5],
@@ -180,8 +196,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   templateSwatch: {
-    height: 32,
+    height: 92,
     borderRadius: radius.sm,
     marginBottom: space[2],
+    overflow: 'hidden',
+  },
+  templateSwatchImage: {
+    width: '100%',
+    height: '100%',
   },
 });

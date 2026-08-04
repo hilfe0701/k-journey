@@ -1,5 +1,6 @@
 export { Text } from './Text';
 export { Button } from './Button';
+export { IconButton, MIN_TARGET } from './IconButton';
 export { Input } from './Input';
 export { Card } from './Card';
 export { ProgressBar } from './ProgressBar';

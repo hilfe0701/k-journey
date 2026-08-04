@@ -1,118 +1,67 @@
-# K-Journey privacy policy (DRAFT)
+# K-Journey privacy notice (publication draft)
 
-> **Status: DRAFT — not yet published.** Review with legal counsel before going
-> live. Host the final version at a public HTTPS URL (e.g. a GitHub Pages or
-> Notion page) and put that URL in: Play Console → Store listing → Privacy
-> policy, App Store Connect, and the in-app sign-in / Settings → About link.
-> Korean translation follows each English section per `docs/MICROCOPY.md`
-> (English-first). Effective date: _TBD on publish_.
+- Product data model checked: 2026-08-02
+- Effective date: fill when published
+- Operator and contact: **must be filled before publication**
+- This draft requires operator/legal review before store submission.
 
-K-Journey ("we", "the app") helps international students paint a four-month
-byeongpung of their semester in Korea. This policy explains what we collect,
-why, and your choices.
+K-Journey helps exchange students prepare for life in Korea and record cultural experiences. The app is designed to work without an account.
 
-## 1. Who is responsible
+## Data kept on your device
 
-K-Journey is operated by _[legal entity / individual name + contact address —
-fill in before publishing]_. Contact: _[support email]_.
+The following information is stored locally in the K-Journey app on the device you are using:
 
-한국에 머무는 교환학생을 위한 앱 K-Journey의 개인정보 처리방침입니다. 운영 주체와
-연락처는 게시 전 확정합니다.
+- arrival and departure dates;
+- answers about university, housing, visa, insurance, nationality category, and other checklist conditions;
+- administrative task status;
+- cultural mission completion;
+- Want-to list names, items, and completion;
+- selected art era, notification preferences, and onboarding state.
 
-## 2. Data we collect
+This information is used to calculate which tasks apply, show journey phases, and render your byeongpung. It is not uploaded to a K-Journey account or per-user database. The app does not currently provide cross-device sync or cloud restore. Removing the app or losing the device may remove this data permanently.
 
-We collect only what the app needs to work; there is no advertising SDK and no
-data brokering.
+K-Journey does not ask for passport numbers, residence-card numbers, bank details, contacts, or precise location.
 
-| Category | Specific data | Source | Purpose |
-|---|---|---|---|
-| Account | Email address, display name | Apple Sign In / Google Sign In | Create and secure your account; bind your byeongpung to you across devices |
-| User identifier | Firebase Auth UID | Generated on sign-in | Link your data to your account |
-| Profile | University, housing type (dormitory/off-campus), arrival & departure dates, chosen era | You, during onboarding | Compute your journey phase, D-Day, and which missions apply |
-| App activity | Completed missions, wishlist (bucket) items, byeongpung panel progress | You, in-app | Render your progress and gallery |
-| User content | Byeongpung images you save/share | Generated from your progress | Save to your device / share at your request |
-| Analytics | In-app events (e.g. mission completed, era switched), screens viewed, and **session replays** (screen recordings with text inputs masked) | PostHog SDK | Understand usage and improve UX |
-| Diagnostics | Crash logs, device model, OS version | Firebase Crashlytics | Fix crashes |
+## Analytics and diagnostics
 
-We do **not** collect precise location, contacts, health data, or payment card
-data. Paid download (if applicable) is handled entirely by the App Store / Play
-Store — we never see your card.
+When an operator configures a PostHog project key, K-Journey may send coarse interaction events such as a screen being opened, a task or mission ID being completed, or an art panel being unlocked. Event properties must not include names, emails, raw condition answers, Want-to text, coordinates, or document values. Session replay is disabled.
 
-수집 항목: 계정(이메일·이름), 식별자(UID), 프로필(대학·거주형태·도착/출국일·시대),
-앱 활동(미션·위시리스트·병풍 진행), 사용자 콘텐츠(병풍 이미지), 분석(이벤트·화면·
-세션 리플레이 — 텍스트 입력은 마스킹), 진단(크래시 로그). 위치·연락처·건강·결제카드
-정보는 수집하지 않습니다.
+Native builds may use Firebase Crashlytics to receive crash diagnostics such as stack traces, app version, device model, and operating-system version. Error messages are designed not to contain user-authored text.
 
-## 3. How we use it
+If these services are enabled, their network traffic is protected in transit by TLS. PostHog hosting region and diagnostic retention must be confirmed and disclosed for the actual production configuration before publication.
 
-- Provide the core experience (phase, missions, byeongpung, gallery).
-- Keep your account secure and restore your data on a new device.
-- Send **behavior-triggered** push notifications only (D-30/D-14/D-7 reminders,
-  phase changes, panel unlocks) — never marketing or daily/weekly nags.
-- Diagnose crashes and improve usability through aggregate analytics.
+## Images, sharing, and permissions
 
-## 4. Who processes your data (sub-processors)
+When you choose Save or Share, the app creates a byeongpung image on your device and asks the operating system to save it to Photos or open the share sheet. K-Journey does not upload that image to its own server. The destination app you choose has its own privacy policy.
 
-| Processor | Role | Region |
-|---|---|---|
-| Google Firebase (Auth, Firestore, Crashlytics) | Account, database, crash reporting | Production project region (`asia-northeast3`, Seoul) |
-| PostHog | Product analytics & session replay | United States (`us.i.posthog.com`) |
-| Apple / Google | Sign-in identity providers | Per their policies |
+Notifications are local journey reminders when enabled. They are not marketing messages.
 
-Analytics data is processed by PostHog in the **United States**. By using the
-app you understand your event data may be transferred there.
+## Your choices
 
-데이터 처리 위탁: 구글 Firebase(계정·DB·크래시), PostHog(분석·세션
-리플레이, 미국), Apple/Google(로그인). 분석 데이터는 미국에서 처리됩니다.
+- You may edit local profile and journey settings in the app.
+- You may reset K-Journey’s local data from Settings after confirmation, or uninstall the app.
+- The current text export is a readable copy of supported condition and administrative task data. It is not an importable backup and does not include every cultural or Want-to record.
+- You may deny notifications or photo-library access; the related optional feature will not work.
 
-## 5. Retention
+There is no account to delete. For questions about an analytics or diagnostic record, contact **[support email]** after the operator details are published.
 
-Your account data is kept while your account exists. The byeongpung is designed
-as a four-month keepsake, so we retain your progress until you delete it or your
-account. Crash and analytics data are retained per the processors' default
-windows.
+## Children
 
-## 6. Your rights
+K-Journey is intended for university-age exchange students and is not directed to children under 14.
 
-You can, from **Settings → Account** in the app:
+## Changes and contact
 
-- **Delete your account** and all associated data (`account_delete_initiated`).
-  This permanently removes your profile, progress, and stored images
-  immediately — it cannot be undone.
+Material changes to collection, cloud sync, account support, or processors require an updated notice before release.
 
-For any request you cannot complete in-app, contact _[support email]_. We honor
-access, correction, and deletion requests. (See PRD §11.12 and the
-account-management spec.)
+Operator: **[legal entity or individual]**
+Address: **[address]**
+Contact: **[support email]**
 
-설정 → 계정에서 계정 삭제가 가능합니다. 접근·정정·삭제 요청을 지원합니다.
+## Pre-publication gate
 
-## 7. Children
-
-K-Journey is intended for university-age students and is **not directed at
-children under 14**. We do not knowingly collect data from children under 14.
-
-## 8. Security
-
-Data in transit uses TLS. Firestore access is restricted by per-user security
-rules (`firestore.rules`). Session replays mask all text inputs. See
-`docs/SECURITY.md`.
-
-## 9. Changes
-
-We will update this policy as the app evolves and revise the effective date.
-Material changes will be surfaced in-app.
-
-## 10. Contact
-
-_[support email]_ — _[legal entity + address]_.
-
----
-
-### Pre-publish checklist (remove before publishing)
-
-- [ ] Fill legal entity, address, and support email.
-- [ ] Confirm production Firebase region once `k-journey-prod` exists.
-- [ ] Confirm whether the app is paid (adjust §2 payment line).
-- [ ] Legal review.
-- [ ] Host at a public HTTPS URL; paste URL into Play Console, App Store Connect,
-      and the in-app About link.
+- [ ] Fill operator, address, support email, effective date, and governing jurisdiction.
+- [ ] Confirm whether PostHog and Crashlytics are enabled in the exact store build.
+- [ ] Confirm processor regions and retention periods.
+- [ ] Mirror the same facts in Play Data Safety and App Store privacy labels.
+- [ ] Host at a public HTTPS URL and link it from the app and store listings.
+- [ ] Complete operator/legal review.

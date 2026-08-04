@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Animated, StyleSheet, Pressable } from 'react-native';
+import { View, Animated, StyleSheet, Pressable, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Text } from '../ui';
+import { MIN_TARGET, Text } from '../ui';
 import { palette, space, radius, elevation } from '../../../design-tokens';
 import { subscribeErrors, type ErrorEvent } from '../../lib/errors/host';
 import { useReduceMotion } from '../../lib/a11y';
@@ -43,7 +43,11 @@ export function ToastHost() {
     if (reduceMotion) {
       opacity.setValue(1);
     } else {
-      Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: Platform.OS !== 'web',
+      }).start();
     }
     const ms = Math.max(0, toast.expiresAt - Date.now());
     const id = setTimeout(() => dismissToast('auto'), ms);
@@ -62,7 +66,11 @@ export function ToastHost() {
       setToast(null);
       return;
     }
-    Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+    Animated.timing(opacity, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start(() => {
       setToast(null);
     });
   }
@@ -162,10 +170,13 @@ const styles = StyleSheet.create({
     backgroundColor: palette.dancheong,
   },
   bannerCta: {
+    // A filled pill button, not an inline link — it owes the full 44pt target.
+    minHeight: MIN_TARGET,
+    justifyContent: 'center',
     paddingHorizontal: space[3],
     paddingVertical: space[2],
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: radius.sm,
+    backgroundColor: palette.canvas + '2E',
   },
   toastSafe: {
     position: 'absolute',
@@ -188,6 +199,8 @@ const styles = StyleSheet.create({
     paddingVertical: space[3],
   },
   toastCta: {
+    minHeight: MIN_TARGET,
+    justifyContent: 'center',
     paddingHorizontal: space[2],
     paddingVertical: space[1],
   },

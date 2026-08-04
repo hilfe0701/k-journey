@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
@@ -15,27 +15,32 @@ import {
   KeyRound,
 } from 'lucide-react-native';
 
-import { Text, EmptyState } from '../src/components/ui';
+import { Text, EmptyState, IconButton, MIN_TARGET } from '../src/components/ui';
 import { palette, space, radius } from '../design-tokens';
 import { useProfile } from '../src/hooks/useProfile';
 import { universityById, University } from '../src/data/universities';
+import { selectMissionHousing, selectUniversityId } from '../src/lib/profileCompat';
 
 export default function Campus() {
   const router = useRouter();
   const { profile } = useProfile();
-  const uni = profile?.university ? universityById(profile.university) : null;
-  const housing = profile?.housing ?? null;
+  const universityId = selectUniversityId(profile);
+  const uni = universityId ? universityById(universityId) : null;
+  const housing = selectMissionHousing(profile);
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={24} color={palette.meok} />
-        </Pressable>
+        <IconButton
+          icon={ChevronLeft}
+          size={24}
+          accessibilityLabel="Back"
+          onPress={() => router.back()}
+        />
         <Text role="body" weight="semibold">
           Campus guide
         </Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: MIN_TARGET }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
@@ -75,7 +80,7 @@ function UniversityHeader({ uni }: { uni: University }) {
         {uni.nameKo}
       </Text>
       <View style={styles.metaRow}>
-        <MapPin size={16} color={palette.dancheong} strokeWidth={1.6} />
+        <MapPin size={16} color={palette.ink} strokeWidth={1.6} />
         <Text role="sm" color={palette.meok} style={{ flex: 1 }}>
           {uni.address}
         </Text>
@@ -111,7 +116,7 @@ function DormBlock({ uni }: { uni: University }) {
         <View style={{ gap: space[1], marginTop: space[2] }}>
           {uni.dorm.prohibited.map((item) => (
             <View key={item} style={styles.bullet}>
-              <X size={14} color={palette.dancheong} strokeWidth={2} />
+              <X size={14} color={palette.ink} strokeWidth={2} />
               <Text role="sm" color={palette.meok} style={{ flex: 1 }}>
                 {item}
               </Text>
@@ -188,7 +193,7 @@ function NearbyEatsBlock({ uni }: { uni: University }) {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHead}>
-        <Utensils size={18} color={palette.dancheong} strokeWidth={1.6} />
+        <Utensils size={18} color={palette.ink} strokeWidth={1.6} />
         <Text role="h4">Nearby eats</Text>
       </View>
       <View style={{ gap: space[2], marginTop: space[2] }}>

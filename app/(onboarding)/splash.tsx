@@ -10,24 +10,29 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Text } from '../../src/components/ui';
 import { palette, motion } from '../../design-tokens';
-import { useAuth } from '../../src/hooks/useAuth';
 import { useProfile } from '../../src/hooks/useProfile';
+import { getOnboardingProgress, onboardingRoutePath } from '../../src/lib/storage';
 
+/**
+ * The splash animates the eight byeongpung panels unfolding, so these are
+ * artwork pigments — deliberately NOT drawn from the UI palette. Routing them
+ * through the chrome tokens collapsed all eight into two tones and flattened
+ * the reveal. They mirror `ERAS.joseon.panelColors` in `src/theme/eras.ts`.
+ */
 const PANEL_COLORS = [
-  palette.dancheong,
-  palette.lotus,
-  palette.hwanggeum,
-  palette.cheong,
-  palette.jade,
-  palette.lotus,
-  palette.meok,
-  palette.hwanggeum,
+  '#C5302A',
+  '#D4758A',
+  '#C4952A',
+  '#1A3A7A',
+  '#3D6B3A',
+  '#D4758A',
+  '#2C2416',
+  '#C4952A',
 ];
 
 export default function Splash() {
   const router = useRouter();
-  const { initializing, user } = useAuth();
-  const { profile } = useProfile();
+  const { loading, profile } = useProfile();
   const titleOpacity = useSharedValue(0);
   const taglineOpacity = useSharedValue(0);
 
@@ -36,18 +41,16 @@ export default function Splash() {
     taglineOpacity.value = withDelay(1200, withTiming(1, { duration: 600 }));
 
     const timer = setTimeout(() => {
-      if (initializing) return;
-      if (!user) {
-        router.replace('/(onboarding)/sign-in');
-      } else if (profile?.onboardingCompletedAt) {
+      if (loading) return;
+      if (profile?.onboardingCompletedAt) {
         router.replace('/(tabs)');
       } else {
-        router.replace('/(onboarding)/profile');
+        router.replace(onboardingRoutePath(getOnboardingProgress()?.currentRoute ?? 'university'));
       }
     }, motion.splashTotal);
 
     return () => clearTimeout(timer);
-  }, [initializing, user, profile, router, titleOpacity, taglineOpacity]);
+  }, [loading, profile, router, titleOpacity, taglineOpacity]);
 
   const titleStyle = useAnimatedStyle(() => ({ opacity: titleOpacity.value }));
   const taglineStyle = useAnimatedStyle(() => ({ opacity: taglineOpacity.value }));

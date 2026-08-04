@@ -29,7 +29,39 @@ const POST_HOLD_MS = 1200;
 
 const STANDARD = Easing.bezier(0.25, 0.46, 0.45, 0.94);
 
-const LIGHT_PANEL_HEXES = new Set<string>([palette.hwanggeum, palette.hwanggeumLight, palette.hwangto]);
+/**
+ * Picks the readable caption color for a panel.
+ *
+ * This used to be a hardcoded set of "light" palette hexes, which silently broke
+ * once panel pigments stopped being drawn from the UI palette: no artwork colour
+ * matched the set any more, so every panel — including pale ones like Silla's
+ * #E8E8E8 — got white text at roughly 1.2:1. Measuring the pigment instead works
+ * for any era, and for pigments not invented yet.
+ *
+ * Rather than cut at a threshold, it measures the WCAG contrast of both
+ * candidates and returns the stronger one. A single cut-off mishandles mid-tone
+ * pigments — Goryeo's #D4A840 sits at luminance 0.42, which reads as "darkish"
+ * yet pairs far better with ink (6.9:1) than with white (2.2:1).
+ */
+const INK_LUMINANCE = 0.0185;
+
+function relativeLuminance(hex: string): number {
+  const h = hex.replace('#', '');
+  const channel = (offset: number) => {
+    const c = parseInt(h.slice(offset, offset + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+}
+
+function readableOn(hex: string): string {
+  const h = hex.replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return palette.canvas;
+  const bg = relativeLuminance(hex);
+  const againstWhite = 1.05 / (bg + 0.05);
+  const againstInk = (bg + 0.05) / (INK_LUMINANCE + 0.05);
+  return againstInk > againstWhite ? palette.ink : palette.canvas;
+}
 
 // react-native-svg circle whose `r` (and opacity) we drive from the UI thread.
 // SVG strokes/fills are anti-aliased, so the expanding edge stays smooth — no
@@ -200,7 +232,7 @@ function ChoreographyView({
     transform: [{ translateY: textY.value }],
   }));
 
-  const textColor = panelColor && LIGHT_PANEL_HEXES.has(panelColor) ? palette.meok : palette.hanji;
+  const textColor = panelColor ? readableOn(panelColor) : palette.canvas;
 
   // The spreading ink disc: the panel's colour on an unlock, otherwise the
   // mission's category colour for the regular-completion bloom.

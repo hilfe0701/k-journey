@@ -3,15 +3,15 @@
  *
  * Implements PRD §6.4 — exporting the completed (or partial) folding screen
  * to the phone gallery and to system share sheets. Best-effort: errors are
- * surfaced via an Alert and never propagate to render code.
+ * surfaced via `showAlert` and never propagate to render code.
  */
 
-import { Alert } from 'react-native';
 import type { RefObject } from 'react';
 import type { View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
+import { showAlert } from './alert';
 import { surfaceError } from './errorAlert';
 
 interface CaptureOptions {
@@ -43,13 +43,13 @@ export async function shareByeongpungImage(
 ): Promise<boolean> {
   const uri = await captureViewToFile(viewRef);
   if (!uri) {
-    Alert.alert('Could not capture image', 'Please try again in a moment.');
+    showAlert('Could not capture image', 'Please try again in a moment.');
     return false;
   }
 
   const available = await Sharing.isAvailableAsync();
   if (!available) {
-    Alert.alert('Sharing not available', 'This device does not support sharing.');
+    showAlert('Sharing not available', 'This device does not support sharing.');
     return false;
   }
 
@@ -69,7 +69,7 @@ export async function shareByeongpungImage(
 export async function saveByeongpungImage(viewRef: RefObject<View>): Promise<boolean> {
   const uri = await captureViewToFile(viewRef);
   if (!uri) {
-    Alert.alert('Could not capture image', 'Please try again in a moment.');
+    showAlert('Could not capture image', 'Please try again in a moment.');
     return false;
   }
 
@@ -85,17 +85,17 @@ export async function saveByeongpungImage(viewRef: RefObject<View>): Promise<boo
 
   try {
     await MediaLibrary.saveToLibraryAsync(uri);
-    Alert.alert('Saved', 'Your byeongpung is in your photo library.');
+    showAlert('Saved', 'Your byeongpung is in your photo library.');
     return true;
   } catch (err) {
     console.warn('[share] saveToLibraryAsync failed, retrying via createAssetAsync', err);
     try {
       await MediaLibrary.createAssetAsync(uri);
-      Alert.alert('Saved', 'Your byeongpung is in your photo library.');
+      showAlert('Saved', 'Your byeongpung is in your photo library.');
       return true;
     } catch (retryErr) {
       console.warn('[share] createAssetAsync also failed', retryErr);
-      Alert.alert('Save failed', 'Please try again in a moment.');
+      showAlert('Save failed', 'Please try again in a moment.');
       return false;
     }
   }

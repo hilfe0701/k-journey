@@ -1,98 +1,29 @@
-// K-Journey Firestore Security Rules
+// K-Journey Firestore rules
 //
-// Decision authority: docs/adr/0021-firestore-rules-acl-model.md
-// Spec: reference/K-Journey_PRD_v1_1_KR.md §11.5
-//
-// Threat model:
-//   - Authenticated user reads another user's progress  ──▶ DENY (isOwner)
-//   - Anonymous client reads/writes user data           ──▶ DENY (isSignedIn rejects anonymous)
-//   - Authenticated user writes the public catalogue    ──▶ DENY (catalogues are admin-only)
-//   - Unsigned-in client reads emergency guide          ──▶ ALLOW (CLAUDE.md MUST #9 spirit)
-//
-// Test runner: `firebase emulators:start --only firestore`
-//              + @firebase/rules-unit-testing scenarios in docs/TESTING.md §Firestore Rules
+// Journey state is local-only. Firebase is limited to public content delivery
+// and operator-managed data; there is no client-owned user document or ACL.
 
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ─── Helpers ──────────────────────────────────────────────
-
-    // Signed-in via Apple or Google (ADR-0013, ADR-0014: no anonymous).
-    function isSignedIn() {
-      return request.auth != null
-          && request.auth.token.firebase.sign_in_provider in ['apple.com', 'google.com'];
-    }
-
-    function isOwner(uid) {
-      return isSignedIn() && request.auth.uid == uid;
-    }
-
-    // Limits to defend against runaway writes.
-    function hasReasonableSize() {
-      return request.resource.size() < 1024 * 100; // 100 KB
-    }
-
-    // ─── User-scoped (read/write by owner only) ───────────────
-
-    match /users/{uid} {
-      allow read: if isOwner(uid);
-      // Owner may create / update / delete their own profile. Account deletion
-      // is client-side and immediate (src/lib/accountDeletion.ts): after the
-      // user re-authenticates, the client deletes their completedMissions and
-      // buckets docs and then this profile doc. No soft-delete / grace window.
-      allow write: if isOwner(uid) && hasReasonableSize();
-
-      // Completed Have-To missions. Collection name must match the client
-      // (firebase.ts: completedMissionsCollection) — Firestore rules do NOT
-      // cascade from the parent users/{uid} match, so a name mismatch here
-      // denies every mission-complete write.
-      match /completedMissions/{missionId} {
-        allow read, write: if isOwner(uid) && hasReasonableSize();
-      }
-
-      // Want-To buckets. Items are array fields on each bucket doc (firebase.ts),
-      // not a subcollection — the items match below is defensive for any future
-      // migration and matches nothing today.
-      match /buckets/{bucketId} {
-        allow read, write: if isOwner(uid) && hasReasonableSize();
-
-        match /items/{itemId} {
-          allow read, write: if isOwner(uid) && hasReasonableSize();
-        }
-      }
-    }
-
-    // ─── Public catalogues (read-only for signed-in users) ────
-
-    // 9 supported Seoul universities (PRD §8).
+    // Public catalogues are read-only for every app client.
     match /universities/{universityId} {
-      allow read: if isSignedIn();
-      allow write: if false; // Admin updates via Firebase Console only.
-    }
-
-    // Reserve for V1.1+ if missions move out of the bundle.
-    match /missions_catalog/{missionId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if false;
     }
 
-    // ─── Emergency guide (open read, intentionally) ──────────
-    //
-    // CLAUDE.md MUST #9 spirit: "Emergency guide is reachable from every
-    // screen, every phase." Stretching that: an emergency-info doc should
-    // be reachable even by a user who has not yet signed in (e.g. a friend
-    // borrowing the phone in a real emergency).
+    match /missions_catalog/{missionId} {
+      allow read: if true;
+      allow write: if false;
+    }
 
+    // Emergency guidance must remain available on a borrowed phone.
     match /emergency/{id} {
       allow read: if true;
       allow write: if false;
     }
 
-    // ─── Default deny ─────────────────────────────────────────
-    //
-    // Anything not matched above is denied implicitly by Firestore.
-    // This explicit comment is reminder, not code.
+    // Any collection not explicitly listed above is denied by default.
   }
 }

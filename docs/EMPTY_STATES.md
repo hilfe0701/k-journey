@@ -1,5 +1,9 @@
 # Empty States — Per-Screen Specification
 
+> **Current-use note:** the general 3-slot empty-state contract stands. `DEC-040` reactivated
+> Byeongpung and cultural surfaces, so §§5–7 are no longer out of scope; reconcile their copy
+> with PRD v2.0 and the current 4-tab navigation when implementing.
+
 > Implementation guide for [ADR-0027](adr/0027-empty-state-pattern.md). Every "zero" state in K-Journey conforms to this spec. Voice rules: `MICROCOPY.md` §6.1, §6.3. Visual: `DESIGN.md` §14.
 
 ## The contract (recap from ADR-0027)

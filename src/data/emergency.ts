@@ -8,7 +8,7 @@ export interface EmergencySection {
   titleEn: string;
   titleKo: string;
   icon: string;
-  items: { label: string; detail: string }[];
+  items: { label: string; detail: string; href?: string }[];
 }
 
 export const EMERGENCY_SECTIONS: EmergencySection[] = [
@@ -18,11 +18,11 @@ export const EMERGENCY_SECTIONS: EmergencySection[] = [
     titleKo: '긴급 전화번호',
     icon: 'Phone',
     items: [
-      { label: '112 — Police (경찰)', detail: 'English speakers available. For crime, theft, harassment.' },
-      { label: '119 — Fire & ambulance (소방·구급)', detail: 'English speakers available. For fire, medical emergency.' },
-      { label: '1345 — Immigration hotline (출입국)', detail: 'Multilingual. Visa, registration, overstay help.' },
-      { label: '1330 — Korea Tourism Hotline', detail: '24/7 multilingual. General help, translation, transit.' },
-      { label: '120 — Seoul city services', detail: 'Civic info, lost-and-found, garbage rules.' },
+      { label: '112 — Police (경찰)', detail: 'English speakers available. For crime, theft, harassment.', href: 'tel:112' },
+      { label: '119 — Fire & ambulance (소방·구급)', detail: 'English speakers available. For fire, medical emergency.', href: 'tel:119' },
+      { label: '1345 — Immigration hotline (출입국)', detail: 'Multilingual. Visa, registration, overstay help.', href: 'tel:1345' },
+      { label: '1330 — Korea Tourism Hotline', detail: '24/7 multilingual. General help, translation, transit.', href: 'tel:1330' },
+      { label: '120 — Seoul city services', detail: 'Civic info, lost-and-found, garbage rules.', href: 'tel:120' },
     ],
   },
   {
@@ -33,7 +33,7 @@ export const EMERGENCY_SECTIONS: EmergencySection[] = [
     items: [
       {
         label: 'Severance Hospital — International Health Care Center',
-        detail: 'Sinchon, Yonsei University. Foreign patient floor on B1. Walk-ins ok. Tel: 02-2228-5800.',
+        detail: 'Sinchon, Yonsei University. Confirm the current international-clinic location and appointment policy. Tel: 02-2228-5800.',
       },
       {
         label: 'Asan Medical Center — International Clinic',
@@ -62,7 +62,7 @@ export const EMERGENCY_SECTIONS: EmergencySection[] = [
       {
         label: 'Lost passport',
         detail:
-          'Go to your embassy first for an emergency travel document. Then file with immigration. Allow 5–10 days for replacement.',
+          'Contact your embassy immediately for current emergency-document steps, then confirm immigration reporting requirements.',
       },
       {
         label: 'Subway lost & found',

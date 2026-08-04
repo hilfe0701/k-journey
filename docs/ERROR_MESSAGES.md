@@ -1,5 +1,9 @@
 # Error Messages — User Copy Catalog
 
+> **Current-use note:** T1–T4 presentation and `showOperationError` remain useful. Auth,
+> Firestore, reconnect, and remote-conflict errors are historical; current persistence failures
+> are local save/read-back failures and must not claim a successful mutation.
+
 > Master copy table for every user-facing error in K-Journey. The single source of truth that `showOperationError(action, error)` (`src/lib/errorAlert.ts`) routes through. Authority: [ADR-0012](adr/0012-async-mutator-error-contract.md), [ADR-0028](adr/0028-error-recovery-retry-strategy.md). Voice: `MICROCOPY.md`. Edge-case rows: `EDGE_CASES.md`.
 
 ## How this file is read by code
@@ -111,8 +115,6 @@ Every error code in this catalog has:
 | `dates-updated` | T1 | (toast) | `Dates updated. Reminders rescheduled.` | (none) | (auto-dismiss 4 s) | Settings → Profile arrival/departure saved (PRD §4.7) |
 | `onboarding-resumed` | T1 | (toast) | `Picking up where you left off.` | (none) | (auto-dismiss 4 s) | Dates screen re-entered mid-onboarding with a restored snapshot (PRD §4.6) |
 | `phase-changed` | T2 | `Phase changed` | `Your new dates moved you to a different phase. Existing missions stay completed.` | `Got it` | (none) | Date edit moved the user to a lower phase; `messageOverride` injects the phase number (PRD §4.7) |
-| `network-offline-recovered` | T1 | (toast) | `Synced.` | (none) | (auto-dismiss 3 s) | Reconnect after offline with pending writes (ADR-0031) |
-| `bucket-conflict` | T1 | (toast) | `Updated from another device.` | (none) | (auto-dismiss 4 s) | Bucket item count dropped between snapshots (ADR-0031) |
 | `account-deletion-scheduled` | T1 | (toast) | `Account scheduled for deletion. Check your email.` | (none) | (auto-dismiss 6 s) | Delete-account second confirm committed (ADR-0033 §A) |
 | `account-restored` | T1 | (toast) | `Account restored.` | (none) | (auto-dismiss 4 s) | Recovery flow — user cancelled a pending deletion (ADR-0033 §C; legacy, unused after immediate delete) |
 | `account-deleted` | T1 | (toast) | `Your account and data have been deleted.` | (none) | (auto-dismiss 6 s) | Delete-account final confirm committed (immediate client-side delete) |

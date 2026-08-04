@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, ScrollView, StyleSheet, Pressable, Image } from 'react-native';
+import { View, ScrollView, StyleSheet, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Share2 } from 'lucide-react-native';
 import { format } from 'date-fns';
 import { resolveIcon } from '../src/lib/icons';
 
-import { Text, EmptyState } from '../src/components/ui';
+import { Text, EmptyState, IconButton } from '../src/components/ui';
 import { palette, space, radius, categoryColors } from '../design-tokens';
 import { useTheme } from '../src/theme/ThemeProvider';
-import { calcPhase, dDay } from '../src/hooks/usePhase';
+import { calcDatePhase, dDay } from '../src/hooks/usePhase';
 import { useCompletedMissions } from '../src/hooks/useCompletedMissions';
 import { useBuckets } from '../src/hooks/useBuckets';
 import { useTotalCompletions } from '../src/hooks/useTotalCompletions';
@@ -22,6 +22,7 @@ import {
 } from '../src/components/byeongpung/motifs';
 import { track } from '../src/lib/posthog';
 import { shareByeongpungImage } from '../src/lib/share';
+import { knownProfileDate } from '../src/lib/profileCompat';
 
 export default function Gallery() {
   const router = useRouter();
@@ -47,11 +48,10 @@ export default function Gallery() {
   }, [completed]);
 
   const panels = BYEONGPUNG_PANEL_IMAGES[theme.era.key];
-  const phase = calcPhase({
-    arrivalDate: profile?.arrivalDate ?? null,
-    departureDate: profile?.departureDate ?? null,
-  });
-  const daysLeft = dDay(profile?.departureDate ?? null);
+  const arrivalDate = knownProfileDate(profile?.arrivalDate);
+  const departureDate = knownProfileDate(profile?.departureDate);
+  const phase = calcDatePhase({ arrivalDate, departureDate });
+  const daysLeft = dDay(departureDate);
   const isPostDeparture = phase === 4 && daysLeft !== null && daysLeft < 0;
   const chaekgeoriPanel = panels[7];
   const completedPanels = panels.filter(
@@ -76,20 +76,28 @@ export default function Gallery() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={24} color={palette.hanji} />
-        </Pressable>
+        <IconButton
+          icon={ChevronLeft}
+          size={24}
+          tone="inverse"
+          accessibilityLabel="Back"
+          onPress={() => router.back()}
+        />
         <Text role="body" weight="semibold" color={palette.hanji}>
           Memory gallery
         </Text>
-        <Pressable
+        <IconButton
+          icon={Share2}
+          tone="inverse"
+          accessibilityLabel="Share your byeongpung"
           onPress={handleShare}
           disabled={!canShare || sharing}
-          hitSlop={8}
-          style={{ opacity: !canShare || sharing ? 0.4 : 1 }}
-        >
-          <Share2 size={22} color={palette.hanji} strokeWidth={1.6} />
-        </Pressable>
+          disabledReason={
+            sharing
+              ? 'Preparing the image.'
+              : 'Complete at least one mission or bucket-list item first.'
+          }
+        />
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
@@ -226,7 +234,7 @@ export default function Gallery() {
       <View pointerEvents="none" style={styles.offscreen}>
         <View ref={shareRef} collapsable={false} style={styles.shareCard}>
           <View style={styles.shareHeader}>
-            <Text role="badge" color={palette.dancheong}>
+            <Text role="badge" color={palette.muted}>
               K&#x2013;JOURNEY · {theme.era.nameEn}
             </Text>
             <Text role="h1" color={palette.meok} style={{ marginTop: space[2] }}>
@@ -338,10 +346,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // The share card is laid out only so `captureRef` has something to snapshot.
+  // At `left: 0` its 720px width extended the document's scroll width, so the
+  // whole gallery page scrolled sideways at phone widths. A negative offset
+  // keeps it rendered without contributing to the scrollable area.
   offscreen: {
     position: 'absolute',
     top: -10000,
-    left: 0,
+    left: -10000,
   },
   shareCard: {
     width: SHARE_CARD_WIDTH,

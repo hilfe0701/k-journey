@@ -1,5 +1,9 @@
 # Settings — Per-Row Master Spec
 
+> **Current-use note:** notification, era, profile, local export, and local deletion settings are
+> active. Account, signed-in email, Firestore mirror, soft-delete, and server export sections are
+> historical. `docs/LOCAL_DATA_LIFECYCLE.md` owns current data behavior.
+
 > Implementation guide for [ADR-0032](adr/0032-settings-screen-architecture.md). Voice rules: `MICROCOPY.md`. Account flows: [ADR-0033](adr/0033-account-deletion-and-export.md). Notification toggles: [ADR-0029](adr/0029-push-copy-library-and-priming.md).
 
 ## Entry path

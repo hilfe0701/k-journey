@@ -1,122 +1,115 @@
-# Accessibility (WCAG 2.1 AA)
+# Accessibility acceptance
 
-> K-Journey commits to WCAG 2.1 Level AA. Decision authority: [ADR-0025](adr/0025-accessibility-wcag-2-1-aa.md). Visual rules: `DESIGN.md`.
+Target: WCAG 2.1 AA for web and equivalent VoiceOver/TalkBack behavior on native.
 
-## 1. Commitment
+## Global rules
 
-Target: **WCAG 2.1 AA** with the iOS/Android platform conventions on top. We do *not* claim AAA. We *do* commit to keeping VoiceOver and TalkBack navigable, Dynamic Type / Font Scale ±2 steps non-breaking, and Reduce Motion respected.
+- Interactive targets are at least 44×44pt including hit area.
+- Body text contrast is at least 4.5:1; large text and non-text controls at least 3:1.
+- `Text` roles `hero` through `h4` expose heading semantics.
+- Icon-only controls have names; toggles, tabs, disclosure controls, and progress bars expose role/state/value.
+- Color is never the only task, lock, completion, or review signal.
+- Reduce Motion avoids decorative transitions and preserves the final state.
+- Text at 200% does not clip essential copy or controls.
 
-## 2. Per-component checklist
+## Integrated product
 
-Every interactive component MUST set:
+- Essentials/Culture is announced as one mutually exclusive choice with selected state.
+- Inactive tabs are detached or hidden from the accessibility tree.
+- Screen focus moves to a meaningful title after navigation.
+- Missing facts are announced as “Unknown / not sure,” not as failure.
+- Task state includes readable reason, unlock condition, and actionable official source.
+- Byeongpung progress announces total out of 48, completed panels out of 8, and the next requirement.
+- Locked artwork has equivalent text and is not announced as complete.
+- Save/share buttons expose disabled state and reason.
 
-* `accessibilityLabel` — what it is.
-* `accessibilityRole` — `button`, `tab`, `radio`, `header`, `link`, etc.
-* `accessibilityState` — `{ selected, disabled, checked, busy, expanded }` as applicable.
-* `accessibilityHint` (optional) — what tapping it will do, if non-obvious.
+## Web keyboard/focus
 
-| Component | `Role` | `Label` formula | `State` |
-|---|---|---|---|
-| `ui/Button` | `button` | `title` prop | `{ disabled }` |
-| `ui/Card` (pressable) | `button` | `accessibilityLabel` prop required when `onPress` set | — |
-| `ui/Badge` | `text` | uppercase label as-is | — |
-| `ui/ProgressBar` | `progressbar` | `${percent}% complete` | — |
-| `home/DDayBanner` | `text` | `${dday} days until departure` (or `Departed N days ago` if negative) | — |
-| `home/PhaseTabs` (each tab) | `tab` | phase name | `{ selected: phase === current }` |
-| `home/JourneyCompletePrompt` (CTA) | `button` | "Open your gallery" | — |
-| `byeongpung/ByeongpungStrip` | `image` | `Byeongpung — ${revealedPanels} of 8 panels revealed` | — |
-| `byeongpung/PanelImage` | (decorative — `accessibilityElementsHidden`) | — | — |
-| `mission/MissionCompleteOverlay` | — | `accessibilityViewIsModal=true`, `accessibilityLiveRegion="polite"` for the "Panel N unlocked" text | — |
-| `bucket/[id]` item checkbox | `checkbox` | item text | `{ checked }` |
-| `(onboarding)/sign-in` Apple button | `button` | "Sign in with Apple" | `{ busy: signingIn }` |
-| `(onboarding)/dates` date picker | `button` | "Arrival date — ${formatted}" | `{ disabled }` |
+- Tab order follows visual order and never enters an inactive screen.
+- Enter/Space activates buttons and choices.
+- Escape closes modal sheets where supported.
+- Every actionable element has a visible focus indicator with at least 3:1 contrast.
+- Direct route refresh does not shift focus to an unrelated splash/home page.
 
-## 3. Touch targets
+## Four React Native Web gaps this app has to work around
 
-iOS HIG: **≥ 44×44 pt**. Android Material: ≥ 48×48 dp.
+All of them are silent — the native build is correct and the code reads
+correctly, so none shows up without opening a browser. Re-check them after any
+RNW upgrade.
 
-Audit: any `<Pressable>`, `<TouchableOpacity>`, or `<Button>` with `style` that produces less than the minimum needs explicit `hitSlop` to reach the target, even if the visible chrome is smaller.
+1. **`accessibilityState` is dropped by RNW's `Pressable`.** Only
+   `TouchableWithoutFeedback` reads it, so `accessibilityState={{ selected }}`
+   emits no `aria-selected`. Use `a11yState()` from `src/lib/a11y.ts`, which
+   emits both dialects, on every selectable, checkable, or expandable control.
+2. **`hitSlop` does not exist on web.** It is absent from RNW's `Pressable`, so a
+   24pt icon with `hitSlop={8}` is a 24×24 target in a browser. Icon-only
+   controls must use `IconButton` (`src/components/ui/IconButton.tsx`), which
+   lays down a real 44×44 box; never rely on `hitSlop` to reach the minimum.
+   Text links are the same problem in a different shape: a one-line URL is 17px
+   tall, so an official-source link needs `minHeight: MIN_TARGET` of its own —
+   the 44pt row *around* it is not the target.
+3. **`aria-hidden` does not remove anything from the tab order.** The tab
+   screens hid their inactive selves from the accessibility tree correctly, and
+   keyboard focus still walked straight into them: on Byeongpung the tree
+   exposed six controls while Tab reached "Emergency guide", the
+   Essentials/Culture switch, and the Journey task list — focus landing inside
+   an `aria-hidden` subtree, which announces nothing. Root views of tab screens
+   spread `useInactiveScreen()` (`src/lib/inactiveScreen.ts`), which adds the
+   `inert` attribute on web; `inert` is what removes focus, hit-testing, and the
+   accessibility tree together.
+4. **`Alert` is an empty function.** RNW ships
+   `class Alert { static alert() {} }`, so every confirmation and blocking
+   error was invisible on web — including "Delete all local data", which made
+   the only local-erase control unusable in a browser, and the T2/T3 tiers of
+   the error catalog, which made failed mutations look like no-ops. Use
+   `showAlert()` from `src/lib/alert.ts`; `AlertHost` renders it as a real
+   `alertdialog`, with `window.confirm` as the fallback if no host is mounted.
 
-```tsx
-<Pressable hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-  ...
-</Pressable>
+RNW also resets `outline` to none on every `Pressable`, which is why
+`installWebFocusRing()` runs from the root layout.
+
+## Verifying the first three global rules
+
+```
+npm run build:web && npm run audit:a11y
 ```
 
-## 4. Colour contrast
+`scripts/a11y-audit.mjs` serves `dist/` with the production catch-all rewrite,
+seeds a completed local profile, sweeps every route at 390×844 and 1440×900,
+and exits non-zero on an undersized target, an unnamed control, a stateful role
+with no state, horizontal page overflow, an uncaught error, or a Tab stop
+inside an inactive tab screen. Chromium comes from
+`npx playwright install chromium`.
 
-Target ratios:
-* Body text on background: **≥ 4.5:1**.
-* Large text (18pt regular / 14pt bold): **≥ 3:1**.
-* UI chrome (button borders, icon strokes): **≥ 3:1**.
+The same checks by hand — run this in the browser console on a route. It should
+return empty arrays.
 
-Token-pair audit lives in `DESIGN.md` §2. Any new token introduced in `design-tokens.ts` MUST be checked against `semantic.bg.canvas`, `semantic.bg.surface`, and the three era palettes.
+```js
+const sel = '[role="button"],[role="link"],[role="tab"],[role="radio"],[role="checkbox"],[role="switch"],[tabindex="0"]';
+const c = [...document.querySelectorAll(sel)]
+  .filter(e => !e.closest('[aria-hidden="true"]') && !e.closest('[inert]'));
+({
+  // under the 44pt minimum
+  small: c.filter(e => { const r = e.getBoundingClientRect();
+    return r.height > 0 && (r.height < 44 || r.width < 44); }),
+  // icon-only control with no accessible name
+  unnamed: c.filter(e => !e.getAttribute('aria-label') && !e.innerText.trim()),
+  // stateful role that never announces its state
+  stateless: c.filter(e => {
+    const r = e.getAttribute('role');
+    if (r === 'tab' || r === 'radio') return e.getAttribute('aria-selected') === null;
+    if (r === 'checkbox' || r === 'switch') return e.getAttribute('aria-checked') === null;
+    return false;
+  }),
+})
+```
 
-## 5. Dynamic Type / Font Scale
+## Contrast token notes
 
-* iOS: `allowFontScaling=true` is the default and **MUST stay default** for all text except `<Badge>` micro labels (which would break a 12px design at +2 steps).
-* Test: iOS Simulator → Settings → Accessibility → Display & Text Size → Larger Text → ±2 steps. Visual regression check on:
-  * Home (DDayBanner + Phase tabs + first 3 mission cards)
-  * Byeongpung (no text-driven layout)
-  * Mission detail (long mission descriptions)
-  * Onboarding dates picker
-  * Bucket item list (long user text)
+- `palette.stone` was darkened for AA body-text use on hanji.
+- `palette.hwanggeum` remains a decorative/icon color; use `hwanggeumDeep` or primary text for small copy.
+- Disabled state still needs readable labels; opacity alone is insufficient.
 
-## 6. Reduce Motion
+## Verification matrix
 
-iOS / Android exposes a system flag. `src/lib/a11y.ts` (Part G) provides `useReduceMotion()` hook subscribed to `AccessibilityInfo`.
-
-| Element | Default motion | Reduce-motion alternative |
-|---|---|---|
-| `MissionCompleteOverlay` | 4-stage choreography (~2.4s) — cardSink → inkRing → panelReveal → fadeUp | Cross-fade overlay 250ms, no scale/translate transforms |
-| Byeongpung panel reveal on era switch | clipPath circle expand | Instant opacity swap |
-| Card press feedback (scale 0.97) | 100ms transform | No transform, just opacity 0.8 |
-| Tab switch indicator | translateX | No animation |
-| ProgressBar fill | Animated.timing | Direct value |
-
-## 7. Screen reader (VoiceOver / TalkBack) manual test plan
-
-Run these on a real device (sim VoiceOver works but device is canonical).
-
-| Scenario | Steps | Pass criteria |
-|---|---|---|
-| S1 Onboarding | VoiceOver on → cold start → sign in → arrive at dates → select arrival date | Each control announces label + role; dates picker announces selected date |
-| S2 Home navigation | swipe through D-Day banner, phase tabs, mission cards | All announced; phase tabs announce selection state |
-| S3 Mission complete | open a mission, tap Done | "Marked complete" feedback announced; if panel unlocks, "Panel N unlocked" announced via `accessibilityLiveRegion` |
-| S4 Byeongpung | navigate to byeongpung tab | Strip announces total reveal; individual panels are decorative (skipped) |
-| S5 Emergency | navigate to emergency | 112/119/1345 each announce; tap dials |
-
-Document any failures in `docs/INCIDENT_RESPONSE.md` accessibility section.
-
-## 8. Colour-blind sanity
-
-Categories and phases use **icon + colour** in combination, never colour alone.
-
-| Pair | Icon | Colour token |
-|---|---|---|
-| Mission category — Food | `utensils` | category.food |
-| Mission category — Travel | `map-pin` | category.travel |
-| Mission category — Culture | `landmark` | category.culture |
-| Mission category — Living | `home` | category.living |
-| Phase 1 | `plane-takeoff` | phase.1 |
-| Phase 2 | `door-open` | phase.2 |
-| Phase 3 | `compass` | phase.3 |
-| Phase 4 | `sun-set` | phase.4 |
-
-## 9. RTL
-
-Not supported in MVP. Korean and English are LTR. RTL languages are V2.0 scope.
-
-## 10. Roadmap
-
-* **Round 2 Part G (current):** label/role/state rollout across all interactive components. Reduce-motion + Dynamic Type baseline.
-* **V1.1:** `eslint-plugin-react-native-a11y` integrated.
-* **V1.1:** scripted VoiceOver scenarios in Maestro or Detox.
-* **V2:** RTL support tracked alongside multilingual rollout.
-
-## 11. Links
-
-* [ADR-0025](adr/0025-accessibility-wcag-2-1-aa.md)
-* [ADR-0018](adr/0018-english-first-korean-parenthetical.md) — Korean parenthetical helps screen reader pronunciation
-* `DESIGN.md` (colour tokens, type scale)
-* [WCAG 2.1 AA quick reference](https://www.w3.org/WAI/WCAG21/quickref/?levels=a%2Caa)
+Test all four tabs, Journey mode switch, one available/blocked/review/completed task, mission detail, bucket create/detail, all byeongpung states, Settings pickers, export, deletion confirmation, official links, and emergency calls on web keyboard plus one native screen reader.

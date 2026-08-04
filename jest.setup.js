@@ -42,13 +42,13 @@ jest.mock('react-native-mmkv', () => {
 });
 
 // RNFB native modules have no JSI runtime under Jest. errorAlert.ts and
-// notifications.ts import these for best-effort Crashlytics + auth-state reads;
-// both swallow failures, so a no-op mock is sufficient.
+// notifications.ts import Crashlytics for best-effort error reporting; it
+// swallows failures, so a no-op mock is sufficient.
 jest.mock('@react-native-firebase/crashlytics', () => ({
   getCrashlytics: jest.fn(() => ({})),
   recordError: jest.fn(),
 }));
 
-jest.mock('@react-native-firebase/auth', () => ({
-  getAuth: jest.fn(() => ({ currentUser: null })),
-}));
+// The @react-native-firebase/auth mock was removed with the package itself
+// (DEC-001: no sign-in). It outlived the dependency because node_modules still
+// held the package until a later install pruned it.

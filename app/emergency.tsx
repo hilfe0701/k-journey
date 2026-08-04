@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { Linking, View, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, ChevronDown, ChevronUp, AlertTriangle, AlertCircle } from 'lucide-react-native';
 import { resolveIcon } from '../src/lib/icons';
 
-import { Text } from '../src/components/ui';
+import { Text, IconButton, MIN_TARGET } from '../src/components/ui';
 import { palette, space, radius } from '../design-tokens';
 import { EMERGENCY_SECTIONS } from '../src/data/emergency';
 import { setJson, getJson, KEYS } from '../src/lib/storage';
 import { track } from '../src/lib/posthog';
+import { surfaceError } from '../src/lib/errorAlert';
+import { a11yState } from '../src/lib/a11y';
 
 // Cache emergency data on first render so it's available offline.
 setJson(KEYS.emergencyCache, EMERGENCY_SECTIONS);
@@ -26,19 +28,26 @@ export default function Emergency() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={24} color={palette.meok} />
-        </Pressable>
-        <Text role="body" weight="semibold">
-          Emergency guide
-        </Text>
-        <View style={{ width: 24 }} />
+        <IconButton
+          icon={ChevronLeft}
+          size={24}
+          accessibilityLabel="Back"
+          onPress={() => router.back()}
+        />
+        {/* A heading, not plain bar text: this screen had no heading at all,
+            so a screen reader offered nothing to navigate it by. */}
+        <Text role="h4">Emergency guide</Text>
+        {/* Matches the back button's 44pt box so the title stays centred. */}
+        <View style={{ width: MIN_TARGET }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
         <View style={styles.banner}>
-          <AlertTriangle size={20} color={palette.dancheong} strokeWidth={1.5} />
-          <Text role="sm" color={palette.dancheongDeep}>
+          {/* Reassurance, not a warning — this note tells the reader the page
+              still works with no signal. It stays neutral so the error tone is
+              left for things that are actually wrong. */}
+          <AlertTriangle size={20} color={palette.muted} strokeWidth={1.5} />
+          <Text role="bodySm" color={palette.ink}>
             Saved for offline access. Works without signal or data.
           </Text>
         </View>
@@ -52,14 +61,14 @@ export default function Emergency() {
                 onPress={() => setExpanded(isOpen ? null : section.id)}
                 accessibilityRole="button"
                 accessibilityLabel={section.titleEn}
-                accessibilityState={{ expanded: isOpen }}
+                {...a11yState({ expanded: isOpen })}
                 style={({ pressed }) => [
                   styles.sectionHead,
                   { backgroundColor: pressed ? palette.cloud : palette.hanji },
                 ]}
               >
                 <View style={styles.sectionHeadIcon}>
-                  <Icon size={20} color={palette.dancheong} strokeWidth={1.5} />
+                  <Icon size={20} color={palette.ink} strokeWidth={1.5} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text role="body" weight="semibold">
@@ -78,14 +87,25 @@ export default function Emergency() {
               {isOpen ? (
                 <View style={styles.sectionItems}>
                   {section.items.map((item, idx) => (
-                    <View key={idx} style={styles.item}>
-                      <Text role="body" weight="semibold">
+                    <Pressable
+                      key={idx}
+                      disabled={!item.href}
+                      accessibilityRole={item.href ? 'link' : undefined}
+                      accessibilityLabel={item.href ? `Call ${item.label}` : undefined}
+                      accessibilityHint={item.href ? 'Opens your phone dialer.' : undefined}
+                      onPress={() => {
+                        if (!item.href) return;
+                        Linking.openURL(item.href).catch(() => surfaceError('unknown'));
+                      }}
+                      style={({ pressed }) => [styles.item, item.href && pressed ? styles.itemPressed : null]}
+                    >
+                      <Text role="body" weight="semibold" color={item.href ? palette.cheong : undefined}>
                         {item.label}
                       </Text>
                       <Text role="sm" color={palette.ash}>
                         {item.detail}
                       </Text>
-                    </View>
+                    </Pressable>
                   ))}
                 </View>
               ) : null}
@@ -112,7 +132,7 @@ const styles = StyleSheet.create({
     gap: space[3],
   },
   banner: {
-    backgroundColor: palette.dancheongLight,
+    backgroundColor: palette.surfaceSoft,
     padding: space[3],
     borderRadius: radius.card,
     flexDirection: 'row',
@@ -136,7 +156,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: palette.dancheongLight,
+    backgroundColor: palette.surfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -151,5 +171,8 @@ const styles = StyleSheet.create({
   },
   item: {
     gap: 2,
+  },
+  itemPressed: {
+    opacity: 0.72,
   },
 });

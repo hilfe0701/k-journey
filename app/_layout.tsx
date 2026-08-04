@@ -6,18 +6,17 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
-import { NotoSerifKR_500Medium, NotoSerifKR_700Bold, NotoSerifKR_900Black } from '@expo-google-fonts/noto-serif-kr';
 import * as SplashScreen from 'expo-splash-screen';
-import { View, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable, Platform } from 'react-native';
 import { PostHogProvider } from 'posthog-react-native';
 import { getCrashlytics, recordError } from '@react-native-firebase/crashlytics';
 import { AlertTriangle } from 'lucide-react-native';
 
 import { ThemeProvider } from '../src/theme/ThemeProvider';
-import { useAuth } from '../src/hooks/useAuth';
 import { useProfile } from '../src/hooks/useProfile';
 import { posthog } from '../src/lib/posthog';
 import { Text } from '../src/components/ui';
+import { AlertHost } from '../src/components/system/AlertHost';
 import { ToastHost } from '../src/components/system/ToastHost';
 import {
   AhaMomentTour,
@@ -27,13 +26,19 @@ import { palette, space, radius } from '../design-tokens';
 import { runMigrations } from '../src/lib/storageMigrations';
 import { checkClockSkew } from '../src/lib/clockGuard';
 import { usePushPermissionWatcher } from '../src/lib/permissions';
-import { useNetworkToasts } from '../src/state/useNetworkToasts';
 import { surfaceError } from '../src/lib/errorAlert';
+import { getOnboardingProgress, onboardingRoutePath } from '../src/lib/storage';
+import { knownProfileDate } from '../src/lib/profileCompat';
+import { installWebFocusRing } from '../src/lib/webFocusRing';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+// React Native Web zeroes the outline on every Pressable, so the browser build
+// ships without any keyboard focus indicator unless this runs. No-op on native.
+installWebFocusRing();
+
 // Boot path: MMKV migrations + clock-skew diagnostic. Both are synchronous and
-// must precede any hook that reads MMKV (e.g. useAuth → useMMKVBoolean). See
+// must precede any hook that reads MMKV (for example, useProfile). See
 // ADR-0023 (migrations) and ADR-0022 (clock guard). Side-effect on module load
 // is intentional — RN guarantees this module is the entry point.
 try {
@@ -65,19 +70,22 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return (
     <SafeAreaView style={errorStyles.root} edges={['top', 'bottom']}>
       <View style={errorStyles.icon}>
-        <AlertTriangle size={32} color={palette.dancheong} strokeWidth={1.5} />
+        <AlertTriangle size={32} color={palette.error} strokeWidth={1.5} />
       </View>
-      <Text role="h2" align="center">
+      <Text role="displayLg" align="center">
         Something went wrong
       </Text>
-      <Text role="sm" color={palette.ash} align="center" style={errorStyles.detail}>
+      <Text role="bodySm" color={palette.muted} align="center" style={errorStyles.detail}>
         {error.message}
       </Text>
       <Pressable
         onPress={retry}
+        accessibilityRole="button"
+        accessibilityLabel="Try again"
+        accessibilityHint="Reloads the screen that failed."
         style={({ pressed }) => [errorStyles.btn, { opacity: pressed ? 0.7 : 1 }]}
       >
-        <Text role="body" weight="semibold" color={palette.hanji}>
+        <Text role="buttonMd" color={palette.onPrimary}>
           Try again
         </Text>
       </Pressable>
@@ -86,11 +94,12 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 }
 
 export default function RootLayout() {
+  // One family for the entire scale, the way Airbnb runs Cereal VF across
+  // display, body, nav, and captions. Pretendard stands in for Cereal: same
+  // geometric-humanist proportions, and unlike Inter it carries Hangul. The
+  // Noto Serif display faces are gone with the serif hierarchy they served.
   const [fontsLoaded] = useFonts({
-    Pretendard: require('../assets/fonts/PretendardVariable.ttf'),
-    NotoSerifKR_500Medium,
-    NotoSerifKR_700Bold,
-    NotoSerifKR_900Black,
+    Pretendard: require('../assets/fonts/PretendardKJourney.ttf'),
   });
 
   useEffect(() => {
@@ -104,18 +113,25 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.hanji }}>
-      <SafeAreaProvider>
-        <PostHogProvider client={posthog} autocapture={false}>
-          <AuthGate />
-        </PostHogProvider>
-      </SafeAreaProvider>
+    <GestureHandlerRootView style={shellStyles.canvas}>
+      <View style={shellStyles.appViewport}>
+        <SafeAreaProvider>
+          {/* No key configured → no client, and therefore no provider: mounting
+              one would put the SDK back on the network. */}
+          {posthog ? (
+            <PostHogProvider client={posthog} autocapture={false}>
+              <RouteGate />
+            </PostHogProvider>
+          ) : (
+            <RouteGate />
+          )}
+        </SafeAreaProvider>
+      </View>
     </GestureHandlerRootView>
   );
 }
 
-function AuthGate() {
-  const { initializing, user } = useAuth();
+function RouteGate() {
   const { profile } = useProfile();
   const segments = useSegments();
   const router = useRouter();
@@ -124,12 +140,12 @@ function AuthGate() {
 
   // Aha-moment tour: surface exactly once after onboarding completes (PRD §4.6).
   React.useEffect(() => {
-    if (!user || !profile?.onboardingCompletedAt) return;
+    if (!profile?.onboardingCompletedAt) return;
     if (hasShownAhaMoment()) return;
     const segs = segments as string[];
     if (segs[0] !== '(tabs)') return;
     setShowTour(true);
-  }, [user, profile?.onboardingCompletedAt, segments]);
+  }, [profile?.onboardingCompletedAt, segments]);
 
   // Surface a one-time clock-jump banner if boot detected device-clock skew
   // (ADR-0022, ADR-0028 T4). Deferred to an effect so the ToastHost is mounted.
@@ -143,24 +159,21 @@ function AuthGate() {
   // Permission watcher: re-check push permission on every foreground transition
   // (and at cold start), reschedule if the user newly granted via Settings (§7.5).
   usePushPermissionWatcher({
-    arrivalDate: profile?.arrivalDate ?? null,
-    departureDate: profile?.departureDate ?? null,
+    arrivalDate: knownProfileDate(profile?.arrivalDate),
+    departureDate: knownProfileDate(profile?.departureDate),
   });
 
-  // Offline / reconnect toasts (ADR-0031) — screen-independent.
-  useNetworkToasts();
-
   useEffect(() => {
-    if (initializing) return;
-
     const segs = segments as string[];
     const inOnboarding = segs[0] === '(onboarding)';
     const subRoute = segs[1];
 
     // Cold-start splash gate: Expo Router restores nav state across app launches,
     // which makes returning users skip the splash entirely. Force one trip through
-    // splash on the first post-auth render of every session.
-    if (!coldStartHandledRef.current) {
+    // splash on the first local-profile render of every session.
+    // Keep native's branded cold-start splash, but never destroy a browser deep
+    // link on refresh. Web already has the static document loading surface.
+    if (Platform.OS !== 'web' && !coldStartHandledRef.current) {
       coldStartHandledRef.current = true;
       if (subRoute !== 'splash') {
         router.replace('/(onboarding)/splash');
@@ -173,16 +186,9 @@ function AuthGate() {
 
     const onboardingComplete = !!profile?.onboardingCompletedAt;
 
-    if (!user) {
-      if (subRoute !== 'sign-in') {
-        router.replace('/(onboarding)/splash');
-      }
-      return;
-    }
-
     if (!onboardingComplete) {
-      if (!inOnboarding || subRoute === 'sign-in') {
-        router.replace('/(onboarding)/profile');
+      if (!inOnboarding || subRoute === 'sign-in' || subRoute === 'profile') {
+        router.replace(onboardingRoutePath(getOnboardingProgress()?.currentRoute ?? 'university'));
       }
       return;
     }
@@ -192,7 +198,7 @@ function AuthGate() {
     if (inOnboarding && subRoute !== 'era') {
       router.replace('/(tabs)');
     }
-  }, [initializing, user, profile, segments, router]);
+  }, [profile, segments, router]);
 
   const era = profile?.era ?? 'joseon';
 
@@ -209,6 +215,7 @@ function AuthGate() {
         onDismiss={() => setShowTour(false)}
       />
       <ToastHost />
+      <AlertHost />
     </ThemeProvider>
   );
 }
@@ -226,7 +233,7 @@ const errorStyles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: palette.dancheong + '14',
+    backgroundColor: palette.surfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -237,7 +244,24 @@ const errorStyles = StyleSheet.create({
     marginTop: space[4],
     paddingHorizontal: space[6],
     paddingVertical: space[3],
-    borderRadius: radius.pill,
-    backgroundColor: palette.meok,
+    borderRadius: radius.sm,
+    backgroundColor: palette.rausch,
+  },
+});
+
+const shellStyles = StyleSheet.create({
+  canvas: {
+    flex: 1,
+    backgroundColor: palette.surfaceSoft,
+  },
+  appViewport: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    backgroundColor: palette.canvas,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: palette.hairline,
   },
 });

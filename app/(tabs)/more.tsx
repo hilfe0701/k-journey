@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, ScrollView, StyleSheet, Pressable, Linking, AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import {
   ShieldAlert,
   Image as ImageIcon,
@@ -12,26 +13,39 @@ import {
   Settings as SettingsIcon,
 } from 'lucide-react-native';
 
-import { Text } from '../../src/components/ui';
+import { IconButton, Text } from '../../src/components/ui';
 import { palette, space, radius } from '../../design-tokens';
 import { useProfile } from '../../src/hooks/useProfile';
 import { universityById } from '../../src/data/universities';
 import { getPermissionState, PermissionState } from '../../src/lib/notifications';
 import { NotificationPriming } from '../../src/components/onboarding/NotificationPriming';
+import { selectUniversityId } from '../../src/lib/profileCompat';
+import { useInactiveScreen } from '../../src/lib/inactiveScreen';
 
 export default function MoreTab() {
+  const isFocused = useIsFocused();
+  const inactiveProps = useInactiveScreen(isFocused);
   const router = useRouter();
   const { profile } = useProfile();
-  const uni = profile?.university ? universityById(profile.university) : null;
+  const universityId = selectUniversityId(profile);
+  const uni = universityId ? universityById(universityId) : null;
   const [notifState, setNotifState] = useState<PermissionState | null>(null);
   const [primingVisible, setPrimingVisible] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    getPermissionState().then((s) => mounted && setNotifState(s));
+    // The web build ships a no-op notifications shim (`.work/web-gap.md` row 1),
+    // so this read can reject. Unhandled, that rejection left the screen dead —
+    // an unavailable permission API must not cost the user the whole tab.
+    const read = () => {
+      getPermissionState()
+        .then((s) => mounted && setNotifState(s))
+        .catch(() => mounted && setNotifState(null));
+    };
+    read();
     const sub = AppState.addEventListener('change', (state) => {
       // Re-check when user returns from Settings.
-      if (state === 'active') getPermissionState().then((s) => mounted && setNotifState(s));
+      if (state === 'active') read();
     });
     return () => {
       mounted = false;
@@ -46,12 +60,16 @@ export default function MoreTab() {
       return;
     }
     // Granted or denied: deep-link to system Settings so the user can toggle.
-    Linking.openSettings();
+    Linking.openSettings().catch(() => {});
   }
 
   async function handlePrimingClose(_granted: boolean) {
     setPrimingVisible(false);
-    setNotifState(await getPermissionState());
+    try {
+      setNotifState(await getPermissionState());
+    } catch {
+      setNotifState(null);
+    }
   }
 
   const notifSublabel =
@@ -62,7 +80,7 @@ export default function MoreTab() {
         : 'Tap to enable phase + D-Day reminders';
 
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
+    <SafeAreaView style={styles.root} edges={['top']} {...inactiveProps}>
       <ScrollView contentContainerStyle={{ paddingBottom: space[16] }}>
         <View style={styles.header}>
           <View style={styles.headerRow}>
@@ -70,19 +88,16 @@ export default function MoreTab() {
               <Text role="h1">{profile?.displayName ?? 'Traveler'}</Text>
               {uni ? (
                 <Text role="body" color={palette.ash}>
-                  {uni.shortName} · {profile?.housing === 'dormitory' ? 'Dormitory' : 'Off-campus'}
+                  {uni.shortName} · {profile?.housingType === 'dormitory' ? 'Dormitory' : 'Off-campus'}
                 </Text>
               ) : null}
             </View>
-            <Pressable
-              onPress={() => router.push('/settings' as never)}
-              hitSlop={8}
-              accessibilityRole="button"
+            <IconButton
+              icon={SettingsIcon}
               accessibilityLabel="Open settings"
-              style={({ pressed }) => [styles.gearBtn, { opacity: pressed ? 0.85 : 1 }]}
-            >
-              <SettingsIcon size={22} color={palette.meok} strokeWidth={1.5} />
-            </Pressable>
+              surface
+              onPress={() => router.push('/settings' as never)}
+            />
           </View>
         </View>
 
@@ -92,7 +107,7 @@ export default function MoreTab() {
             label="Campus guide"
             sublabel={
               uni
-                ? `${uni.shortName} · ${profile?.housing === 'dormitory' ? 'Dorm rules + nearby' : 'Off-campus areas + nearby'}`
+                ? `${uni.shortName} · ${profile?.housingType === 'dormitory' ? 'Dorm rules + nearby' : 'Off-campus areas + nearby'}`
                 : 'University-specific info'
             }
             onPress={() => router.push('/campus')}
@@ -100,7 +115,7 @@ export default function MoreTab() {
           <MenuItem
             icon={
               notifState === 'granted' ? (
-                <Bell size={22} color={palette.dancheong} strokeWidth={1.5} />
+                <Bell size={22} color={palette.ink} strokeWidth={1.5} />
               ) : (
                 <BellOff size={22} color={palette.ash} strokeWidth={1.5} />
               )
@@ -110,7 +125,7 @@ export default function MoreTab() {
             onPress={handleNotificationsPress}
           />
           <MenuItem
-            icon={<ShieldAlert size={22} color={palette.dancheong} strokeWidth={1.5} />}
+            icon={<ShieldAlert size={22} color={palette.ink} strokeWidth={1.5} />}
             label="Emergency guide"
             sublabel="Phones, hospitals, embassies"
             onPress={() => router.push('/emergency')}

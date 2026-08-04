@@ -1,33 +1,87 @@
 /**
- * Firebase services initialization (modular API — RNFB v22-ready).
+ * Local journey data access.
  *
- * Native modules from @react-native-firebase/* auto-initialize on app start
- * because plugins are registered in app.json. This file is the typed wrapper
- * for Firestore reads/writes that the rest of the app uses.
- *
- * NOTE: Requires GoogleService-Info.plist (iOS) and google-services.json (Android)
- * at project root. Generate them in Firebase Console → Project Settings.
+ * The filename is retained for import compatibility with the first slice, but
+ * this module deliberately has no Firebase Auth, Firestore, or Storage path.
+ * Firebase remains available to the app's platform services (for example
+ * Crashlytics); journey state is stored on this device through MMKV.
  */
 
-import type { FirebaseAuthTypes } from '@react-native-firebase/auth';
-import {
-  getFirestore,
-  doc,
-  collection,
-  setDoc,
-  getDoc,
-  getDocs,
-  deleteDoc,
-  writeBatch,
-  runTransaction,
-  serverTimestamp,
-  type FirebaseFirestoreTypes,
-} from '@react-native-firebase/firestore';
-
-import { storage as mmkv, KEYS, getJson, setJson } from './storage';
 import { BucketTemplateKey } from '../data/bucketTemplates';
+import { kstNow } from './dates';
+import { clearOnboardingProgress, getJson, KEYS, setJson, storage } from './storage';
 
-const db = () => getFirestore();
+export const LOCAL_PROFILE_ID = 'local-profile';
+
+/** Explicitly unknown is a condition value, not an omitted/null field. */
+export const UNKNOWN = 'unknown' as const;
+export type UnknownValue = typeof UNKNOWN;
+
+export type ProgramType = 'exchange' | 'visiting' | UnknownValue;
+export type VisaTypeOrStatus =
+  | 'D-2-6'
+  | 'D-2-8'
+  | 'visa_free'
+  | 'other'
+  | UnknownValue;
+export type HousingType =
+  | 'dormitory'
+  | 'own_lease'
+  | 'third_party_lease'
+  | 'registered_business'
+  | UnknownValue;
+export type ContractHolder = 'self' | 'third_party' | 'none' | 'undecided' | 'n_a' | UnknownValue;
+export type HomeCountryInsurance = 'yes' | 'no' | UnknownValue;
+export type ResidenceCardStatus =
+  | 'not_started'
+  | 'booked'
+  | 'submitted'
+  | 'issued'
+  | 'rejected'
+  | 'n_a'
+  | UnknownValue;
+
+export type ConditionAxis =
+  | 'universityId'
+  | 'programType'
+  | 'visaTypeOrStatus'
+  | 'housingType'
+  | 'contractHolder'
+  | 'totalStayDays'
+  | 'nationality'
+  | 'homeCountryInsurance'
+  | 'residenceCardStatus'
+  | 'arrivalDate'
+  | 'departureDate'
+  | 'programStartDate';
+
+export interface UserProfile {
+  uid: string;
+  email: null;
+  displayName: string | null;
+  photoUrl: null;
+  university: string | null;
+  stayType: 'exchange-1' | 'exchange-2' | 'language' | 'working-holiday' | null;
+  housing: 'dormitory' | 'off-campus' | null;
+  /** Condition axes. `UNKNOWN` is intentionally persisted as a value. */
+  universityId: string | UnknownValue;
+  programType: ProgramType;
+  visaTypeOrStatus: VisaTypeOrStatus;
+  housingType: HousingType;
+  contractHolder: ContractHolder;
+  totalStayDays: number | UnknownValue;
+  nationality: string | UnknownValue;
+  homeCountryInsurance: HomeCountryInsurance;
+  residenceCardStatus: ResidenceCardStatus;
+  arrivalDate: (string | UnknownValue) | null;
+  departureDate: (string | UnknownValue) | null;
+  programStartDate: string | UnknownValue;
+  era: 'joseon' | 'silla' | 'goryeo' | null;
+  onboardingCompletedAt: string | null;
+  createdAt: string | null;
+}
+
+export type ConditionProfile = Pick<UserProfile, ConditionAxis>;
 
 export interface DevMockCompletedDoc {
   missionId: string;
@@ -49,147 +103,134 @@ export interface Bucket {
   createdAtIso: string;
 }
 
-function isDevMock(): boolean {
-  return __DEV__ && (mmkv.getBoolean(KEYS.devMockAuth) ?? false);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// User profile shape stored in Firestore at users/{uid}
-// ─────────────────────────────────────────────────────────────────────────────
-export interface UserProfile {
-  uid: string;
-  email: string | null;
-  displayName: string | null;
-  photoUrl: string | null;
-  university: string | null;
-  stayType: 'exchange-1' | 'exchange-2' | 'language' | 'working-holiday' | null;
-  housing: 'dormitory' | 'off-campus' | null;
-  arrivalDate: string | null;       // ISO date YYYY-MM-DD
-  departureDate: string | null;
-  era: 'joseon' | 'silla' | 'goryeo' | null;
-  onboardingCompletedAt: string | null;
-  createdAt: FirebaseFirestoreTypes.Timestamp | null;
-}
-
-export const userDoc = (uid: string) => doc(db(), 'users', uid);
-
-export const completedMissionsCollection = (uid: string) =>
-  collection(userDoc(uid), 'completedMissions');
-
-export const bucketsCollection = (uid: string) =>
-  collection(userDoc(uid), 'buckets');
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-export async function ensureUserDocument(user: FirebaseAuthTypes.User): Promise<void> {
-  const ref = userDoc(user.uid);
-  const snap = await getDoc(ref);
-  if (!snap.exists) {
-    await setDoc(ref, {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoUrl: user.photoURL,
-      university: null,
-      stayType: null,
-      housing: null,
-      arrivalDate: null,
-      departureDate: null,
-      era: null,
-      onboardingCompletedAt: null,
-      createdAt: serverTimestamp(),
-    });
-  }
-}
-
-export async function updateUserProfile(uid: string, patch: Partial<UserProfile>): Promise<void> {
-  if (isDevMock()) {
-    const current = getJson<UserProfile>(KEYS.profileCache);
-    const merged: UserProfile = current
-      ? { ...current, ...patch }
-      : ({ uid, ...patch } as UserProfile);
-    setJson(KEYS.profileCache, merged);
-    return;
-  }
-  await setDoc(userDoc(uid), patch, { merge: true });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Account deletion — client-side, immediate (replaces the ADR-0033 soft-delete;
-// the reaper / export Cloud Functions were never built, so the old "request"
-// flow only wrote a marker nothing acted on). Auth-account deletion + re-auth
-// live in ./accountDeletion.ts; this wipes only the Firestore footprint.
-// Dev-mock branches to MMKV — a missing branch leaves the Firestore offline
-// queue spinning forever with no error (feedback_devmock_mutator_required).
-// ─────────────────────────────────────────────────────────────────────────────
+export type DepartureOrderChoice = 'deposit-first' | 'account-first';
 
 /**
- * Permanently deletes the user's Firestore data: every completed-mission doc,
- * every bucket doc (items are array fields on the bucket — no subcollection to
- * sweep), then the user profile doc. Allowed by firestore.rules because the
- * caller owns the docs and the profile is not in a deletion-pending state.
+ * Task-local answers. These are inputs to a single task's rule, not condition
+ * axes: they do not re-run the whole journey and are not part of the ten-axis
+ * set the rule engine sweeps. See `DEC-040`.
  */
-export async function deleteAccountData(uid: string): Promise<void> {
-  if (isDevMock()) {
-    setJson(KEYS.devMockMissions, []);
-    setJson(KEYS.devMockBuckets, []);
-    mmkv.delete(KEYS.profileCache);
-    return;
-  }
-  const [missions, buckets] = await Promise.all([
-    getDocs(completedMissionsCollection(uid)),
-    getDocs(bucketsCollection(uid)),
-  ]);
-  const batch = writeBatch(db());
-  missions.forEach((d) => batch.delete(d.ref));
-  buckets.forEach((d) => batch.delete(d.ref));
-  batch.delete(userDoc(uid));
-  await batch.commit();
+export interface LocalTaskProgress {
+  completedTaskIds: string[];
+  inProgressTaskIds: string[];
+  completedAtByTaskId: Record<string, string>;
+  housingProviderAddressMatchesProof: boolean | null;
+  departureOrderChoice: DepartureOrderChoice | null;
+  /** REQ-SFR-002 AC2 · AC5: leaving for good, or coming back. */
+  departureType: 'permanent' | 'temporary' | UnknownValue | null;
+  /** REQ-SFR-002 AC5: one of the three Article 37(1) re-entry exceptions. */
+  reentryException: 'yes' | 'no' | UnknownValue | null;
+  /** REQ-SFR-007 AC3: may stay null even after the task is marked complete. */
+  appointmentDate: string | null;
 }
 
-export async function markMissionComplete(
-  uid: string,
-  missionId: string,
-): Promise<void> {
-  if (isDevMock()) {
-    const list = getJson<DevMockCompletedDoc[]>(KEYS.devMockMissions) ?? [];
-    if (!list.find((d) => d.missionId === missionId)) {
-      list.unshift({ missionId, completedAtIso: new Date().toISOString() });
-      setJson(KEYS.devMockMissions, list);
-    }
-    return;
-  }
-  await setDoc(doc(completedMissionsCollection(uid), missionId), {
-    missionId,
-    completedAt: serverTimestamp(),
-  });
+export const EMPTY_PROFILE: UserProfile = {
+  uid: LOCAL_PROFILE_ID,
+  email: null,
+  displayName: null,
+  photoUrl: null,
+  university: null,
+  stayType: null,
+  housing: null,
+  universityId: UNKNOWN,
+  programType: UNKNOWN,
+  visaTypeOrStatus: UNKNOWN,
+  housingType: UNKNOWN,
+  contractHolder: UNKNOWN,
+  totalStayDays: UNKNOWN,
+  nationality: UNKNOWN,
+  homeCountryInsurance: UNKNOWN,
+  residenceCardStatus: UNKNOWN,
+  arrivalDate: null,
+  departureDate: null,
+  // I02 migration/default policy is intentionally deferred: the existing date
+  // fields remain null until the later onboarding slice owns date collection.
+  programStartDate: UNKNOWN,
+  era: null,
+  onboardingCompletedAt: null,
+  createdAt: null,
+};
+
+export const EMPTY_TASK_PROGRESS: LocalTaskProgress = {
+  completedTaskIds: [],
+  inProgressTaskIds: [],
+  completedAtByTaskId: {},
+  housingProviderAddressMatchesProof: null,
+  departureOrderChoice: null,
+  departureType: null,
+  reentryException: null,
+  appointmentDate: null,
+};
+
+export function getTaskProgress(): LocalTaskProgress {
+  const stored = getJson<Partial<LocalTaskProgress>>(KEYS.taskProgressCache);
+  return {
+    ...EMPTY_TASK_PROGRESS,
+    ...stored,
+    completedTaskIds: stored?.completedTaskIds ?? [],
+    inProgressTaskIds: stored?.inProgressTaskIds ?? [],
+    completedAtByTaskId: stored?.completedAtByTaskId ?? {},
+    housingProviderAddressMatchesProof: stored?.housingProviderAddressMatchesProof ?? null,
+    departureOrderChoice: stored?.departureOrderChoice ?? null,
+    departureType: stored?.departureType ?? null,
+    reentryException: stored?.reentryException ?? null,
+    appointmentDate: stored?.appointmentDate ?? null,
+  };
 }
 
-export async function unmarkMission(uid: string, missionId: string): Promise<void> {
-  if (isDevMock()) {
-    const list = getJson<DevMockCompletedDoc[]>(KEYS.devMockMissions) ?? [];
-    const next = list.filter((d) => d.missionId !== missionId);
-    setJson(KEYS.devMockMissions, next);
-    return;
-  }
-  await deleteDoc(doc(completedMissionsCollection(uid), missionId));
+/**
+ * Persists local task state and verifies the write before callers commit any
+ * optimistic UI. MMKV is synchronous, but the explicit verification keeps a
+ * failed local write from leaving a task visibly completed.
+ */
+export function saveTaskProgress(progress: LocalTaskProgress): void {
+  writeJsonVerified(KEYS.taskProgressCache, progress, 'Local task progress');
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Bucket (Want To) CRUD
-// ─────────────────────────────────────────────────────────────────────────────
+function writeJsonVerified<T>(key: string, value: T, label: string): void {
+  setJson(key, value);
+  const persisted = getJson<T>(key);
+  if (persisted === null || JSON.stringify(persisted) !== JSON.stringify(value)) {
+    throw new Error(`${label} was not saved.`);
+  }
+}
+
+export async function updateUserProfile(patch: Partial<UserProfile>): Promise<void> {
+  // REQ-DAR-001 · REQ-DAR-003 · REQ-DAR-005 · POL-003: persist condition axes locally.
+  const current = getJson<UserProfile>(KEYS.profileCache) ?? EMPTY_PROFILE;
+  writeJsonVerified(
+    KEYS.profileCache,
+    { ...current, ...patch, uid: LOCAL_PROFILE_ID },
+    'Local profile',
+  );
+}
+
+export async function markMissionComplete(missionId: string): Promise<void> {
+  const list = getJson<DevMockCompletedDoc[]>(KEYS.completedMissionsCache) ?? [];
+  if (list.some((item) => item.missionId === missionId)) return;
+  list.unshift({ missionId, completedAtIso: kstNow().toISOString() });
+  writeJsonVerified(KEYS.completedMissionsCache, list, 'Mission progress');
+}
+
+export async function unmarkMission(missionId: string): Promise<void> {
+  const list = getJson<DevMockCompletedDoc[]>(KEYS.completedMissionsCache) ?? [];
+  writeJsonVerified(
+    KEYS.completedMissionsCache,
+    list.filter((item) => item.missionId !== missionId),
+    'Mission progress',
+  );
+}
 
 function newId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function readMockBuckets(): Bucket[] {
-  return getJson<Bucket[]>(KEYS.devMockBuckets) ?? [];
+function readBuckets(): Bucket[] {
+  return getJson<Bucket[]>(KEYS.bucketsCache) ?? [];
 }
 
-function writeMockBuckets(list: Bucket[]) {
-  setJson(KEYS.devMockBuckets, list);
+function writeBuckets(list: Bucket[]): void {
+  writeJsonVerified(KEYS.bucketsCache, list, 'Want-to progress');
 }
 
 export interface CreateBucketInput {
@@ -199,136 +240,98 @@ export interface CreateBucketInput {
   initialItems: string[];
 }
 
-export async function createBucket(uid: string, input: CreateBucketInput): Promise<Bucket> {
+export async function createBucket(input: CreateBucketInput): Promise<Bucket> {
   const bucket: Bucket = {
     id: newId('bkt'),
     themeName: input.themeName.trim(),
     templateKey: input.templateKey,
     maxItems: input.maxItems,
     items: input.initialItems
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0)
+      .map((text) => text.trim())
+      .filter((text) => text.length > 0)
       .slice(0, input.maxItems)
       .map((text) => ({ id: newId('itm'), text, completedAtIso: null })),
-    createdAtIso: new Date().toISOString(),
+    createdAtIso: kstNow().toISOString(),
   };
-
-  if (isDevMock()) {
-    const list = readMockBuckets();
-    list.unshift(bucket);
-    writeMockBuckets(list);
-    return bucket;
-  }
-
-  await setDoc(doc(bucketsCollection(uid), bucket.id), {
-    ...bucket,
-    createdAt: serverTimestamp(),
-  });
+  const list = readBuckets();
+  list.unshift(bucket);
+  writeBuckets(list);
   return bucket;
 }
 
-export async function deleteBucket(uid: string, bucketId: string): Promise<void> {
-  if (isDevMock()) {
-    writeMockBuckets(readMockBuckets().filter((b) => b.id !== bucketId));
-    return;
-  }
-  await deleteDoc(doc(bucketsCollection(uid), bucketId));
+export async function deleteBucket(bucketId: string): Promise<void> {
+  writeBuckets(readBuckets().filter((bucket) => bucket.id !== bucketId));
 }
 
-export async function addBucketItem(
-  uid: string,
-  bucketId: string,
-  text: string,
-): Promise<void> {
+export async function addBucketItem(bucketId: string, text: string): Promise<void> {
   const trimmed = text.trim();
   if (!trimmed) return;
-
-  if (isDevMock()) {
-    const list = readMockBuckets();
-    const idx = list.findIndex((b) => b.id === bucketId);
-    if (idx < 0) return;
-    const bucket = list[idx];
-    if (bucket.items.length >= bucket.maxItems) return;
-    bucket.items = [...bucket.items, { id: newId('itm'), text: trimmed, completedAtIso: null }];
-    list[idx] = bucket;
-    writeMockBuckets(list);
-    return;
-  }
-
-  const ref = doc(bucketsCollection(uid), bucketId);
-  await runTransaction(db(), async (tx) => {
-    const snap = await tx.get(ref);
-    const data = snap.data() as Bucket | undefined;
-    if (!data) return;
-    if (data.items.length >= data.maxItems) return;
-    const items = [...data.items, { id: newId('itm'), text: trimmed, completedAtIso: null }];
-    tx.update(ref, { items });
-  });
+  const list = readBuckets();
+  const index = list.findIndex((bucket) => bucket.id === bucketId);
+  if (index < 0) return;
+  const bucket = list[index];
+  if (bucket.items.length >= bucket.maxItems) return;
+  list[index] = {
+    ...bucket,
+    items: [...bucket.items, { id: newId('itm'), text: trimmed, completedAtIso: null }],
+  };
+  writeBuckets(list);
 }
 
 export async function toggleBucketItem(
-  uid: string,
   bucketId: string,
   itemId: string,
 ): Promise<{ wasCompleted: boolean; nextCompletedCount: number } | null> {
-  if (isDevMock()) {
-    const list = readMockBuckets();
-    const idx = list.findIndex((b) => b.id === bucketId);
-    if (idx < 0) return null;
-    const bucket = list[idx];
-    let wasCompleted = false;
-    bucket.items = bucket.items.map((it) => {
-      if (it.id !== itemId) return it;
-      wasCompleted = !!it.completedAtIso;
-      return {
-        ...it,
-        completedAtIso: it.completedAtIso ? null : new Date().toISOString(),
-      };
-    });
-    const nextCompletedCount = bucket.items.filter((it) => it.completedAtIso).length;
-    list[idx] = bucket;
-    writeMockBuckets(list);
-    return { wasCompleted, nextCompletedCount };
-  }
-
-  const ref = doc(bucketsCollection(uid), bucketId);
-  return runTransaction(db(), async (tx) => {
-    const snap = await tx.get(ref);
-    const data = snap.data() as Bucket | undefined;
-    if (!data) return null;
-    let wasCompleted = false;
-    const items = data.items.map((it) => {
-      if (it.id !== itemId) return it;
-      wasCompleted = !!it.completedAtIso;
-      return {
-        ...it,
-        completedAtIso: it.completedAtIso ? null : new Date().toISOString(),
-      };
-    });
-    const nextCompletedCount = items.filter((it) => it.completedAtIso).length;
-    tx.update(ref, { items });
-    return { wasCompleted, nextCompletedCount };
+  const list = readBuckets();
+  const index = list.findIndex((bucket) => bucket.id === bucketId);
+  if (index < 0) return null;
+  const bucket = list[index];
+  let wasCompleted = false;
+  const items = bucket.items.map((item) => {
+    if (item.id !== itemId) return item;
+    wasCompleted = !!item.completedAtIso;
+    return {
+      ...item,
+      completedAtIso: item.completedAtIso ? null : kstNow().toISOString(),
+    };
   });
+  list[index] = { ...bucket, items };
+  writeBuckets(list);
+  return {
+    wasCompleted,
+    nextCompletedCount: items.filter((item) => item.completedAtIso).length,
+  };
 }
 
-export async function deleteBucketItem(
-  uid: string,
-  bucketId: string,
-  itemId: string,
-): Promise<void> {
-  if (isDevMock()) {
-    const list = readMockBuckets();
-    const idx = list.findIndex((b) => b.id === bucketId);
-    if (idx < 0) return;
-    list[idx] = { ...list[idx], items: list[idx].items.filter((it) => it.id !== itemId) };
-    writeMockBuckets(list);
-    return;
-  }
-  const ref = doc(bucketsCollection(uid), bucketId);
-  await runTransaction(db(), async (tx) => {
-    const snap = await tx.get(ref);
-    const data = snap.data() as Bucket | undefined;
-    if (!data) return;
-    tx.update(ref, { items: data.items.filter((it) => it.id !== itemId) });
-  });
+export async function deleteBucketItem(bucketId: string, itemId: string): Promise<void> {
+  const list = readBuckets();
+  const index = list.findIndex((bucket) => bucket.id === bucketId);
+  if (index < 0) return;
+  list[index] = {
+    ...list[index],
+    items: list[index].items.filter((item) => item.id !== itemId),
+  };
+  writeBuckets(list);
+}
+
+/** Clears user-owned local journey state for Settings reset and development onboarding. */
+export function clearLocalJourneyData(): void {
+  [
+    KEYS.profileCache,
+    KEYS.completedMissionsCache,
+    KEYS.taskProgressCache,
+    KEYS.bucketsCache,
+    KEYS.firedPanelUnlocks,
+    KEYS.lastSeenPhase,
+    KEYS.lastFiredDDayMilestones,
+    KEYS.phaseOverride,
+    KEYS.galleryDismissed,
+    KEYS.onboardingProgress,
+    'settings:notifications:dDay30',
+    'settings:notifications:dDay14',
+    'settings:notifications:dDay7',
+    'settings:notifications:phaseTransitions',
+    'settings:notifications:panelUnlocks',
+  ].forEach((key) => storage.delete(key));
+  clearOnboardingProgress();
 }

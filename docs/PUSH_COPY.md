@@ -1,5 +1,8 @@
 # Push Notification Copy Catalog
 
+> **Current-use note:** D-Day, phase, and one-time panel threshold notifications are local and
+> active under `DEC-040`. Any wording about server sync firing panels is historical and invalid.
+
 > Implementation guide for [ADR-0029](adr/0029-push-copy-library-and-priming.md). The single source of every push string K-Journey ever sends. Voice rules: `MICROCOPY.md` §6.3, §7. Trigger policy (when, not what): [ADR-0015](adr/0015-behavior-triggered-push-only.md).
 
 ## What this catalog is for

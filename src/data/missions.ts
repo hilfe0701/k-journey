@@ -1,5 +1,5 @@
 /**
- * K-Journey mission catalog — 50 curated missions across 4 phases × 4 categories.
+ * K-Journey mission catalog — 55 curated missions across 4 phases × 4 categories.
  *
  * Authoring rules:
  *   - English first, Korean proper nouns inside parens: "Try Tteokbokki (떡볶이)"
@@ -27,7 +27,7 @@ export interface Mission {
 }
 
 export const MISSIONS: Mission[] = [
-  // ═══════════════════════ PHASE 1 — Pre-arrival (8 missions) ═══════════════════════
+  // ═══════════════════════ PHASE 1 — Pre-arrival (9 missions) ═══════════════════════
   {
     id: 'p1_pack',
     phase: 1,
@@ -37,7 +37,7 @@ export const MISSIONS: Mission[] = [
     tips: [
       'Korean winters drop below freezing. If arriving in fall or winter, pack a real coat.',
       'Bring a 220V plug adapter — Korea uses Type C/F, not the US Type A/B.',
-      'Travel insurance with hospital coverage is mandatory for most exchange programs.',
+      'Your university may require travel or health coverage before arrival. Confirm the exact policy with its international office.',
     ],
     icon: 'Luggage',
   },
@@ -50,7 +50,7 @@ export const MISSIONS: Mission[] = [
     tips: [
       'Apply at the Korean consulate in your home country, not on arrival.',
       'Bring two paper copies of your Certificate of Admission and bank statement.',
-      'Processing takes 5–14 business days. Don\'t schedule travel against the deadline.',
+      'Processing time depends on the consulate and season. Use the consulate\'s current estimate before booking travel.',
     ],
     icon: 'FileText',
   },
@@ -62,7 +62,7 @@ export const MISSIONS: Mission[] = [
     summary: 'Each university bans different things. Read your dorm guide.',
     tips: [
       'Most Korean dorms prohibit kettles, induction plates, and rice cookers.',
-      'Pets, candles, and incense are universally banned.',
+      'Pets, candles, and incense are commonly restricted; your dorm guide is the final authority.',
       'Some dorms enforce gender-segregated floors with a midnight curfew.',
     ],
     icon: 'Home',
@@ -150,7 +150,7 @@ export const MISSIONS: Mission[] = [
     icon: 'CloudSun',
   },
 
-  // ═══════════════════════ PHASE 2 — First week (12 missions) ═══════════════════════
+  // ═══════════════════════ PHASE 2 — First week (14 missions) ═══════════════════════
   {
     id: 'p2_tmoney',
     phase: 2,
@@ -188,8 +188,8 @@ export const MISSIONS: Mission[] = [
     summary: 'Required if you stay over 90 days. Apply within 90 days of arrival.',
     tips: [
       'Book online at hikorea.go.kr — slots fill up weeks in advance.',
-      'Bring passport, visa, photo, university letter, ₩30,000 fee.',
-      'Card mailed to your address in 3–5 weeks. Without it, no bank account.',
+      'Use HiKorea and your university\'s current checklist for documents and fees; requirements can change.',
+      'Processing and delivery times vary. Ask the immigration office when and how your card will be issued.',
     ],
     mapHint: 'Seoul Immigration Office, Mok-dong (목동)',
     icon: 'IdCard',
@@ -342,7 +342,7 @@ export const MISSIONS: Mission[] = [
     icon: 'Train',
   },
 
-  // ═══════════════════════ PHASE 3 — Living (24 missions) ═══════════════════════
+  // ═══════════════════════ PHASE 3 — Living (25 missions) ═══════════════════════
   // Food
   {
     id: 'p3_market',
@@ -691,7 +691,7 @@ export const MISSIONS: Mission[] = [
     icon: 'ChefHat',
   },
 
-  // ═══════════════════════ PHASE 4 — Pre-departure (6 missions) ═══════════════════════
+  // ═══════════════════════ PHASE 4 — Pre-departure (7 missions) ═══════════════════════
   {
     id: 'p4_customs',
     phase: 4,

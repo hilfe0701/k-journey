@@ -7,11 +7,20 @@ export interface EraTheme {
   nameEn: string;
   nameKo: string;
   tagline: string;
+  /** Chrome accent. Airbnb runs a single voltage, so every era resolves to Rausch. */
   primary: string;
   accent: string;
   secondary: string;
+  /** Page floor. Airbnb's canvas is pure white regardless of era. */
   bgTint: string;
+  /** Artwork ground — belongs to the panel art, not the UI chrome. */
   panelBg: string;
+  /**
+   * Artwork pigments. These are deliberately NOT drawn from the UI palette:
+   * the byeongpung plays the role photography plays on Airbnb, carrying the
+   * visual weight while the surrounding chrome stays white and ink. Flattening
+   * these to the chrome palette would erase the reward.
+   */
   panelColors: readonly [string, string, string, string, string, string, string, string];
 }
 
@@ -21,20 +30,20 @@ export const ERAS: Record<EraKey, EraTheme> = {
     nameEn: 'Joseon',
     nameKo: '조선',
     tagline: 'Folk paintings (민화) and royal court decoration',
-    primary: palette.dancheong,
-    accent: palette.hwanggeum,
-    secondary: palette.cheong,
-    bgTint: palette.hanji,
+    primary: palette.rausch,
+    accent: palette.ink,
+    secondary: palette.muted,
+    bgTint: palette.canvas,
     panelBg: '#F5E8C8',
     panelColors: [
-      palette.dancheong,
-      palette.lotus,
-      palette.hwanggeum,
-      palette.cheong,
-      palette.jade,
-      palette.lotus,
-      palette.meok,
-      palette.hwanggeum,
+      '#C5302A',
+      '#D4758A',
+      '#C4952A',
+      '#1A3A7A',
+      '#3D6B3A',
+      '#D4758A',
+      '#2C2416',
+      '#C4952A',
     ],
   },
   silla: {
@@ -42,20 +51,20 @@ export const ERAS: Record<EraKey, EraTheme> = {
     nameEn: 'Silla',
     nameKo: '신라',
     tagline: 'Four guardian beasts (사신수) and Gyeongju gold',
-    primary: palette.hwanggeum,
-    accent: palette.dancheong,
-    secondary: palette.cheong,
-    bgTint: '#FDF8EE',
+    primary: palette.rausch,
+    accent: palette.ink,
+    secondary: palette.muted,
+    bgTint: palette.canvas,
     panelBg: '#F0E0A0',
     panelColors: [
-      palette.cheong,
+      '#1A3A7A',
       '#3D9BE8',
-      palette.dancheong,
+      '#C5302A',
       '#E8563A',
       '#E8E8E8',
       '#C8C8C8',
-      palette.meok,
-      palette.hwanggeum,
+      '#2C2416',
+      '#C4952A',
     ],
   },
   goryeo: {
@@ -63,20 +72,20 @@ export const ERAS: Record<EraKey, EraTheme> = {
     nameEn: 'Goryeo',
     nameKo: '고려',
     tagline: 'Buddhist paintings (불화) on celadon tones',
-    primary: palette.cheong,
-    accent: palette.jade,
-    secondary: palette.hwanggeum,
-    bgTint: '#F5F8F3',
+    primary: palette.rausch,
+    accent: palette.ink,
+    secondary: palette.muted,
+    bgTint: palette.canvas,
     panelBg: '#D8E8D0',
     panelColors: [
-      palette.jade,
+      '#3D6B3A',
       '#5A9A6A',
-      palette.cheong,
+      '#1A3A7A',
       '#2A5AAA',
-      palette.hwanggeum,
+      '#C4952A',
       '#D4A840',
-      palette.lotus,
-      palette.hwanggeum,
+      '#D4758A',
+      '#C4952A',
     ],
   },
 };

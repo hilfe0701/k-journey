@@ -13,7 +13,9 @@
  * See ADR-0023.
  */
 
-import { storage } from './storage';
+import { KEYS, setJson, storage } from './storage';
+import type { Bucket, DevMockCompletedDoc, UserProfile } from './firebase';
+import { normalizeUserProfile } from './profileCompat';
 
 export interface Migration {
   from: number;
@@ -41,7 +43,61 @@ export const MIGRATIONS: Migration[] = [
   //     storage.set(KEYS.firedPanelUnlocks, JSON.stringify(next));
   //   },
   // },
+  {
+    from: 1,
+    to: 2,
+    description: 'Normalize the unified profile and preserve legacy culture progress',
+    run: () => {
+      const profile = backupAndReset(KEYS.profileCache);
+      if (profile && typeof profile === 'object' && !Array.isArray(profile)) {
+        setJson(KEYS.profileCache, normalizeUserProfile(profile as Partial<UserProfile>));
+      }
+
+      mergeLegacyMissionProgress();
+      mergeLegacyBuckets();
+    },
+  },
 ];
+
+const LEGACY_MISSIONS_KEY = 'dev:missions:v1';
+const LEGACY_BUCKETS_KEY = 'dev:buckets:v1';
+
+function mergeLegacyMissionProgress(): void {
+  const current = asArray<DevMockCompletedDoc>(backupAndReset(KEYS.completedMissionsCache));
+  const legacy = asArray<DevMockCompletedDoc>(backupAndReset(LEGACY_MISSIONS_KEY));
+  if (legacy.length === 0) return;
+
+  const merged = new Map<string, DevMockCompletedDoc>();
+  for (const item of [...current, ...legacy]) {
+    if (!item || typeof item.missionId !== 'string' || !item.missionId) continue;
+    if (merged.has(item.missionId)) continue;
+    merged.set(item.missionId, {
+      missionId: item.missionId,
+      completedAtIso:
+        typeof item.completedAtIso === 'string'
+          ? item.completedAtIso
+          : new Date(0).toISOString(),
+    });
+  }
+  setJson(KEYS.completedMissionsCache, [...merged.values()]);
+}
+
+function mergeLegacyBuckets(): void {
+  const current = asArray<Bucket>(backupAndReset(KEYS.bucketsCache));
+  const legacy = asArray<Bucket>(backupAndReset(LEGACY_BUCKETS_KEY));
+  if (legacy.length === 0) return;
+
+  const merged = new Map<string, Bucket>();
+  for (const bucket of [...current, ...legacy]) {
+    if (!bucket || typeof bucket.id !== 'string' || !bucket.id) continue;
+    if (!merged.has(bucket.id)) merged.set(bucket.id, bucket);
+  }
+  setJson(KEYS.bucketsCache, [...merged.values()]);
+}
+
+function asArray<T>(value: unknown | null): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
 
 export function currentSchemaVersion(): number {
   return storage.getNumber(SCHEMA_VERSION_KEY) ?? 1;

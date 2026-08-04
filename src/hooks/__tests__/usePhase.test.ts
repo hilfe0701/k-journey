@@ -1,9 +1,10 @@
-import { calcPhase, dDay, dDayLabel, setPhaseOverride, getPhaseOverride } from '../usePhase';
+import { calcDatePhase, calcPhase, dDay, dDayLabel, setPhaseOverride, getPhaseOverride } from '../usePhase';
 import { storage } from '../../lib/storage';
 
 // MMKV is mocked in jest.setup.js to an in-memory map.
 
 describe('calcPhase', () => {
+  // REQ-SFR-005 · POL-009 · ONB-07 · HOME-02 · TC-021 · TC-022 · TC-023 · TC-025.
   beforeEach(() => {
     storage.clearAll();
   });
@@ -50,6 +51,7 @@ describe('calcPhase', () => {
     // Pre-arrival dates would normally yield 1
     const today = new Date('2026-03-15');
     expect(calcPhase({ arrivalDate: arrival, departureDate: departure, today })).toBe(4);
+    expect(calcDatePhase({ arrivalDate: arrival, departureDate: departure, today })).toBe(1);
   });
 
   it('override clears with setPhaseOverride(null)', () => {

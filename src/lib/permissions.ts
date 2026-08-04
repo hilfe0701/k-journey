@@ -46,7 +46,7 @@ export function watchPermissionTransitions(input: WatcherInput) {
 
     // Diagnostic — push permission lifecycle (ANALYTICS_SCHEMA §2.7).
     try {
-      posthog.capture('push_permission_state', { state: next });
+      posthog?.capture('push_permission_state', { state: next });
     } catch {
       // intentional swallow: diagnostics must never break the watcher.
     }

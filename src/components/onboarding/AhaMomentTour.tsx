@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Modal, StyleSheet, Pressable, Image, Animated } from 'react-native';
+import { View, Modal, StyleSheet, Pressable, Image, Animated, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '../ui';
@@ -54,7 +54,9 @@ export function AhaMomentTour({
     Animated.timing(reveal, {
       toValue: 1,
       duration: 1200,
-      useNativeDriver: true,
+      // React Native Web has no native animation driver. Keeping this platform-aware
+      // avoids a noisy console warning without changing the native animation path.
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [visible, reduceMotion, reveal]);
 
@@ -84,7 +86,8 @@ export function AhaMomentTour({
               Your K-Journey begins
             </Text>
             <Text role="body" color={palette.meokMid} align="center">
-              Complete missions over four months. Watch your byeongpung (병풍) reveal panel by panel.
+              Complete cultural missions and bucket-list moments to reveal your byeongpung. Your
+              administrative checklist stays alongside them, sorted by what applies to you.
             </Text>
           </View>
         </View>
@@ -92,11 +95,11 @@ export function AhaMomentTour({
           <Pressable
             onPress={handleDismiss}
             accessibilityRole="button"
-            accessibilityLabel="See my missions"
+            accessibilityLabel="See my journey"
             style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.85 : 1 }]}
           >
             <Text role="body" weight="semibold" color={palette.hanji}>
-              See my missions
+              See my journey
             </Text>
           </Pressable>
         </View>
@@ -137,9 +140,9 @@ const styles = StyleSheet.create({
     paddingTop: space[3],
   },
   cta: {
-    minHeight: 52,
-    borderRadius: radius.pill,
-    backgroundColor: palette.dancheong,
+    minHeight: 48,
+    borderRadius: radius.sm,
+    backgroundColor: palette.rausch,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space[5],

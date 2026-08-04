@@ -35,32 +35,6 @@ const firebaseFiles: Record<AppEnv, { ios: string; android: string }> = {
   },
 };
 
-// Google Sign-In OAuth config per env (2026-05-22). webClientId = the type-3
-// (web) OAuth client from each project's google-services.json; iosUrlScheme =
-// the REVERSED_CLIENT_ID from GoogleService-Info.plist. dev values are the
-// existing k-journey project's (public OAuth IDs, safe to commit). Fill
-// prod/staging when those Firebase projects exist. Each env also needs the
-// build's Android SHA-1 registered in Firebase + Google enabled as an Auth
-// provider.
-const googleAuth: Record<AppEnv, { webClientId: string; iosUrlScheme: string }> = {
-  dev: {
-    webClientId: '676898992516-ikh6k9hv74mqoqoin5r8sf9r8qethh8a.apps.googleusercontent.com',
-    iosUrlScheme: 'com.googleusercontent.apps.676898992516-ra6qhea9qu5r29t0vui1ata0f3r4l3ql',
-  },
-  staging: {
-    webClientId: 'TODO_FILL_FROM_STAGING_google-services.json',
-    iosUrlScheme: 'com.googleusercontent.apps.TODO_FILL_FROM_STAGING_plist',
-  },
-  prod: {
-    // From k-journey-prod google-services.json (type-3 web client), filled 2026-05-23.
-    webClientId: '442880340610-gtcocrq95605nm0ma7ksmevlnf146mpp.apps.googleusercontent.com',
-    // Android-only launch (project_launch_android_only_2026_05_23): no prod iOS plist
-    // yet. Unused by `eas build -p android`; fill from the prod plist REVERSED_CLIENT_ID
-    // if/when iOS ships.
-    iosUrlScheme: 'com.googleusercontent.apps.TODO_FILL_FROM_PROD_plist',
-  },
-};
-
 export default ({ config }: ConfigContext): ExpoConfig => ({
   // Everything not branched below (icon, scheme, plugins, infoPlist, permissions,
   // adaptiveIcon, …) is inherited verbatim from app.json — the single source of
@@ -70,25 +44,23 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: config.slug ?? 'k-journey',
   ios: {
     ...config.ios,
-    googleServicesFile: firebaseFiles[APP_ENV].ios,
+    ...(process.env.KJ_WEB_BUILD === '1'
+      ? { googleServicesFile: undefined }
+      : { googleServicesFile: firebaseFiles[APP_ENV].ios }),
   },
   android: {
     ...config.android,
-    googleServicesFile: firebaseFiles[APP_ENV].android,
+    ...(process.env.KJ_WEB_BUILD === '1'
+      ? { googleServicesFile: undefined }
+      : { googleServicesFile: firebaseFiles[APP_ENV].android }),
   },
-  plugins: [
-    ...(config.plugins ?? []),
-    // Google Sign-In native module + iOS OAuth redirect URL scheme. Appended
-    // here rather than in app.json so iosUrlScheme can branch per env.
-    ['@react-native-google-signin/google-signin', { iosUrlScheme: googleAuth[APP_ENV].iosUrlScheme }],
-  ],
+  plugins: config.plugins,
   extra: {
     ...config.extra,
     // Read at runtime via Constants.expoConfig.extra.* — environment drives the
     // future EnvironmentBanner / environment_loaded / staging push prefix
-    // (ADR-0024 Wave 2); googleWebClientId feeds GoogleSignin.configure().
+    // (ADR-0024 Wave 2).
     environment: APP_ENV,
-    googleWebClientId: googleAuth[APP_ENV].webClientId,
     eas: {
       ...config.extra?.eas,
       projectId: process.env.EAS_PROJECT_ID || config.extra?.eas?.projectId,

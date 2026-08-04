@@ -1,24 +1,28 @@
 import React, { useMemo } from 'react';
-import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { ShieldAlert, Compass, Sparkles } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowRight, ShieldAlert, Sparkles } from 'lucide-react-native';
+import { useIsFocused } from '@react-navigation/native';
 
-import { Text, NetworkIndicator, EmptyState } from '../../src/components/ui';
+import { IconButton, NetworkIndicator, Text } from '../../src/components/ui';
 import { ByeongpungStrip } from '../../src/components/byeongpung/ByeongpungStrip';
 import { DDayBanner } from '../../src/components/home/DDayBanner';
-import { PhaseTabs } from '../../src/components/home/PhaseTabs';
 import { JourneyCompletePrompt } from '../../src/components/home/JourneyCompletePrompt';
+import { JourneyModeSwitch } from '../../src/components/home/JourneyModeSwitch';
+import { PhaseTabs } from '../../src/components/home/PhaseTabs';
 import { MissionCard } from '../../src/components/mission/MissionCard';
-
-import { palette, space, categoryColors } from '../../design-tokens';
-import { useProfile } from '../../src/hooks/useProfile';
+import { elevation, palette, radius, space } from '../../design-tokens';
+import { missionsForHousing, type MissionCategory } from '../../src/data/missions';
 import { useCompletedMissions } from '../../src/hooks/useCompletedMissions';
-import { useTotalCompletions } from '../../src/hooks/useTotalCompletions';
 import { useJourneyMilestones } from '../../src/hooks/useJourneyMilestones';
-import { calcPhase, dDay, setPhaseOverride, Phase } from '../../src/hooks/usePhase';
-import { missionsForHousing, MissionCategory } from '../../src/data/missions';
+import { calcDatePhase, calcPhase, dDay, setPhaseOverride, type Phase } from '../../src/hooks/usePhase';
+import { useProfile } from '../../src/hooks/useProfile';
+import { useTotalCompletions } from '../../src/hooks/useTotalCompletions';
+import { useInactiveScreen } from '../../src/lib/inactiveScreen';
+import { knownProfileDate, selectMissionHousing } from '../../src/lib/profileCompat';
 import { track } from '../../src/lib/posthog';
+import ChecklistHome from './checklist';
 
 const PHASE_LABEL: Record<Phase, string> = {
   1: 'Pre-arrival',
@@ -34,31 +38,58 @@ const CATEGORY_LABEL: Record<MissionCategory, string> = {
   culture: 'Culture',
 };
 
-export default function Home() {
+export default function JourneyHome() {
+  const isFocused = useIsFocused();
+  const inactiveProps = useInactiveScreen(isFocused);
+  const router = useRouter();
+  const { view } = useLocalSearchParams<{ view?: string }>();
+  const [mode, setMode] = React.useState<'essentials' | 'culture'>(
+    view === 'culture' ? 'culture' : 'essentials',
+  );
+
+  React.useEffect(() => {
+    if (view === 'culture') setMode('culture');
+  }, [view]);
+
+  function changeMode(next: 'essentials' | 'culture') {
+    if (next === mode) return;
+    track('journey_view_change', { from: mode, to: next });
+    setMode(next);
+    router.setParams({ view: next === 'culture' ? 'culture' : undefined });
+  }
+
+  return (
+    <View style={styles.root} {...inactiveProps}>
+      {mode === 'essentials' ? (
+        <ChecklistHome onShowCulture={() => changeMode('culture')} />
+      ) : (
+        <CultureJourneyHome onShowEssentials={() => changeMode('essentials')} />
+      )}
+    </View>
+  );
+}
+
+function CultureJourneyHome({ onShowEssentials }: { onShowEssentials: () => void }) {
   const router = useRouter();
   const { profile } = useProfile();
   const { set: completedSet } = useCompletedMissions();
   const { missionCount, total: totalCompleted } = useTotalCompletions();
 
-  const arrivalDate = profile?.arrivalDate ?? null;
-  const departureDate = profile?.departureDate ?? null;
-  const computedPhase = calcPhase({ arrivalDate, departureDate });
-  const revealedPanels = useMemo(() => {
-    return Array.from({ length: 8 }).filter(
-      (_, i) => (totalCompleted - i * 6) / 6 >= 1,
-    ).length;
-  }, [totalCompleted]);
+  const arrivalDate = knownProfileDate(profile?.arrivalDate);
+  const departureDate = knownProfileDate(profile?.departureDate);
+  const departureDaysLeft = dDay(departureDate);
+  const computedPhase = calcDatePhase({ arrivalDate, departureDate });
+  const selectedPhase = calcPhase({ arrivalDate, departureDate });
+  const housing = selectMissionHousing(profile);
+  const visibleMissions = useMemo(() => missionsForHousing(housing), [housing]);
+  const revealedPanels = Math.min(8, Math.floor(totalCompleted / 6));
+
   useJourneyMilestones({ computedPhase, departureDate });
-  const [activePhase, setActivePhase] = React.useState<Phase>(computedPhase);
+  const [activePhase, setActivePhase] = React.useState<Phase>(selectedPhase);
 
   React.useEffect(() => {
-    setActivePhase(computedPhase);
-  }, [computedPhase]);
-
-  const days = dDay(departureDate);
-
-  const housing = profile?.housing ?? null;
-  const visibleMissions = useMemo(() => missionsForHousing(housing), [housing]);
+    setActivePhase(selectedPhase);
+  }, [selectedPhase]);
 
   const countsByPhase = useMemo(() => {
     const counts: Record<Phase, { done: number; total: number }> = {
@@ -67,17 +98,23 @@ export default function Home() {
       3: { done: 0, total: 0 },
       4: { done: 0, total: 0 },
     };
-    for (const m of visibleMissions) {
-      counts[m.phase].total += 1;
-      if (completedSet.has(m.id)) counts[m.phase].done += 1;
+    for (const mission of visibleMissions) {
+      counts[mission.phase].total += 1;
+      if (completedSet.has(mission.id)) counts[mission.phase].done += 1;
     }
     return counts;
-  }, [visibleMissions, completedSet]);
+  }, [completedSet, visibleMissions]);
 
   const phaseMissions = useMemo(
-    () => visibleMissions.filter((m) => m.phase === activePhase),
-    [visibleMissions, activePhase],
+    () => visibleMissions.filter((mission) => mission.phase === activePhase),
+    [activePhase, visibleMissions],
   );
+  const focusMission =
+    phaseMissions.find((mission) => !completedSet.has(mission.id)) ?? phaseMissions[0];
+  const nextPanel = Math.min(8, Math.floor(totalCompleted / 6) + 1);
+  const completionsToNextPanel =
+    totalCompleted >= 48 ? 0 : 6 - (totalCompleted % 6);
+
   const groupedByCategory = useMemo(() => {
     const groups: Record<MissionCategory, typeof phaseMissions> = {
       settle: [],
@@ -85,15 +122,15 @@ export default function Home() {
       activity: [],
       culture: [],
     };
-    for (const m of phaseMissions) groups[m.category].push(m);
+    for (const mission of phaseMissions) groups[mission.category].push(mission);
     return groups;
   }, [phaseMissions]);
 
-  function handlePhaseChange(p: Phase) {
-    setActivePhase(p);
-    if (p !== computedPhase) {
-      setPhaseOverride(p);
-      track('phase_manual_override', { from: computedPhase, to: p });
+  function handlePhaseChange(phase: Phase) {
+    setActivePhase(phase);
+    if (phase !== computedPhase) {
+      setPhaseOverride(phase);
+      track('phase_manual_override', { from: computedPhase, to: phase });
     } else {
       setPhaseOverride(null);
     }
@@ -106,26 +143,73 @@ export default function Home() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <View>
-            <Text role="h2">Hi, {profile?.displayName ?? 'traveler'}</Text>
+          <View style={styles.headerCopy}>
+            <Text role="displayXl">Hi, {profile?.displayName ?? 'traveler'}</Text>
+            <Text role="bodySm" color={palette.muted}>Make your life in Korea memorable.</Text>
           </View>
           <View style={styles.headerActions}>
             <NetworkIndicator />
-            <Pressable
-              onPress={() => router.push('/emergency')}
-              hitSlop={8}
-              style={styles.iconBtn}
-              accessibilityRole="button"
+            <IconButton
+              icon={ShieldAlert}
               accessibilityLabel="Emergency guide"
-            >
-              <ShieldAlert size={22} color={palette.meok} strokeWidth={1.5} />
-            </Pressable>
+              surface
+              onPress={() => {
+                track('emergency_open');
+                router.push('/emergency');
+              }}
+            />
           </View>
         </View>
 
         <View style={styles.section}>
-          <JourneyCompletePrompt departureDate={departureDate} />
+          <JourneyModeSwitch
+            active="culture"
+            onChange={(next) => {
+              if (next === 'essentials') onShowEssentials();
+            }}
+          />
         </View>
+
+        {departureDate && departureDaysLeft !== null && departureDaysLeft <= 0 ? (
+          <View style={styles.section}>
+            <JourneyCompletePrompt departureDate={departureDate} />
+          </View>
+        ) : null}
+
+        {focusMission ? (
+          <View style={styles.section}>
+            <Pressable
+              onPress={() => router.push(`/mission/${focusMission.id}`)}
+              accessibilityRole="button"
+              accessibilityLabel={`Start cultural mission: ${focusMission.titleEn}`}
+              style={({ pressed }) => [
+                styles.focusCard,
+                { opacity: pressed ? 0.82 : 1 },
+              ]}
+            >
+              <View style={styles.focusEyebrow}>
+                <View style={styles.focusIcon}>
+                  <Sparkles size={18} color={palette.ink} strokeWidth={1.6} />
+                </View>
+                <Text role="badge" color={palette.muted}>
+                  Start here · Phase {activePhase}
+                </Text>
+              </View>
+              <Text role="displayMd">{focusMission.titleEn}</Text>
+              <Text role="bodySm" color={palette.body} numberOfLines={2}>
+                {focusMission.summary}
+              </Text>
+              <View style={styles.focusFooter}>
+                <Text role="link" weight="medium" color={palette.rausch}>
+                  {completionsToNextPanel === 0
+                    ? 'Your folding screen is complete'
+                    : `${completionsToNextPanel} moment${completionsToNextPanel === 1 ? '' : 's'} to panel ${nextPanel}`}
+                </Text>
+                <ArrowRight size={18} color={palette.rausch} strokeWidth={1.7} />
+              </View>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={styles.section}>
           <Pressable
@@ -139,21 +223,16 @@ export default function Home() {
           >
             <ByeongpungStrip completedCount={totalCompleted} />
           </Pressable>
-          {revealedPanels === 0 ? (
-            <Text
-              role="sm"
-              color={palette.ash}
-              align="center"
-              style={{ marginTop: space[2] }}
-            >
-              Complete missions to reveal your byeongpung (병풍).
-            </Text>
-          ) : null}
+          <Text role="bodySm" color={palette.muted} align="center" style={styles.byeongpungHint}>
+            {revealedPanels === 0
+              ? 'Complete missions or bucket-list items to reveal your byeongpung (병풍).'
+              : `${revealedPanels} of 8 panels revealed · keep exploring`}
+          </Text>
         </View>
 
         <View style={styles.section}>
           <DDayBanner
-            daysLeft={days}
+            daysLeft={departureDaysLeft}
             completedCount={missionCount}
             totalMissions={visibleMissions.length}
             phaseLabel={`Phase ${activePhase} · ${PHASE_LABEL[activePhase]}`}
@@ -162,39 +241,20 @@ export default function Home() {
 
         <PhaseTabs active={activePhase} onChange={handlePhaseChange} countsByPhase={countsByPhase} />
 
-        {totalCompleted === 0 && computedPhase === 1 ? (
-          <EmptyState
-            variant="header"
-            screenName="home_pre_arrival"
-            icon={<Compass size={48} color={categoryColors.settle} strokeWidth={1.5} />}
-            message="Your first mission is below — start anywhere."
-            accessibilityLabel="Your journey starts here. Missions are listed below."
-          />
-        ) : null}
-        {totalCompleted === 0 && computedPhase >= 2 ? (
-          <EmptyState
-            variant="header"
-            screenName="home_post_arrival"
-            icon={<Sparkles size={48} color={palette.hwanggeum} strokeWidth={1.5} />}
-            message="You're here — your first mission is below."
-            accessibilityLabel="You've arrived. Missions are listed below."
-          />
-        ) : null}
-
-        <View style={[styles.section, { gap: space[5] }]}>
-          {(Object.keys(groupedByCategory) as MissionCategory[]).map((cat) => {
-            const list = groupedByCategory[cat];
-            if (list.length === 0) return null;
+        <View style={[styles.section, styles.missionGroups]}>
+          {(Object.keys(groupedByCategory) as MissionCategory[]).map((category) => {
+            const missions = groupedByCategory[category];
+            if (missions.length === 0) return null;
             return (
-              <View key={cat} style={{ gap: space[2] }}>
-                <Text role="h4">{CATEGORY_LABEL[cat]}</Text>
-                <View style={{ gap: space[2] }}>
-                  {list.map((m) => (
+              <View key={category} style={styles.missionGroup}>
+                <Text role="displaySm">{CATEGORY_LABEL[category]}</Text>
+                <View style={styles.missionList}>
+                  {missions.map((mission) => (
                     <MissionCard
-                      key={m.id}
-                      mission={m}
-                      completed={completedSet.has(m.id)}
-                      onPress={() => router.push(`/mission/${m.id}`)}
+                      key={mission.id}
+                      mission={mission}
+                      completed={completedSet.has(mission.id)}
+                      onPress={() => router.push(`/mission/${mission.id}`)}
                     />
                   ))}
                 </View>
@@ -208,29 +268,55 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.hanji },
+  root: { flex: 1, backgroundColor: palette.canvas },
   header: {
-    paddingHorizontal: space[5],
+    paddingHorizontal: space[6],
     paddingVertical: space[4],
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: space[3],
   },
-  headerActions: {
+  headerCopy: { flex: 1, gap: space[1] },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: space[2] },
+  section: { paddingHorizontal: space[6], paddingVertical: space[3] },
+  // The featured card is a white surface with the system's one shadow tier —
+  // it earns attention through elevation and the Rausch link, not a tint.
+  focusCard: {
+    gap: space[2],
+    padding: space[6],
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: palette.hairline,
+    backgroundColor: palette.canvas,
+    ...elevation.float,
+  },
+  focusEyebrow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space[2],
   },
-  iconBtn: {
-    width: 40,
-    height: 40,
+  focusIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 20,
-    backgroundColor: palette.cloud,
+    backgroundColor: palette.surfaceSoft,
   },
-  section: {
-    paddingHorizontal: space[5],
-    paddingVertical: space[3],
+  focusFooter: {
+    minHeight: 36,
+    marginTop: space[1],
+    paddingTop: space[3],
+    borderTopWidth: 1,
+    borderTopColor: palette.hairlineSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space[2],
   },
+  byeongpungHint: { marginTop: space[3] },
+  missionGroups: { gap: space[8] },
+  missionGroup: { gap: space[3] },
+  missionList: { gap: space[3] },
 });

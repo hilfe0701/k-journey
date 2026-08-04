@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { View, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Building2, Home as HomeIcon } from 'lucide-react-native';
 
-import { Text, Button, Input, Card, ProgressBar } from '../../src/components/ui';
+import { Text, Button, Input, Card, ProgressBar, IconButton, MIN_TARGET } from '../../src/components/ui';
 import { palette, space, radius, semantic } from '../../design-tokens';
-import { useAuth } from '../../src/hooks/useAuth';
 import { updateUserProfile } from '../../src/lib/firebase';
 import { UNIVERSITIES } from '../../src/data/universities';
 import { track } from '../../src/lib/posthog';
+import { showOperationError } from '../../src/lib/errorAlert';
 
 const STAY_TYPES = [
   { value: 'exchange-1', label: 'Exchange — 1 semester' },
@@ -25,7 +25,6 @@ const HOUSING_TYPES = [
 
 export default function ProfileSetup() {
   const router = useRouter();
-  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [universityId, setUniversityId] = useState<string | null>(null);
@@ -50,10 +49,9 @@ export default function ProfileSetup() {
       track('onboarding_step_complete', { step: 'profile_' + step });
       return;
     }
-    if (!user) return;
     setSaving(true);
     try {
-      await updateUserProfile(user.uid, {
+      await updateUserProfile({
         displayName: name.trim(),
         university: universityId,
         stayType,
@@ -61,6 +59,8 @@ export default function ProfileSetup() {
       });
       track('onboarding_step_complete', { step: 'profile_done' });
       router.push('/(onboarding)/dates');
+    } catch (err) {
+      showOperationError('save your profile', err, { onPrimary: handleNext });
     } finally {
       setSaving(false);
     }
@@ -70,18 +70,16 @@ export default function ProfileSetup() {
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
         {step > 0 ? (
-          <Pressable
-            onPress={() => setStep((s) => s - 1)}
-            hitSlop={8}
-            accessibilityRole="button"
+          <IconButton
+            icon={ChevronLeft}
+            size={24}
             accessibilityLabel="Back"
-          >
-            <ChevronLeft size={24} color={palette.meok} />
-          </Pressable>
+            onPress={() => setStep((s) => s - 1)}
+          />
         ) : (
-          <View style={{ width: 24 }} />
+          <View style={{ width: MIN_TARGET }} />
         )}
-        <ProgressBar value={(step + 1) / totalSteps} color={palette.dancheong} />
+        <ProgressBar value={(step + 1) / totalSteps} color={palette.ink} />
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.body}>
@@ -117,7 +115,7 @@ export default function ProfileSetup() {
                     key={uni.id}
                     onPress={() => setUniversityId(uni.id)}
                     style={{
-                      borderColor: active ? palette.dancheong : palette.hairline,
+                      borderColor: active ? palette.ink : palette.hairline,
                       borderWidth: active ? 2 : 1,
                     }}
                   >
@@ -148,7 +146,7 @@ export default function ProfileSetup() {
                     key={t.value}
                     onPress={() => setStayType(t.value)}
                     style={{
-                      borderColor: active ? palette.dancheong : palette.hairline,
+                      borderColor: active ? palette.ink : palette.hairline,
                       borderWidth: active ? 2 : 1,
                     }}
                   >
@@ -177,7 +175,7 @@ export default function ProfileSetup() {
                     key={h.value}
                     onPress={() => setHousing(h.value)}
                     style={{
-                      borderColor: active ? palette.dancheong : palette.hairline,
+                      borderColor: active ? palette.ink : palette.hairline,
                       borderWidth: active ? 2 : 1,
                       flexDirection: 'row',
                       alignItems: 'center',

@@ -1,10 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { useMMKVString } from 'react-native-mmkv';
-import { onSnapshot } from '@react-native-firebase/firestore';
-import { getCrashlytics, recordError } from '@react-native-firebase/crashlytics';
-import { userDoc, UserProfile } from '../lib/firebase';
-import { useAuth, DEV_MOCK_USER_UID } from './useAuth';
-import { setJson, getJson, storage, KEYS } from '../lib/storage';
+import { LocalTaskProgress, UserProfile, EMPTY_TASK_PROGRESS } from '../lib/firebase';
+import { getJson, KEYS, storage } from '../lib/storage';
+import { normalizeUserProfile } from '../lib/profileCompat';
 
 export type ProfileLoadError = 'profile_load_failed';
 
@@ -14,91 +12,74 @@ export interface ProfileState {
   error: ProfileLoadError | null;
 }
 
-const DEV_MOCK_PROFILE: UserProfile = {
-  uid: DEV_MOCK_USER_UID,
-  email: 'dev@k-journey.local',
-  displayName: 'Dev Preview',
-  photoUrl: null,
-  university: 'yonsei',
-  stayType: 'exchange-1',
-  housing: 'dormitory',
-  arrivalDate: '2026-04-01',
-  departureDate: '2026-08-01',
-  era: 'joseon',
-  onboardingCompletedAt: '2026-05-05T00:00:00.000Z',
-  createdAt: null,
-};
-
 export function useProfile(): ProfileState {
-  const { user } = useAuth();
-  const isDevMockUser = __DEV__ && user?.uid === DEV_MOCK_USER_UID;
   const [profileCacheJson] = useMMKVString(KEYS.profileCache, storage);
-  const [state, setState] = useState<ProfileState>({
-    loading: true,
-    profile: getJson<UserProfile>(KEYS.profileCache),
+  // Memoize on the raw JSON. Parsing on every render handed callers a new object
+  // each time, so any `useEffect` depending on `profile` re-ran every render — on
+  // the onboarding condition screens that reset the user's choice back to the
+  // stored value, making six of the eight screens impossible to answer.
+  const profile = useMemo(
+    () =>
+      profileCacheJson
+        ? parseProfile(profileCacheJson)
+        : normalizeStoredProfile(getJson<UserProfile>(KEYS.profileCache)),
+    [profileCacheJson],
+  );
+
+  return {
+    loading: false,
+    profile,
     error: null,
-  });
+  };
+}
 
-  useEffect(() => {
-    if (!user) {
-      setState({ loading: false, profile: null, error: null });
-      return;
-    }
+export interface TaskProgressState {
+  loading: boolean;
+  progress: LocalTaskProgress;
+}
 
-    if (isDevMockUser) {
-      // Fresh onboarding mode: leave the cache empty so AuthGate routes to the
-      // onboarding stack. The onboarding screens write to MMKV via the dev-mock
-      // branches in `updateUserProfile`, so progress persists across reloads
-      // and the user reaches the tabs once `onboardingCompletedAt` is set.
-      const freshMode = storage.getBoolean(KEYS.devMockFreshOnboarding) ?? false;
-      if (!freshMode && !getJson<UserProfile>(KEYS.profileCache)) {
-        setJson(KEYS.profileCache, DEV_MOCK_PROFILE);
-      }
-      return;
-    }
+export function useTaskProgress(): TaskProgressState {
+  const [progressJson] = useMMKVString(KEYS.taskProgressCache, storage);
+  // Same reasoning as useProfile above — callers put `progress` in dependency arrays.
+  const progress = useMemo(
+    () =>
+      progressJson
+        ? parseTaskProgress(progressJson)
+        : getJson<LocalTaskProgress>(KEYS.taskProgressCache) ?? EMPTY_TASK_PROGRESS,
+    [progressJson],
+  );
 
-    const unsubscribe = onSnapshot(
-      userDoc(user.uid),
-      (snap) => {
-        if (snap.exists) {
-          const data = snap.data() as UserProfile;
-          setJson(KEYS.profileCache, data);
-          setState({ loading: false, profile: data, error: null });
-        } else {
-          setState({ loading: false, profile: null, error: null });
-        }
-      },
-      (err) => {
-        // Surface to UI rather than silently logging. Cache (if any) stays as
-        // the displayed value; callers should render a "couldn't refresh" toast
-        // or retry affordance keyed off `error !== null`. ADR-0012.
-        recordError(getCrashlytics(), err instanceof Error ? err : new Error(String(err)));
-        setState((prev) => ({ ...prev, loading: false, error: 'profile_load_failed' }));
-      },
-    );
+  return { loading: false, progress };
+}
 
-    return unsubscribe;
-  }, [user, isDevMockUser]);
+function parseProfile(raw: string): UserProfile | null {
+  try {
+    return normalizeUserProfile(JSON.parse(raw) as Partial<UserProfile>);
+  } catch {
+    return null;
+  }
+}
 
-  useEffect(() => {
-    if (!isDevMockUser) return;
-    const freshMode = storage.getBoolean(KEYS.devMockFreshOnboarding) ?? false;
-    if (!profileCacheJson) {
-      // In fresh mode we deliberately keep profile null so AuthGate sends the
-      // user into onboarding. Otherwise fall back to the populated DEV_MOCK_PROFILE.
-      setState({
-        loading: false,
-        profile: freshMode ? null : DEV_MOCK_PROFILE,
-        error: null,
-      });
-      return;
-    }
-    try {
-      setState({ loading: false, profile: JSON.parse(profileCacheJson) as UserProfile, error: null });
-    } catch {
-      setState({ loading: false, profile: freshMode ? null : DEV_MOCK_PROFILE, error: null });
-    }
-  }, [isDevMockUser, profileCacheJson]);
+function normalizeStoredProfile(profile: UserProfile | null): UserProfile | null {
+  return profile ? normalizeUserProfile(profile) : null;
+}
 
-  return state;
+function parseTaskProgress(raw: string): LocalTaskProgress {
+  try {
+    const stored = JSON.parse(raw) as Partial<LocalTaskProgress>;
+    return {
+      ...EMPTY_TASK_PROGRESS,
+      ...stored,
+      completedTaskIds: stored.completedTaskIds ?? [],
+      inProgressTaskIds: stored.inProgressTaskIds ?? [],
+      completedAtByTaskId: stored.completedAtByTaskId ?? {},
+      housingProviderAddressMatchesProof: stored.housingProviderAddressMatchesProof ?? null,
+      departureOrderChoice: stored.departureOrderChoice ?? null,
+      departureType: stored.departureType ?? null,
+      reentryException: stored.reentryException ?? null,
+      appointmentDate: stored.appointmentDate ?? null,
+    };
+  } catch {
+    return EMPTY_TASK_PROGRESS;
+  }
 }

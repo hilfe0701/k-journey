@@ -4,7 +4,6 @@ import {
   ScrollView,
   StyleSheet,
   Pressable,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Image,
@@ -14,11 +13,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Plus, Check, Trash2, MoreVertical, ListPlus } from 'lucide-react-native';
 
-import { Text, Input, Button, ProgressBar, Badge, EmptyState } from '../../src/components/ui';
+import {
+  Text,
+  Input,
+  Button,
+  ProgressBar,
+  Badge,
+  EmptyState,
+  IconButton,
+  MIN_TARGET,
+} from '../../src/components/ui';
 import { palette, space, radius } from '../../design-tokens';
 import { BUCKET_TEMPLATES } from '../../src/data/bucketTemplates';
 import { BUCKET_TEMPLATE_IMAGES } from '../../src/components/byeongpung/motifs';
-import { useAuth } from '../../src/hooks/useAuth';
 import { useBucket } from '../../src/hooks/useBuckets';
 import { useTotalCompletions } from '../../src/hooks/useTotalCompletions';
 import { useTheme } from '../../src/theme/ThemeProvider';
@@ -31,8 +38,10 @@ import {
 import { firePanelUnlock, claimPanelUnlock } from '../../src/lib/notifications';
 import { showOperationError } from '../../src/lib/errorAlert';
 import { track } from '../../src/lib/posthog';
+import { showAlert } from '../../src/lib/alert';
 import { hapticDestructive } from '../../src/lib/haptics';
 import { MissionCompleteOverlay } from '../../src/components/mission/MissionCompleteOverlay';
+import { a11yState } from '../../src/lib/a11y';
 
 interface OverlayState {
   iconName: string;
@@ -45,7 +54,6 @@ interface OverlayState {
 export default function BucketDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
   const { bucket, loading } = useBucket(id);
   const { total: totalCompletions } = useTotalCompletions();
   const theme = useTheme();
@@ -59,14 +67,12 @@ export default function BucketDetail() {
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
         <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            accessibilityRole="button"
+          <IconButton
+            icon={ChevronLeft}
+            size={24}
             accessibilityLabel="Back"
-          >
-            <ChevronLeft size={24} color={palette.meok} />
-          </Pressable>
+            onPress={() => router.back()}
+          />
           <Text role="body" weight="semibold">
             Loading
           </Text>
@@ -80,14 +86,12 @@ export default function BucketDetail() {
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
         <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            accessibilityRole="button"
+          <IconButton
+            icon={ChevronLeft}
+            size={24}
             accessibilityLabel="Back"
-          >
-            <ChevronLeft size={24} color={palette.meok} />
-          </Pressable>
+            onPress={() => router.back()}
+          />
           <Text role="body" weight="semibold">
             Bucket not found
           </Text>
@@ -105,11 +109,11 @@ export default function BucketDetail() {
   const canAdd = bucket.items.length < bucket.maxItems;
 
   async function handleAdd() {
-    if (!user || !bucket || !draft.trim() || !canAdd) return;
+    if (!bucket || !draft.trim() || !canAdd) return;
     const text = draft.trim();
     setDraft('');
     try {
-      await addBucketItem(user.uid, bucket.id, text);
+      await addBucketItem(bucket.id, text);
     } catch (err) {
       setDraft(text);
       showOperationError('add this item', err);
@@ -117,10 +121,10 @@ export default function BucketDetail() {
   }
 
   async function handleToggle(itemId: string) {
-    if (!user || !bucket) return;
+    if (!bucket) return;
     setBusyItem(itemId);
     try {
-      const result = await toggleBucketItem(user.uid, bucket.id, itemId);
+      const result = await toggleBucketItem(bucket.id, itemId);
       if (!result) return;
       if (!result.wasCompleted) {
         // Newly checked — fire analytics + maybe panel unlock
@@ -154,17 +158,17 @@ export default function BucketDetail() {
   }
 
   async function handleDeleteItem(itemId: string) {
-    if (!user || !bucket) return;
+    if (!bucket) return;
     try {
-      await deleteBucketItem(user.uid, bucket.id, itemId);
+      await deleteBucketItem(bucket.id, itemId);
     } catch (err) {
       showOperationError('delete this item', err);
     }
   }
 
   function handleDeleteBucket() {
-    if (!user || !bucket) return;
-    Alert.alert(
+    if (!bucket) return;
+    showAlert(
       'Delete this bucket?',
       'This removes the bucket and all items. The painting progress is lost.',
       [
@@ -175,7 +179,7 @@ export default function BucketDetail() {
           onPress: async () => {
             hapticDestructive();
             try {
-              await deleteBucket(user.uid, bucket.id);
+              await deleteBucket(bucket.id);
               router.back();
             } catch (err) {
               showOperationError('delete this bucket', err);
@@ -189,23 +193,19 @@ export default function BucketDetail() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={8}
-          accessibilityRole="button"
+        <IconButton
+          icon={ChevronLeft}
+          size={24}
           accessibilityLabel="Back"
-        >
-          <ChevronLeft size={24} color={palette.meok} />
-        </Pressable>
+          onPress={() => router.back()}
+        />
         <Badge label={template.nameEn} color={template.primaryColor} bg={template.primaryColor + '1F'} />
-        <Pressable
-          onPress={handleDeleteBucket}
-          hitSlop={8}
-          accessibilityRole="button"
+        <IconButton
+          icon={MoreVertical}
           accessibilityLabel="Delete bucket"
-        >
-          <MoreVertical size={22} color={palette.meok} strokeWidth={1.5} />
-        </Pressable>
+          accessibilityHint="Asks you to confirm before deleting."
+          onPress={handleDeleteBucket}
+        />
       </View>
 
       <KeyboardAvoidingView
@@ -263,15 +263,27 @@ export default function BucketDetail() {
                       <Pressable
                         onPress={() => handleToggle(it.id)}
                         disabled={busyItem === it.id}
-                        style={[
-                          styles.itemCheck,
-                          {
-                            borderColor: done ? template.primaryColor : palette.hairline,
-                            backgroundColor: done ? template.primaryColor : 'transparent',
-                          },
-                        ]}
+                        accessibilityRole="checkbox"
+                        accessibilityLabel={it.text}
+                        {...a11yState({ checked: done, disabled: busyItem === it.id })}
+                        style={styles.itemCheckTarget}
                       >
-                        {done ? <Check size={16} color={palette.hanji} strokeWidth={2.4} /> : null}
+                        {/* The 24pt circle is the visual; the 44pt parent is the target. */}
+                        <View
+                          style={[
+                            styles.itemCheck,
+                            {
+                              // Completion is the save-state moment, so it burns
+                              // Rausch here exactly as MissionCard does.
+                              borderColor: done ? palette.rausch : palette.hairline,
+                              backgroundColor: done ? palette.rausch : 'transparent',
+                            },
+                          ]}
+                        >
+                          {done ? (
+                            <Check size={16} color={palette.onPrimary} strokeWidth={2.4} />
+                          ) : null}
+                        </View>
                       </Pressable>
                       <Text
                         role="body"
@@ -283,9 +295,13 @@ export default function BucketDetail() {
                       >
                         {it.text}
                       </Text>
-                      <Pressable onPress={() => handleDeleteItem(it.id)} hitSlop={8}>
-                        <Trash2 size={16} color={palette.ash} strokeWidth={1.6} />
-                      </Pressable>
+                      <IconButton
+                        icon={Trash2}
+                        size={16}
+                        color={palette.ash}
+                        accessibilityLabel={`Delete wish: ${it.text}`}
+                        onPress={() => handleDeleteItem(it.id)}
+                      />
                     </View>
                   );
                 })}
@@ -374,6 +390,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.hairline,
     backgroundColor: palette.hanji,
+  },
+  itemCheckTarget: {
+    width: MIN_TARGET,
+    height: MIN_TARGET,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   itemCheck: {
     width: 24,

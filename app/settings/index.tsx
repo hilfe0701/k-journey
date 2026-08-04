@@ -21,16 +21,22 @@ import { Calendar } from 'react-native-calendars';
 import { format } from 'date-fns';
 import Constants from 'expo-constants';
 
-import { Text, Button } from '../../src/components/ui';
+import { Text, Button, IconButton, MIN_TARGET } from '../../src/components/ui';
 import { palette, space, radius, semantic, elevation } from '../../design-tokens';
-import { useAuth } from '../../src/hooks/useAuth';
 import { useProfile } from '../../src/hooks/useProfile';
-import { updateUserProfile, type UserProfile } from '../../src/lib/firebase';
-import { deleteAccount } from '../../src/lib/accountDeletion';
+import {
+  UNKNOWN,
+  updateUserProfile,
+  type ContractHolder,
+  type HousingType,
+  type ResidenceCardStatus,
+  type UserProfile,
+} from '../../src/lib/firebase';
+import { clearLocalJourneyData } from '../../src/lib/firebase';
 import { UNIVERSITIES } from '../../src/data/universities';
 import { ERA_LIST } from '../../src/theme/eras';
 import { BYEONGPUNG_PANEL_IMAGES } from '../../src/components/byeongpung/motifs';
-import { calcPhase } from '../../src/hooks/usePhase';
+import { calcDatePhase } from '../../src/hooks/usePhase';
 import {
   getPermissionState,
   rescheduleAllNotifications,
@@ -41,33 +47,37 @@ import { showOperationError, surfaceError } from '../../src/lib/errorAlert';
 import { validateDates, validateName } from '../../src/lib/validation';
 import { emitError } from '../../src/lib/errors/host';
 import { ERROR_CATALOG } from '../../src/lib/errors/catalog';
-import { storage, KEYS } from '../../src/lib/storage';
 import { track } from '../../src/lib/posthog';
-import { hapticDestructive } from '../../src/lib/haptics';
+import { showAlert } from '../../src/lib/alert';
 import { resetAhaMoment } from '../../src/components/onboarding/AhaMomentTour';
+import {
+  housingProfilePatch,
+  knownProfileDate,
+  selectUniversityId,
+  universityProfilePatch,
+} from '../../src/lib/profileCompat';
+import { a11yState } from '../../src/lib/a11y';
 
 type Section =
   | { key: 'notifications'; title: string; data: 'notifications'[] }
   | { key: 'era'; title: string; data: 'era'[] }
   | { key: 'profile'; title: string; data: 'profile'[] }
-  | { key: 'account'; title: string; data: 'account'[] }
+  | { key: 'data'; title: string; data: 'data'[] }
   | { key: 'about'; title: string; data: 'about'[] };
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { signOut, user } = useAuth();
   const { profile } = useProfile();
   const [permission, setPermission] = useState<PermissionState | null>(null);
   const [openSheet, setOpenSheet] = useState<
     | 'name'
     | 'university'
     | 'housing'
+    | 'contractHolder'
+    | 'residenceCard'
     | 'arrival'
     | 'departure'
     | 'era'
-    | 'signOut'
-    | 'deleteFirst'
-    | 'deleteFinal'
     | null
   >(null);
 
@@ -88,7 +98,7 @@ export default function SettingsScreen() {
       { key: 'notifications', title: 'Notifications', data: ['notifications'] },
       { key: 'era', title: 'Era theme', data: ['era'] },
       { key: 'profile', title: 'Your profile', data: ['profile'] },
-      { key: 'account', title: 'Account', data: ['account'] },
+      { key: 'data', title: 'Your data', data: ['data'] },
       { key: 'about', title: 'About', data: ['about'] },
     ],
     [],
@@ -101,16 +111,14 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={8}
-          accessibilityRole="button"
+        <IconButton
+          icon={ChevronLeft}
+          size={24}
           accessibilityLabel="Back"
-        >
-          <ChevronLeft size={24} color={palette.meok} />
-        </Pressable>
+          onPress={() => router.back()}
+        />
         <Text role="h3">Settings</Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: MIN_TARGET }} />
       </View>
 
       <SectionList<string, Section>
@@ -164,7 +172,7 @@ export default function SettingsScreen() {
                   />
                   <SettingsRow
                     label="University"
-                    valueText={uniLabel(profile?.university)}
+                    valueText={uniLabel(selectUniversityId(profile))}
                     onPress={() => {
                       trackOpen('profile');
                       setOpenSheet('university');
@@ -172,10 +180,30 @@ export default function SettingsScreen() {
                   />
                   <SettingsRow
                     label="Housing"
-                    valueText={housingLabel(profile?.housing)}
+                    valueText={housingLabel(
+                      profile?.housingType && profile.housingType !== UNKNOWN
+                        ? profile.housingType
+                        : profile?.housing,
+                    )}
                     onPress={() => {
                       trackOpen('profile');
                       setOpenSheet('housing');
+                    }}
+                  />
+                  <SettingsRow
+                    label="Contract holder"
+                    valueText={contractHolderLabel(profile?.contractHolder)}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('contractHolder');
+                    }}
+                  />
+                  <SettingsRow
+                    label="Residence card"
+                    valueText={residenceCardLabel(profile?.residenceCardStatus)}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('residenceCard');
                     }}
                   />
                   <SettingsRow
@@ -197,36 +225,47 @@ export default function SettingsScreen() {
                   />
                 </View>
               );
-            case 'account':
+            case 'data':
+              // SET-05 · REQ-SFR-012: no account exists, so the export is the
+              // only way a user carries anything off this device.
               return (
                 <View style={styles.card}>
                   <SettingsRow
-                    label={user?.email ?? 'Signed in'}
-                    valueText=""
-                    readOnly
-                  />
-                  <SettingsRow
-                    label="Sign out"
-                    destructive
+                    label="Export your data"
+                    valueText="Journey data as readable text"
                     onPress={() => {
-                      trackOpen('account');
-                      setOpenSheet('signOut');
+                      trackOpen('data');
+                      router.push('/settings/export' as never);
                     }}
                   />
                   <SettingsRow
-                    label="Delete account"
+                    label="Delete all local data"
+                    valueText="Cannot be undone"
                     destructive
-                    onPress={() => {
-                      trackOpen('account');
-                      track('account_delete_initiated', { stage: 'first-confirm' });
-                      setOpenSheet('deleteFirst');
-                    }}
                     isLast
+                    onPress={() => {
+                      showAlert(
+                        'Delete this journey?',
+                        'This permanently removes profile answers, task progress, cultural missions, Want-to lists, and byeongpung progress from this device. Export first if you need a readable copy.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Delete everything',
+                            style: 'destructive',
+                            onPress: () => {
+                              clearLocalJourneyData();
+                              resetAhaMoment();
+                              router.replace('/(onboarding)/university' as never);
+                            },
+                          },
+                        ],
+                      );
+                    }}
                   />
                 </View>
               );
             case 'about':
-              return <AboutSection onMount={() => trackOpen('about')} signOut={signOut} />;
+              return <AboutSection onMount={() => trackOpen('about')} />;
             default:
               return null;
           }
@@ -239,9 +278,8 @@ export default function SettingsScreen() {
         initial={profile?.displayName ?? ''}
         onClose={() => setOpenSheet(null)}
         onSave={async (next) => {
-          if (!user) return;
           try {
-            await updateUserProfile(user.uid, { displayName: next });
+            await updateUserProfile({ displayName: next });
             track('profile_field_change', { field: 'displayName' });
             setOpenSheet(null);
             surfaceError('profile-updated');
@@ -256,12 +294,11 @@ export default function SettingsScreen() {
         visible={openSheet === 'university'}
         title="Pick your university"
         options={UNIVERSITIES.map((u) => ({ value: u.id, label: u.shortName, hint: u.campusArea }))}
-        selected={profile?.university ?? null}
+        selected={selectUniversityId(profile)}
         onClose={() => setOpenSheet(null)}
         onSelect={async (value) => {
-          if (!user) return;
           try {
-            await updateUserProfile(user.uid, { university: value });
+            await updateUserProfile(universityProfilePatch(value));
             track('profile_field_change', { field: 'university' });
             setOpenSheet(null);
             surfaceError('profile-updated');
@@ -277,19 +314,80 @@ export default function SettingsScreen() {
         title="Pick your housing"
         options={[
           { value: 'dormitory', label: 'Dormitory', hint: 'On-campus residence' },
-          { value: 'off-campus', label: 'Off-campus', hint: 'Goshiwon, sublet, or share' },
+          { value: 'own_lease', label: 'Private lease', hint: 'You hold the housing lease' },
+          { value: 'third_party_lease', label: 'Shared housing', hint: 'Someone else holds the lease' },
+          { value: 'registered_business', label: 'Business accommodation', hint: 'A registered stay provider' },
         ]}
-        selected={profile?.housing ?? null}
+        selected={
+          profile?.housingType && profile.housingType !== UNKNOWN
+            ? profile.housingType
+            : profile?.housing ?? null
+        }
         onClose={() => setOpenSheet(null)}
         onSelect={async (value) => {
-          if (!user) return;
           try {
-            await updateUserProfile(user.uid, { housing: value as 'dormitory' | 'off-campus' });
+            const housingType = value as HousingType;
+            await updateUserProfile({
+              ...housingProfilePatch(housingType),
+              ...(housingType !== profile?.housingType ? { contractHolder: UNKNOWN } : {}),
+            });
             track('profile_field_change', { field: 'housing' });
             setOpenSheet(null);
             surfaceError('profile-updated');
           } catch (err) {
             showOperationError('save your housing', err);
+          }
+        }}
+      />
+
+      {/* Contract-holder picker */}
+      <PickerSheet
+        visible={openSheet === 'contractHolder'}
+        title="Who holds the housing contract?"
+        options={[
+          { value: 'self', label: 'I hold it' },
+          { value: 'third_party', label: 'Someone else or a company' },
+          { value: 'none', label: 'There is no contract' },
+          { value: 'undecided', label: 'Not decided yet' },
+          { value: 'n_a', label: 'Not applicable' },
+          { value: UNKNOWN, label: 'Unknown / not sure' },
+        ]}
+        selected={profile?.contractHolder ?? UNKNOWN}
+        onClose={() => setOpenSheet(null)}
+        onSelect={async (value) => {
+          try {
+            await updateUserProfile({ contractHolder: value as ContractHolder });
+            track('profile_field_change', { field: 'contractHolder' });
+            setOpenSheet(null);
+            surfaceError('profile-updated');
+          } catch (err) {
+            showOperationError('save your contract holder', err);
+          }
+        }}
+      />
+
+      <PickerSheet
+        visible={openSheet === 'residenceCard'}
+        title="Residence card status"
+        options={[
+          { value: 'not_started', label: 'Not started' },
+          { value: 'booked', label: 'Appointment booked' },
+          { value: 'submitted', label: 'Application submitted' },
+          { value: 'issued', label: 'Card issued' },
+          { value: 'rejected', label: 'Rejected or needs action' },
+          { value: 'n_a', label: 'Not applicable' },
+          { value: UNKNOWN, label: 'Unknown / not sure' },
+        ]}
+        selected={profile?.residenceCardStatus ?? UNKNOWN}
+        onClose={() => setOpenSheet(null)}
+        onSelect={async (value) => {
+          try {
+            await updateUserProfile({ residenceCardStatus: value as ResidenceCardStatus });
+            track('profile_field_change', { field: 'residenceCardStatus' });
+            setOpenSheet(null);
+            surfaceError('profile-updated');
+          } catch (err) {
+            showOperationError('save your residence card status', err);
           }
         }}
       />
@@ -300,7 +398,7 @@ export default function SettingsScreen() {
         kind="arrival"
         profile={profile}
         onClose={() => setOpenSheet(null)}
-        onSave={(next) => handleDateSave(user, profile, 'arrival', next, setOpenSheet)}
+        onSave={(next) => handleDateSave(profile, 'arrival', next, setOpenSheet)}
       />
 
       {/* Departure date */}
@@ -309,7 +407,7 @@ export default function SettingsScreen() {
         kind="departure"
         profile={profile}
         onClose={() => setOpenSheet(null)}
-        onSave={(next) => handleDateSave(user, profile, 'departure', next, setOpenSheet)}
+        onSave={(next) => handleDateSave(profile, 'departure', next, setOpenSheet)}
       />
 
       {/* Era picker (uses existing onboarding route) */}
@@ -318,9 +416,8 @@ export default function SettingsScreen() {
         currentEra={profile?.era ?? 'joseon'}
         onClose={() => setOpenSheet(null)}
         onSelect={async (value) => {
-          if (!user) return;
           try {
-            await updateUserProfile(user.uid, { era: value });
+            await updateUserProfile({ era: value });
             track('era_switch', { from: profile?.era ?? null, to: value });
             setOpenSheet(null);
           } catch (err) {
@@ -329,83 +426,20 @@ export default function SettingsScreen() {
         }}
       />
 
-      {/* Sign out confirm */}
-      <ConfirmSheet
-        visible={openSheet === 'signOut'}
-        title="Sign out?"
-        body="Your byeongpung stays. You can sign back in to continue."
-        primary="Sign out"
-        primaryDestructive
-        onClose={() => setOpenSheet(null)}
-        onConfirm={async () => {
-          setOpenSheet(null);
-          try {
-            await signOut();
-          } catch (err) {
-            showOperationError('sign out', err);
-          }
-        }}
-      />
-
-      {/* Delete account — first confirm */}
-      <ConfirmSheet
-        visible={openSheet === 'deleteFirst'}
-        title="Delete your K-Journey account?"
-        body="This permanently removes your byeongpung, missions, and buckets. This can't be undone."
-        primary="Delete account"
-        primaryDestructive
-        onClose={() => setOpenSheet(null)}
-        onConfirm={() => {
-          track('account_delete_initiated', { stage: 'second-confirm' });
-          setOpenSheet('deleteFinal');
-        }}
-      />
-
-      {/* Delete account — final confirm */}
-      <ConfirmSheet
-        visible={openSheet === 'deleteFinal'}
-        title="One last check."
-        body="You'll sign in once more to confirm. Then your byeongpung, missions, and buckets are erased right away."
-        primary="Delete forever"
-        primaryDestructive
-        onClose={() => {
-          track('account_delete_initiated', { stage: 'cancelled' });
-          setOpenSheet(null);
-        }}
-        onConfirm={async () => {
-          if (!user) return;
-          try {
-            const deleted = await deleteAccount(user.uid);
-            if (!deleted) {
-              // User backed out of the re-auth prompt — nothing was deleted.
-              setOpenSheet(null);
-              return;
-            }
-            track('account_delete_initiated', { stage: 'committed' });
-            setOpenSheet(null);
-            // No signOut() here: deleteAccount already tore down the session
-            // (deleteUser → onAuthStateChanged(null) routes to sign-in). Calling
-            // signOut() now would throw auth/no-current-user.
-            surfaceError('account-deleted');
-          } catch (err) {
-            showOperationError('delete your account', err);
-          }
-        }}
-      />
     </SafeAreaView>
   );
 }
 
 async function handleDateSave(
-  user: { uid: string } | null,
   profile: UserProfile | null,
   kind: 'arrival' | 'departure',
   next: string,
   setOpenSheet: (v: null) => void,
 ) {
-  if (!user) return;
-  const arrival = kind === 'arrival' ? next : profile?.arrivalDate ?? null;
-  const departure = kind === 'departure' ? next : profile?.departureDate ?? null;
+  const currentArrival = knownProfileDate(profile?.arrivalDate);
+  const currentDeparture = knownProfileDate(profile?.departureDate);
+  const arrival = kind === 'arrival' ? next : currentArrival;
+  const departure = kind === 'departure' ? next : currentDeparture;
   if (arrival && departure) {
     const err = validateDates(arrival, departure);
     if (err) {
@@ -418,12 +452,12 @@ async function handleDateSave(
       return;
     }
   }
-  const phaseBefore = calcPhase({
-    arrivalDate: profile?.arrivalDate ?? null,
-    departureDate: profile?.departureDate ?? null,
+  const phaseBefore = calcDatePhase({
+    arrivalDate: currentArrival,
+    departureDate: currentDeparture,
   });
   try {
-    await updateUserProfile(user.uid, {
+    await updateUserProfile({
       [kind === 'arrival' ? 'arrivalDate' : 'departureDate']: next,
     });
     track('profile_field_change', { field: kind === 'arrival' ? 'arrivalDate' : 'departureDate' });
@@ -434,7 +468,7 @@ async function handleDateSave(
       surfaceError('dates-updated');
       // PRD §4.7 — if the new dates move the user to an earlier phase, follow
       // the toast with a modal so the phase shift is not a silent surprise.
-      const phaseAfter = calcPhase({ arrivalDate: arrival, departureDate: departure });
+      const phaseAfter = calcDatePhase({ arrivalDate: arrival, departureDate: departure });
       if (phaseAfter < phaseBefore) {
         surfaceError('phase-changed', {
           messageOverride: `Your new dates put you in Phase ${phaseAfter}. Existing missions stay completed.`,
@@ -459,12 +493,34 @@ function uniLabel(id: string | null | undefined): string {
 
 function housingLabel(h: string | null | undefined): string {
   if (h === 'dormitory') return 'Dormitory';
+  if (h === 'own_lease') return 'Private lease';
+  if (h === 'third_party_lease') return 'Shared housing';
+  if (h === 'registered_business') return 'Business accommodation';
   if (h === 'off-campus') return 'Off-campus';
   return '—';
 }
 
+function contractHolderLabel(holder: string | null | undefined): string {
+  if (holder === 'self') return 'You';
+  if (holder === 'third_party') return 'Someone else or a company';
+  if (holder === 'none') return 'No contract';
+  if (holder === 'undecided') return 'Not decided';
+  if (holder === 'n_a') return 'Not applicable';
+  return '—';
+}
+
+function residenceCardLabel(status: string | null | undefined): string {
+  if (status === 'not_started') return 'Not started';
+  if (status === 'booked') return 'Appointment booked';
+  if (status === 'submitted') return 'Submitted';
+  if (status === 'issued') return 'Issued';
+  if (status === 'rejected') return 'Needs action';
+  if (status === 'n_a') return 'Not applicable';
+  return 'Unknown / not sure';
+}
+
 function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
+  if (!iso || iso === UNKNOWN) return '—';
   try {
     return format(new Date(iso), 'MMM d, yyyy');
   } catch {
@@ -493,7 +549,7 @@ function SettingsRow({
   isLast?: boolean;
   right?: React.ReactNode;
 }) {
-  const labelColor = destructive ? palette.dancheong : palette.meok;
+  const labelColor = destructive ? palette.error : palette.ink;
   return (
     <Pressable
       onPress={onPress}
@@ -602,34 +658,55 @@ function ToggleRow({
   disabled: boolean;
 }) {
   const [value, setValue] = useNotificationPref(code);
+  const isOn = value && !disabled;
+
+  function toggle(next: boolean) {
+    setValue(next);
+    track('notification_pref_change', { code, value: next });
+  }
+
+  // The `Switch` itself renders at 40×20 — under the 44pt minimum and impossible
+  // to resize portably. The whole 56pt row is the target instead, and the switch
+  // is left non-focusable so keyboard users get one stop, not two.
   return (
-    <View style={[styles.row, styles.rowDivider]}>
+    <Pressable
+      onPress={() => toggle(!isOn)}
+      disabled={disabled}
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      {...a11yState({ checked: isOn, disabled })}
+      style={({ pressed }) => [
+        styles.row,
+        styles.rowDivider,
+        pressed && !disabled ? { backgroundColor: semantic.bg.tertiary } : null,
+      ]}
+    >
       <Text role="body" color={disabled ? palette.stone : palette.meok} style={{ flex: 1 }}>
         {label}
       </Text>
+      {/*
+        Purely the indicator. `pointerEvents: none` stops a tap on the switch
+        from firing both handlers (which would toggle twice and net zero), and
+        the a11y props keep it out of the tree on every platform — native honours
+        `accessibilityElementsHidden`/`importantForAccessibility`, web honours
+        `aria-hidden`.
+      */}
       <Switch
-        value={value && !disabled}
+        value={isOn}
         disabled={disabled}
-        onValueChange={(next) => {
-          setValue(next);
-          track('notification_pref_change', { code, value: next });
-        }}
-        trackColor={{ false: palette.hairline, true: palette.dancheong }}
+        trackColor={{ false: palette.hairline, true: palette.ink }}
         thumbColor={palette.hanji}
-        accessibilityLabel={`${label}, switch, ${value && !disabled ? 'on' : 'off'}`}
-        accessibilityState={{ disabled }}
+        style={{ pointerEvents: 'none' }}
+        focusable={false}
+        aria-hidden
+        importantForAccessibility="no-hide-descendants"
+        accessibilityElementsHidden
       />
-    </View>
+    </Pressable>
   );
 }
 
-function AboutSection({
-  onMount,
-  signOut,
-}: {
-  onMount: () => void;
-  signOut: () => Promise<void>;
-}) {
+function AboutSection({ onMount }: { onMount: () => void }) {
   useEffect(() => onMount(), [onMount]);
   const version =
     Constants.expoConfig?.version ?? Constants.manifest2?.extra?.expoClient?.version ?? '0.0.0';
@@ -666,23 +743,9 @@ function AboutSection({
           <SettingsRow
             label="[Dev] Fresh onboarding"
             destructive
-            onPress={async () => {
-              storage.set(KEYS.devMockFreshOnboarding, true);
-              storage.delete(KEYS.profileCache);
-              storage.delete(KEYS.devMockMissions);
-              storage.delete(KEYS.devMockBuckets);
-              storage.delete(KEYS.firedPanelUnlocks);
-              storage.delete(KEYS.phaseOverride);
-              resetAhaMoment();
-              await signOut();
-            }}
-          />
-          <SettingsRow
-            label="[Dev] Skip auth"
-            valueText={storage.getBoolean(KEYS.devMockAuth) ? 'On' : 'Off'}
             onPress={() => {
-              const current = storage.getBoolean(KEYS.devMockAuth) ?? false;
-              storage.set(KEYS.devMockAuth, !current);
+              clearLocalJourneyData();
+              resetAhaMoment();
             }}
             isLast
           />
@@ -764,11 +827,11 @@ function PickerSheet({
                 onPress={() => onSelect(opt.value)}
                 accessibilityRole="button"
                 accessibilityLabel={`${opt.label}${active ? ', selected' : ''}`}
-                accessibilityState={{ selected: active }}
+                {...a11yState({ selected: active })}
                 style={({ pressed }) => [
                   styles.pickerRow,
                   {
-                    borderColor: active ? palette.dancheong : palette.hairline,
+                    borderColor: active ? palette.ink : palette.hairline,
                     borderWidth: active ? 2 : 1,
                     backgroundColor: pressed ? palette.cloud : palette.hanji,
                   },
@@ -784,7 +847,7 @@ function PickerSheet({
                     </Text>
                   ) : null}
                 </View>
-                {active ? <Check size={20} color={palette.dancheong} /> : null}
+                {active ? <Check size={20} color={palette.ink} /> : null}
               </Pressable>
             );
           })}
@@ -807,8 +870,9 @@ function DateSheet({
   onClose: () => void;
   onSave: (date: string) => Promise<void> | void;
 }) {
-  const initial =
-    (kind === 'arrival' ? profile?.arrivalDate : profile?.departureDate) ?? null;
+  const initial = knownProfileDate(
+    kind === 'arrival' ? profile?.arrivalDate : profile?.departureDate,
+  );
   const [selected, setSelected] = useState<string | null>(initial);
   useEffect(() => {
     if (visible) setSelected(initial);
@@ -816,7 +880,7 @@ function DateSheet({
 
   const today = format(new Date(), 'yyyy-MM-dd');
   const minDate = kind === 'departure'
-    ? profile?.arrivalDate ?? today
+    ? knownProfileDate(profile?.arrivalDate) ?? today
     : today;
 
   return (
@@ -830,7 +894,7 @@ function DateSheet({
           <Calendar
             current={selected ?? today}
             minDate={minDate}
-            markedDates={selected ? { [selected]: { selected: true, selectedColor: palette.dancheong } } : {}}
+            markedDates={selected ? { [selected]: { selected: true, selectedColor: palette.ink } } : {}}
             onDayPress={(d: { dateString: string }) => setSelected(d.dateString)}
             theme={{
               calendarBackground: palette.hanji,
@@ -899,7 +963,7 @@ function EraSheet({
               onPress={() => setPending(era.key)}
               accessibilityRole="button"
               accessibilityLabel={`${era.nameEn}${active ? ', selected' : ''}`}
-              accessibilityState={{ selected: active }}
+              {...a11yState({ selected: active })}
               style={({ pressed }) => [
                 styles.eraCard,
                 {
@@ -931,64 +995,6 @@ function EraSheet({
   );
 }
 
-function ConfirmSheet({
-  visible,
-  title,
-  body,
-  primary,
-  primaryDestructive,
-  onClose,
-  onConfirm,
-}: {
-  visible: boolean;
-  title: string;
-  body: string;
-  primary: string;
-  primaryDestructive?: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <SheetFrame visible={visible} title={title} onClose={onClose}>
-      <Text role="body" color={palette.meokMid}>
-        {body}
-      </Text>
-      <View style={{ flexDirection: 'row', gap: space[3], marginTop: space[4] }}>
-        <Pressable
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel="Cancel"
-          style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.85 : 1 }]}
-        >
-          <Text role="body" weight="semibold" color={palette.meok}>
-            Cancel
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => {
-            // ADR-0030: a Warning haptic on every destructive confirm tap.
-            if (primaryDestructive) hapticDestructive();
-            onConfirm();
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={primary}
-          style={({ pressed }) => [
-            styles.confirmBtn,
-            {
-              backgroundColor: primaryDestructive ? palette.dancheong : palette.meok,
-              opacity: pressed ? 0.85 : 1,
-            },
-          ]}
-        >
-          <Text role="body" weight="semibold" color={palette.hanji}>
-            {primary}
-          </Text>
-        </Pressable>
-      </View>
-    </SheetFrame>
-  );
-}
-
 function SheetFrame({
   visible,
   title,
@@ -1008,14 +1014,7 @@ function SheetFrame({
             <Text role="h4" style={{ flex: 1 }}>
               {title}
             </Text>
-            <Pressable
-              onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              hitSlop={8}
-            >
-              <X size={22} color={palette.meok} />
-            </Pressable>
+            <IconButton icon={X} accessibilityLabel="Close" onPress={onClose} />
           </View>
           <View style={styles.sheetBody}>{children}</View>
         </SafeAreaView>
@@ -1065,8 +1064,10 @@ const styles = StyleSheet.create({
   linkBtn: {
     paddingHorizontal: space[3],
     paddingVertical: space[2],
-    borderRadius: radius.pill,
-    backgroundColor: palette.meok,
+    minHeight: MIN_TARGET,
+    justifyContent: 'center',
+    borderRadius: radius.sm,
+    backgroundColor: palette.ink,
   },
   disabledHint: {
     paddingHorizontal: space[5],
@@ -1148,14 +1149,14 @@ const styles = StyleSheet.create({
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: palette.cloud,
+    borderRadius: radius.sm,
+    backgroundColor: palette.surfaceSoft,
   },
   confirmBtn: {
     flex: 1,
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.pill,
+    borderRadius: radius.sm,
   },
 });

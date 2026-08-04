@@ -1,5 +1,9 @@
 # Edge Cases & Failure Modes
 
+> **Current-use note:** auth, Firestore, and remote-sync rows are historical. Apply the remaining
+> matrix through the local verified-write flows in `docs/architecture/DATA_FLOW.md`; add current
+> route, tab, export/reset, and integrated-completion cases from `docs/TESTING.md`.
+
 > Per-feature matrix of how K-Journey behaves under failure or unusual input. Mirrors PRD v1.1 §17 with code pointers and ADR back-references. If you're implementing a new feature, add a row.
 
 ## How to read this matrix
