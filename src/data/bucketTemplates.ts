@@ -20,9 +20,19 @@ export interface BucketTemplate {
   nameKo: string;
   symbolism: string;
   hintFor: string;
+  /**
+   * Chrome tone for this template's borders, swatches, and progress track —
+   * NOT the artwork. Every template resolves to ink: the minhwa illustration
+   * carries the identity (as photography does on Airbnb), so a per-template
+   * hue in the surrounding chrome would compete with it and dilute the single
+   * Rausch voltage. Selection is drawn as ink-vs-hairline.
+   */
   primaryColor: string;
   secondaryColor: string;
 }
+
+const CHROME = palette.ink;
+const CHROME_SECONDARY = palette.muted;
 
 export const BUCKET_TEMPLATES: BucketTemplate[] = [
   {
@@ -31,8 +41,8 @@ export const BUCKET_TEMPLATES: BucketTemplate[] = [
     nameKo: '모란',
     symbolism: 'Wealth, abundance, blooming youth.',
     hintFor: 'Cafés, fashion, beauty hauls.',
-    primaryColor: palette.dancheong,
-    secondaryColor: palette.lotus,
+    primaryColor: CHROME,
+    secondaryColor: CHROME_SECONDARY,
   },
   {
     key: 'tiger',
@@ -40,8 +50,8 @@ export const BUCKET_TEMPLATES: BucketTemplate[] = [
     nameKo: '호랑이',
     symbolism: 'Courage, daring, protection.',
     hintFor: 'Adventure trips, extreme food, hikes.',
-    primaryColor: palette.hwanggeum,
-    secondaryColor: palette.dancheongDeep,
+    primaryColor: CHROME,
+    secondaryColor: CHROME_SECONDARY,
   },
   {
     key: 'crane',
@@ -49,8 +59,8 @@ export const BUCKET_TEMPLATES: BucketTemplate[] = [
     nameKo: '학',
     symbolism: 'Longevity, peace, slow grace.',
     hintFor: 'Slow travel, temple stays, day trips.',
-    primaryColor: palette.cheong,
-    secondaryColor: palette.hanji,
+    primaryColor: CHROME,
+    secondaryColor: CHROME_SECONDARY,
   },
   {
     key: 'lotus',
@@ -58,8 +68,8 @@ export const BUCKET_TEMPLATES: BucketTemplate[] = [
     nameKo: '연꽃',
     symbolism: 'Purity rising from mud, rebirth, calm.',
     hintFor: 'Self-care, journaling, learning.',
-    primaryColor: palette.lotus,
-    secondaryColor: palette.jade,
+    primaryColor: CHROME,
+    secondaryColor: CHROME_SECONDARY,
   },
   {
     key: 'chaekgeori',
@@ -67,8 +77,8 @@ export const BUCKET_TEMPLATES: BucketTemplate[] = [
     nameKo: '책가도',
     symbolism: 'Scholarly bookshelf, curiosity, study.',
     hintFor: 'Books, classes, language goals.',
-    primaryColor: palette.meokMid,
-    secondaryColor: palette.hwanggeum,
+    primaryColor: CHROME,
+    secondaryColor: CHROME_SECONDARY,
   },
   {
     key: 'sansuhwa',
@@ -76,7 +86,7 @@ export const BUCKET_TEMPLATES: BucketTemplate[] = [
     nameKo: '산수화',
     symbolism: 'Mountains and rivers — the wandering soul.',
     hintFor: 'Travel, hiking, nature lists.',
-    primaryColor: palette.jade,
-    secondaryColor: palette.cheong,
+    primaryColor: CHROME,
+    secondaryColor: CHROME_SECONDARY,
   },
 ];

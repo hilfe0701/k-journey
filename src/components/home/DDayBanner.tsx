@@ -24,29 +24,34 @@ export function DDayBanner({ daysLeft, completedCount, totalMissions, phaseLabel
       style={[
         styles.wrapper,
         {
-          backgroundColor: isUrgent ? palette.dancheongLight : palette.cloud,
+          // The surface stays neutral in both states. Urgency is spoken by the
+          // countdown numeral and the progress fill turning Rausch — a tinted
+          // card would read as "featured" instead of "running out of time".
+          backgroundColor: palette.surfaceSoft,
         },
       ]}
     >
       <View style={styles.row}>
         <View>
-          <Text role="xs" color={palette.ash} weight="semibold">
+          <Text role="micro" color={palette.muted}>
             {phaseLabel.toUpperCase()}
           </Text>
-          <Text role="display" color={isUrgent ? palette.dancheong : palette.meok}>
+          {/* The countdown is this product's rating-display moment — the one
+              place type alone is trusted to carry the hierarchy. */}
+          <Text role="hero" color={isUrgent ? palette.rausch : palette.ink}>
             {big}
           </Text>
-          <Text role="sm" color={palette.ash}>
+          <Text role="bodySm" color={palette.muted}>
             {sub}
           </Text>
         </View>
         <View style={styles.stat}>
-          <Text role="xs" color={palette.ash} weight="semibold">
+          <Text role="micro" color={palette.muted}>
             MISSIONS
           </Text>
-          <Text role="h2">
+          <Text role="displayLg" weight="bold">
             {completedCount}
-            <Text role="lead" color={palette.ash}>
+            <Text role="lead" color={palette.muted}>
               /{totalMissions}
             </Text>
           </Text>
@@ -54,7 +59,7 @@ export function DDayBanner({ daysLeft, completedCount, totalMissions, phaseLabel
       </View>
       <ProgressBar
         value={completedCount / totalMissions}
-        color={isUrgent ? palette.dancheong : palette.cheong}
+        color={isUrgent ? palette.rausch : palette.ink}
         bg={palette.hairline}
       />
     </View>
@@ -63,8 +68,8 @@ export function DDayBanner({ daysLeft, completedCount, totalMissions, phaseLabel
 
 const styles = StyleSheet.create({
   wrapper: {
-    borderRadius: radius.lg,
-    padding: space[4],
+    borderRadius: radius.card,
+    padding: space[6],
     gap: space[3],
   },
   row: {

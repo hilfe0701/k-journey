@@ -51,9 +51,9 @@ function ModeButton({
       ]}
     >
       <Text
-        role="sm"
-        weight="semibold"
-        color={selected ? palette.hanji : palette.ash}
+        role="buttonSm"
+        weight={selected ? 'semibold' : 'medium'}
+        color={selected ? palette.canvas : palette.muted}
       >
         {label}
       </Text>
@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: space[1],
     borderRadius: radius.pill,
-    backgroundColor: palette.cloud,
+    backgroundColor: palette.surfaceSoft,
     borderWidth: 1,
     borderColor: palette.hairline,
   },
@@ -78,6 +78,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.pill,
   },
-  buttonSelected: { backgroundColor: palette.meok },
+  buttonSelected: { backgroundColor: palette.ink },
   pressed: { opacity: 0.72 },
 });

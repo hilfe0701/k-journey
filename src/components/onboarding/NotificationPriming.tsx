@@ -61,12 +61,12 @@ export function NotificationPriming({
           accessibilityLabel={`${PUSH_PRIMING.title}. ${PUSH_PRIMING.body}`}
         >
           <View style={styles.iconWrap}>
-            <Bell size={32} color={palette.dancheong} strokeWidth={1.5} />
+            <Bell size={32} color={palette.ink} strokeWidth={1.5} />
           </View>
-          <Text role="h3" align="center">
+          <Text role="displaySm" align="center">
             {PUSH_PRIMING.title}
           </Text>
-          <Text role="sm" color={palette.ash} align="center">
+          <Text role="bodySm" color={palette.muted} align="center">
             {PUSH_PRIMING.body}
           </Text>
           <Pressable
@@ -75,7 +75,7 @@ export function NotificationPriming({
             accessibilityLabel={PUSH_PRIMING.primaryCta}
             style={({ pressed }) => [styles.primary, { opacity: pressed ? 0.85 : 1 }]}
           >
-            <Text role="body" weight="semibold" color={palette.hanji}>
+            <Text role="buttonMd" color={palette.onPrimary}>
               {PUSH_PRIMING.primaryCta}
             </Text>
           </Pressable>
@@ -85,7 +85,7 @@ export function NotificationPriming({
             accessibilityLabel={PUSH_PRIMING.secondaryCta}
             style={({ pressed }) => [styles.secondary, { opacity: pressed ? 0.85 : 1 }]}
           >
-            <Text role="body" weight="medium" color={palette.ash}>
+            <Text role="buttonMd" color={palette.ink}>
               {PUSH_PRIMING.secondaryCta}
             </Text>
           </Pressable>
@@ -117,8 +117,8 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: palette.hanji,
-    borderRadius: radius.lg,
+    backgroundColor: palette.canvas,
+    borderRadius: radius.card,
     padding: space[6],
     gap: space[3],
     alignItems: 'center',
@@ -126,8 +126,8 @@ const styles = StyleSheet.create({
   iconWrap: {
     width: 64,
     height: 64,
-    borderRadius: 32,
-    backgroundColor: palette.dancheongLight,
+    borderRadius: radius.full,
+    backgroundColor: palette.surfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: space[1],
@@ -135,8 +135,8 @@ const styles = StyleSheet.create({
   primary: {
     width: '100%',
     minHeight: 48,
-    borderRadius: radius.pill,
-    backgroundColor: palette.dancheong,
+    borderRadius: radius.sm,
+    backgroundColor: palette.rausch,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space[5],

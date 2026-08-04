@@ -135,11 +135,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space[4],
-    borderRadius: radius.pill,
-    backgroundColor: palette.meok,
+    borderRadius: radius.sm,
+    backgroundColor: palette.ink,
   },
   destructive: {
-    backgroundColor: palette.dancheong,
+    backgroundColor: palette.rausch,
   },
   cancel: {
     backgroundColor: 'transparent',

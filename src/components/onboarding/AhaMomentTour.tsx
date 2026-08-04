@@ -140,9 +140,9 @@ const styles = StyleSheet.create({
     paddingTop: space[3],
   },
   cta: {
-    minHeight: 52,
-    borderRadius: radius.pill,
-    backgroundColor: palette.dancheong,
+    minHeight: 48,
+    borderRadius: radius.sm,
+    backgroundColor: palette.rausch,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space[5],

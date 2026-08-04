@@ -175,8 +175,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: space[3],
     paddingVertical: space[2],
-    borderRadius: radius.pill,
-    backgroundColor: palette.hanji + '2E',
+    borderRadius: radius.sm,
+    backgroundColor: palette.canvas + '2E',
   },
   toastSafe: {
     position: 'absolute',

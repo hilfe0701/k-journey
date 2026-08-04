@@ -11,16 +11,18 @@
  *
  * No single token clears 3:1 against both surfaces the app actually focuses on:
  *
- * | ring color         | on hanji (#FDFAF3) | on meok (#2C2416) |
- * |--------------------|--------------------|-------------------|
- * | `meok`             | 14.3:1 ✓           | —      ✗          |
- * | `dancheong`        |  5.3:1 ✓           | 2.7:1  ✗          |
- * | `hwanggeum`        |  2.6:1 ✗           | 5.5:1  ✓          |
+ * | ring color | on canvas (#FFFFFF) | on ink (#222222) |
+ * |------------|---------------------|------------------|
+ * | `ink`      | 15.3:1 ✓            | —      ✗         |
+ * | `rausch`   |  3.5:1 ✓            | 4.3:1  ✓ (thin)  |
+ * | `muted`    |  5.0:1 ✓            | 3.1:1  ✓ (thin)  |
  *
- * So the ring pairs a `meok` outline with a `hanji` halo drawn into the
- * outline's offset gap. On light surfaces the outline is the visible ring; on
- * the dark surfaces (gallery header, mission-complete overlay) the outline
- * disappears and the halo carries it. Either way one of the two is at 14.3:1.
+ * Rausch and muted technically clear both, but Airbnb spends Rausch only on
+ * CTAs and the save state — a focus ring is chrome, not brand. So the ring
+ * pairs an `ink` outline with a `canvas` halo drawn into the outline's offset
+ * gap. On light surfaces the outline is the visible ring; on the dark surfaces
+ * (gallery header, mission-complete overlay) the outline disappears and the
+ * halo carries it. Either way one of the two sits at 15.3:1.
  *
  * `:focus-visible` — not `:focus` — so pointer users never see the ring.
  */
@@ -37,9 +39,9 @@ const RING_OFFSET = 2;
 
 export const FOCUS_RING_CSS = `
 :focus-visible {
-  outline: ${RING_WIDTH}px solid ${palette.meok} !important;
+  outline: ${RING_WIDTH}px solid ${palette.ink} !important;
   outline-offset: ${RING_OFFSET}px !important;
-  box-shadow: 0 0 0 ${RING_OFFSET}px ${palette.hanji} !important;
+  box-shadow: 0 0 0 ${RING_OFFSET}px ${palette.canvas} !important;
 }
 :focus:not(:focus-visible) {
   outline: none !important;
