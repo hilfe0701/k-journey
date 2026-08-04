@@ -17,18 +17,9 @@ Administrative and cultural guidance can become wrong while the app still builds
 
 High-consequence content must be representable with:
 
-```ts
-type ContentEvidence = {
-  sourceUrl: string;
-  sourceTitle: string;
-  publisher: string;
-  checkedAt: string; // YYYY-MM-DD
-  jurisdiction?: string;
-  verification: 'verified' | 'needs_review' | 'editorial';
-};
-```
+This schema is implemented in `src/lib/contentEvidence.ts`. It adds `contentClass` and `finalAuthority` to the fields above, and derives the review date from the class rather than storing it, so a hand-written date cannot disagree with the cadence it belongs to.
 
-The current static cultural catalog predates this schema. Until metadata is added, mission details must avoid guarantees and display that prices, hours, requirements, and local rules can change.
+The emergency guide carries it on every item (`src/data/emergency.ts`). The static cultural catalog still predates it: until `Mission` gains the field, mission details must avoid guarantees, must display that prices, hours, requirements, and local rules can change, and must not restate an administrative fact that the Essentials track derives from conditions.
 
 ## Writing rules
 
