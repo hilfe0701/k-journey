@@ -43,8 +43,11 @@ export default function Emergency() {
 
       <ScrollView contentContainerStyle={styles.body}>
         <View style={styles.banner}>
-          <AlertTriangle size={20} color={palette.error} strokeWidth={1.5} />
-          <Text role="sm" color={palette.dancheongDeep}>
+          {/* Reassurance, not a warning — this note tells the reader the page
+              still works with no signal. It stays neutral so the error tone is
+              left for things that are actually wrong. */}
+          <AlertTriangle size={20} color={palette.muted} strokeWidth={1.5} />
+          <Text role="bodySm" color={palette.ink}>
             Saved for offline access. Works without signal or data.
           </Text>
         </View>
