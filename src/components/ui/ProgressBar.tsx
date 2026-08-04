@@ -10,6 +10,10 @@ interface ProgressBarProps {
   accessibilityLabel?: string;
 }
 
+/**
+ * Fill defaults to ink, not Rausch. Rausch is a single voltage reserved for
+ * CTAs and the save state — spending it on every progress track would dilute it.
+ */
 export function ProgressBar({
   value,
   height = 4,
@@ -27,7 +31,7 @@ export function ProgressBar({
       style={{
         height,
         borderRadius: radius.full,
-        backgroundColor: bg ?? palette.hairline,
+        backgroundColor: bg ?? palette.hairlineSoft,
         overflow: 'hidden',
       }}
     >
@@ -35,7 +39,7 @@ export function ProgressBar({
         style={{
           height: '100%',
           width: `${clamped * 100}%`,
-          backgroundColor: color ?? palette.dancheong,
+          backgroundColor: color ?? palette.ink,
           borderRadius: radius.full,
         }}
       />

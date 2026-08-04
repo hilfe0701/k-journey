@@ -2,7 +2,36 @@ import React from 'react';
 import { Text as RNText, TextProps as RNTextProps, TextStyle } from 'react-native';
 import { typography, palette } from '../../../design-tokens';
 
+/**
+ * Airbnb's type hierarchy.
+ *
+ * Display weights stay modest on purpose — the homepage h1 sits at 28/700 and
+ * the listing-detail h1 at 22/500, quieter than a typical SaaS page, because
+ * imagery carries the hierarchy. The single loud moment in the whole system is
+ * `rating` (64/700): rating numbers are a peak trust signal, so they are the one
+ * place the system trusts type alone.
+ */
 type TextRole =
+  // Canonical Airbnb roles
+  | 'rating'
+  | 'displayXl'
+  | 'displayLg'
+  | 'displayMd'
+  | 'displaySm'
+  | 'titleMd'
+  | 'titleSm'
+  | 'bodyMd'
+  | 'bodySm'
+  | 'caption'
+  | 'captionSm'
+  | 'badge'
+  | 'micro'
+  | 'tag'
+  | 'buttonMd'
+  | 'buttonSm'
+  | 'link'
+  | 'navLink'
+  // Legacy roles, remapped onto the scale above
   | 'hero'
   | 'display'
   | 'h1'
@@ -12,8 +41,7 @@ type TextRole =
   | 'lead'
   | 'body'
   | 'sm'
-  | 'xs'
-  | 'badge';
+  | 'xs';
 
 interface KJTextProps extends Omit<RNTextProps, 'role'> {
   role?: TextRole;
@@ -22,95 +50,221 @@ interface KJTextProps extends Omit<RNTextProps, 'role'> {
   align?: 'auto' | 'left' | 'center' | 'right';
 }
 
-const ROLE_STYLES: Record<TextRole, any> = {
-  hero: {
-    fontFamily: typography.family.display,
-    fontSize: typography.size.hero,
-    lineHeight: typography.size.hero * typography.lineHeight.tight,
-    letterSpacing: typography.letterSpacing.display,
+const { size, lineHeight, letterSpacing, family } = typography;
+
+const ROLE_STYLES: Record<TextRole, TextStyle> = {
+  rating: {
+    fontFamily: family.display,
+    fontSize: size.rating,
+    lineHeight: size.rating * lineHeight.tight,
+    letterSpacing: letterSpacing.rating,
   },
-  display: {
-    fontFamily: typography.family.display,
-    fontSize: typography.size.display,
-    lineHeight: typography.size.display * typography.lineHeight.tight,
-    letterSpacing: typography.letterSpacing.display,
+  displayXl: {
+    fontFamily: family.display,
+    fontSize: size.display,
+    lineHeight: size.display * lineHeight.relaxed,
+    letterSpacing: letterSpacing.body,
   },
-  h1: {
-    fontFamily: typography.family.display,
-    fontSize: typography.size.h1,
-    lineHeight: typography.size.h1 * typography.lineHeight.snug,
-    letterSpacing: typography.letterSpacing.heading,
+  displayLg: {
+    fontFamily: family.display,
+    fontSize: size.h2,
+    lineHeight: size.h2 * 1.18,
+    letterSpacing: letterSpacing.display,
   },
-  h2: {
-    fontFamily: typography.family.display,
-    fontSize: typography.size.h2,
-    lineHeight: typography.size.h2 * typography.lineHeight.snug,
-    letterSpacing: typography.letterSpacing.heading,
+  displayMd: {
+    fontFamily: family.display,
+    fontSize: size.h3,
+    lineHeight: size.h3 * lineHeight.relaxed,
+    letterSpacing: letterSpacing.body,
   },
-  h3: {
-    fontFamily: typography.family.display,
-    fontSize: typography.size.h3,
-    lineHeight: typography.size.h3 * typography.lineHeight.snug,
-    letterSpacing: typography.letterSpacing.heading,
+  displaySm: {
+    fontFamily: family.display,
+    fontSize: size.h4,
+    lineHeight: size.h4 * lineHeight.snug,
+    letterSpacing: letterSpacing.heading,
   },
-  h4: {
-    fontFamily: typography.family.ui,
-    fontSize: typography.size.h4,
-    lineHeight: typography.size.h4 * typography.lineHeight.snug,
+  titleMd: {
+    fontFamily: family.ui,
+    fontSize: size.body,
+    lineHeight: size.body * 1.25,
   },
-  lead: {
-    fontFamily: typography.family.ui,
-    fontSize: typography.size.lead,
-    lineHeight: typography.size.lead * typography.lineHeight.relaxed,
+  titleSm: {
+    fontFamily: family.ui,
+    fontSize: size.body,
+    lineHeight: size.body * 1.25,
   },
-  body: {
-    fontFamily: typography.family.ui,
-    fontSize: typography.size.body,
-    lineHeight: typography.size.body * typography.lineHeight.relaxed,
+  bodyMd: {
+    fontFamily: family.ui,
+    fontSize: size.body,
+    lineHeight: size.body * lineHeight.loose,
   },
-  sm: {
-    fontFamily: typography.family.ui,
-    fontSize: typography.size.sm,
-    lineHeight: typography.size.sm * typography.lineHeight.normal,
+  bodySm: {
+    fontFamily: family.ui,
+    fontSize: size.sm,
+    lineHeight: size.sm * lineHeight.relaxed,
   },
-  xs: {
-    fontFamily: typography.family.ui,
-    fontSize: typography.size.xs,
-    lineHeight: typography.size.xs * typography.lineHeight.normal,
+  caption: {
+    fontFamily: family.ui,
+    fontSize: size.sm,
+    lineHeight: size.sm * lineHeight.normal,
+  },
+  captionSm: {
+    fontFamily: family.ui,
+    fontSize: size.xs,
+    lineHeight: size.xs * 1.23,
   },
   badge: {
-    fontFamily: typography.family.ui,
-    fontSize: typography.size.micro,
-    lineHeight: typography.size.micro,
-    letterSpacing: typography.letterSpacing.badge,
+    fontFamily: family.ui,
+    fontSize: size.badge,
+    lineHeight: size.badge * 1.18,
+  },
+  micro: {
+    fontFamily: family.ui,
+    fontSize: size.micro,
+    lineHeight: size.micro * 1.33,
+  },
+  tag: {
+    fontFamily: family.ui,
+    fontSize: size.tag,
+    lineHeight: size.tag * 1.25,
+    letterSpacing: letterSpacing.tag,
     textTransform: 'uppercase',
+  },
+  buttonMd: {
+    fontFamily: family.ui,
+    fontSize: size.body,
+    lineHeight: size.body * 1.25,
+  },
+  buttonSm: {
+    fontFamily: family.ui,
+    fontSize: size.sm,
+    lineHeight: size.sm * lineHeight.normal,
+  },
+  link: {
+    fontFamily: family.ui,
+    fontSize: size.sm,
+    lineHeight: size.sm * lineHeight.relaxed,
+  },
+  navLink: {
+    fontFamily: family.ui,
+    fontSize: size.body,
+    lineHeight: size.body * 1.25,
+  },
+
+  // --- Legacy roles -------------------------------------------------------
+  hero: {
+    fontFamily: family.display,
+    fontSize: size.hero,
+    lineHeight: size.hero * lineHeight.snug,
+    letterSpacing: letterSpacing.display,
+  },
+  display: {
+    fontFamily: family.display,
+    fontSize: size.display,
+    lineHeight: size.display * lineHeight.snug,
+    letterSpacing: letterSpacing.display,
+  },
+  h1: {
+    fontFamily: family.display,
+    fontSize: size.h1,
+    lineHeight: size.h1 * lineHeight.snug,
+    letterSpacing: letterSpacing.display,
+  },
+  h2: {
+    fontFamily: family.display,
+    fontSize: size.h2,
+    lineHeight: size.h2 * 1.18,
+    letterSpacing: letterSpacing.display,
+  },
+  h3: {
+    fontFamily: family.display,
+    fontSize: size.h3,
+    lineHeight: size.h3 * lineHeight.snug,
+    letterSpacing: letterSpacing.heading,
+  },
+  h4: {
+    fontFamily: family.ui,
+    fontSize: size.h4,
+    lineHeight: size.h4 * lineHeight.snug,
+    letterSpacing: letterSpacing.heading,
+  },
+  lead: {
+    fontFamily: family.ui,
+    fontSize: size.lead,
+    lineHeight: size.lead * lineHeight.loose,
+  },
+  body: {
+    fontFamily: family.ui,
+    fontSize: size.body,
+    lineHeight: size.body * lineHeight.loose,
+  },
+  sm: {
+    fontFamily: family.ui,
+    fontSize: size.sm,
+    lineHeight: size.sm * lineHeight.relaxed,
+  },
+  xs: {
+    fontFamily: family.ui,
+    fontSize: size.xs,
+    lineHeight: size.xs * lineHeight.relaxed,
   },
 };
 
 const DEFAULT_WEIGHT_BY_ROLE: Record<TextRole, keyof typeof typography.weight> = {
+  rating: 'bold',
+  displayXl: 'bold',
+  displayLg: 'medium',
+  displayMd: 'bold',
+  displaySm: 'semibold',
+  titleMd: 'semibold',
+  titleSm: 'medium',
+  bodyMd: 'regular',
+  bodySm: 'regular',
+  caption: 'medium',
+  captionSm: 'regular',
+  badge: 'semibold',
+  micro: 'bold',
+  tag: 'bold',
+  buttonMd: 'medium',
+  buttonSm: 'medium',
+  link: 'regular',
+  navLink: 'semibold',
+
   hero: 'bold',
   display: 'bold',
   h1: 'bold',
-  h2: 'bold',
-  h3: 'semibold',
+  h2: 'medium',
+  h3: 'bold',
   h4: 'semibold',
-  lead: 'medium',
-  body: 'medium',
-  sm: 'medium',
-  xs: 'medium',
-  badge: 'bold',
+  lead: 'regular',
+  body: 'regular',
+  sm: 'regular',
+  xs: 'regular',
 };
 
-export function Text({ role = 'body', color, weight, align, style, children, ...rest }: KJTextProps) {
+const HEADING_ROLES = new Set<TextRole>([
+  'rating',
+  'displayXl',
+  'displayLg',
+  'displayMd',
+  'displaySm',
+  'hero',
+  'display',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+]);
+
+export function Text({ role = 'bodyMd', color, weight, align, style, children, ...rest }: KJTextProps) {
   const baseStyle = ROLE_STYLES[role];
   const finalWeight = typography.weight[weight ?? DEFAULT_WEIGHT_BY_ROLE[role]];
-  const finalColor = color ?? palette.meok;
-  const isHeading = ['hero', 'display', 'h1', 'h2', 'h3', 'h4'].includes(role);
+  const finalColor = color ?? palette.ink;
 
   return (
     <RNText
       {...rest}
-      accessibilityRole={rest.accessibilityRole ?? (isHeading ? 'header' : undefined)}
+      accessibilityRole={rest.accessibilityRole ?? (HEADING_ROLES.has(role) ? 'header' : undefined)}
       style={[
         baseStyle,
         {

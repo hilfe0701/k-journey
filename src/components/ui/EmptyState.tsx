@@ -67,7 +67,7 @@ export function EmptyState({
     cta?.onPress();
   }
 
-  const fgPrimary = tone === 'dark' ? palette.hanji : palette.meok;
+  const fgPrimary = tone === 'dark' ? palette.canvas : palette.ink;
 
   return (
     <Animated.View
@@ -79,7 +79,7 @@ export function EmptyState({
       accessibilityLabel={accessibilityLabel}
     >
       {icon ? <View style={styles.iconWrap}>{icon}</View> : null}
-      <Text role="body" align="center" color={fgPrimary}>
+      <Text role="bodyMd" align="center" color={fgPrimary}>
         {message}
       </Text>
       {cta ? (
@@ -93,7 +93,7 @@ export function EmptyState({
           ]}
           hitSlop={8}
         >
-          <Text role="body" weight="semibold" color={palette.hanji}>
+          <Text role="buttonMd" color={palette.onPrimary}>
             {cta.label}
           </Text>
         </Pressable>
@@ -123,11 +123,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cta: {
-    minHeight: 44,
-    paddingHorizontal: space[5],
+    minHeight: 48,
+    paddingHorizontal: space[6],
     paddingVertical: space[3],
-    borderRadius: radius.pill,
-    backgroundColor: palette.dancheong,
+    borderRadius: radius.sm,
+    backgroundColor: palette.rausch,
     alignItems: 'center',
     justifyContent: 'center',
   },

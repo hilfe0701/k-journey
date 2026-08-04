@@ -29,9 +29,9 @@ export const MIN_TARGET = 44;
 export type IconButtonTone = 'default' | 'inverse' | 'accent';
 
 const TONE_COLORS: Record<IconButtonTone, string> = {
-  default: palette.meok,
-  inverse: palette.hanji,
-  accent: palette.dancheong,
+  default: palette.ink,
+  inverse: palette.canvas,
+  accent: palette.rausch,
 };
 
 interface IconButtonProps {
@@ -78,10 +78,12 @@ export function IconButton({
       {...a11yState({ disabled })}
       style={({ pressed }) => [
         styles.root,
+        // Airbnb's circular icon-button surface: the heavier neutral fill, fully
+        // rounded — the breadcrumb back-arrow and listing toolbar treatment.
         surface
           ? {
               borderRadius: radius.full,
-              backgroundColor: tone === 'inverse' ? palette.meokMid : palette.cloud,
+              backgroundColor: tone === 'inverse' ? palette.body : palette.surfaceStrong,
             }
           : null,
         disabled ? styles.disabled : null,
