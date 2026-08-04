@@ -273,13 +273,15 @@ export default function BucketDetail() {
                           style={[
                             styles.itemCheck,
                             {
-                              borderColor: done ? template.primaryColor : palette.hairline,
-                              backgroundColor: done ? template.primaryColor : 'transparent',
+                              // Completion is the save-state moment, so it burns
+                              // Rausch here exactly as MissionCard does.
+                              borderColor: done ? palette.rausch : palette.hairline,
+                              backgroundColor: done ? palette.rausch : 'transparent',
                             },
                           ]}
                         >
                           {done ? (
-                            <Check size={16} color={palette.hanji} strokeWidth={2.4} />
+                            <Check size={16} color={palette.onPrimary} strokeWidth={2.4} />
                           ) : null}
                         </View>
                       </Pressable>

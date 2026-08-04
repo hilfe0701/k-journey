@@ -7,7 +7,7 @@ import { addDays, format, parseISO } from 'date-fns';
 
 import { OnboardingStepShell, UNKNOWN_LABEL, useOnboardingStepGuard } from '../../src/components/onboarding/ConditionStep';
 import { Text } from '../../src/components/ui';
-import { palette, radius, semantic, space } from '../../design-tokens';
+import { palette, radius, semantic, space, typography } from '../../design-tokens';
 import { UNKNOWN, type UnknownValue } from '../../src/lib/firebase';
 import { updateUserProfile } from '../../src/lib/firebase';
 import { setOnboardingProgress } from '../../src/lib/storage';
@@ -141,17 +141,17 @@ export default function DatesScreen() {
   // "unknown" and hand an Invalid Date to the range loop below — the loop then
   // silently marks nothing instead of failing loudly.
   if (isRealDate(arrivalDate)) {
-    markedDates[arrivalDate] = { startingDay: true, color: palette.cheong, textColor: palette.hanji };
+    markedDates[arrivalDate] = { startingDay: true, color: palette.ink, textColor: palette.onPrimary };
   }
   if (isRealDate(departureDate)) {
-    markedDates[departureDate] = { endingDay: true, color: palette.dancheong, textColor: palette.hanji };
+    markedDates[departureDate] = { endingDay: true, color: palette.ink, textColor: palette.onPrimary };
   }
   if (isRealDate(arrivalDate) && isRealDate(departureDate) && arrivalDate !== departureDate) {
     let cursor = addDays(parseISO(arrivalDate), 1);
     const end = parseISO(departureDate);
     while (cursor < end) {
       const key = format(cursor, 'yyyy-MM-dd');
-      if (!markedDates[key]) markedDates[key] = { color: palette.cloud, textColor: palette.meok };
+      if (!markedDates[key]) markedDates[key] = { color: palette.surfaceSoft, textColor: palette.ink };
       cursor = addDays(cursor, 1);
     }
   }
@@ -172,14 +172,14 @@ export default function DatesScreen() {
               label="Program start"
               value={programStartDate}
               active={pickingFor === 'programStart'}
-              color={palette.hwanggeum}
+              color={palette.ink}
               onPress={() => setPickingFor('programStart')}
             />
             <DateChip
               label="Arrival"
               value={arrivalDate}
               active={pickingFor === 'arrival'}
-              color={palette.cheong}
+              color={palette.ink}
               onPress={() => setPickingFor('arrival')}
             />
           </View>
@@ -187,7 +187,7 @@ export default function DatesScreen() {
             label="Departure"
             value={departureDate}
             active={pickingFor === 'departure'}
-            color={palette.dancheong}
+            color={palette.ink}
             onPress={() => setPickingFor('departure')}
           />
 
@@ -199,7 +199,7 @@ export default function DatesScreen() {
             {...a11yState({ selected: selected === UNKNOWN, disabled: false })}
             style={[styles.unknownButton, selected === UNKNOWN ? styles.unknownButtonSelected : null]}
           >
-            <Text role="sm" weight="semibold" color={selected === UNKNOWN ? palette.dancheong : palette.ash}>
+            <Text role="sm" weight="semibold" color={selected === UNKNOWN ? palette.ink : palette.muted}>
               {`${fieldLabel(pickingFor)} — ${UNKNOWN_LABEL}`}
             </Text>
           </Pressable>
@@ -211,15 +211,25 @@ export default function DatesScreen() {
               markedDates={markedDates}
               markingType="period"
               onDayPress={handleDayPress}
+              // Airbnb's date picker: ink-filled selected days over a
+              // surface-soft range lozenge, day numbers in body-sm, and today
+              // marked in Rausch. One family throughout, as everywhere else.
               theme={{
-                calendarBackground: palette.hanji,
-                monthTextColor: palette.meok,
-                textMonthFontWeight: '700',
-                dayTextColor: palette.meok,
-                todayTextColor: palette.dancheong,
-                textDayFontWeight: '500',
-                arrowColor: palette.meok,
-                textSectionTitleColor: palette.ash,
+                calendarBackground: palette.canvas,
+                monthTextColor: palette.ink,
+                textMonthFontWeight: '600',
+                textMonthFontFamily: typography.family.ui,
+                dayTextColor: palette.ink,
+                todayTextColor: palette.rausch,
+                textDayFontWeight: '400',
+                textDayFontFamily: typography.family.ui,
+                textDayHeaderFontFamily: typography.family.ui,
+                textDayFontSize: typography.size.sm,
+                selectedDayBackgroundColor: palette.ink,
+                selectedDayTextColor: palette.onPrimary,
+                textDisabledColor: palette.mutedSoft,
+                arrowColor: palette.ink,
+                textSectionTitleColor: palette.muted,
               }}
             />
           </View>
@@ -323,7 +333,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  unknownButtonSelected: { borderColor: palette.dancheong, borderWidth: 2 },
+  unknownButtonSelected: { borderColor: palette.ink, borderWidth: 2 },
   calendarWrap: {
     borderRadius: radius.card,
     overflow: 'hidden',

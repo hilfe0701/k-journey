@@ -549,7 +549,7 @@ function SettingsRow({
   isLast?: boolean;
   right?: React.ReactNode;
 }) {
-  const labelColor = destructive ? palette.dancheong : palette.meok;
+  const labelColor = destructive ? palette.error : palette.ink;
   return (
     <Pressable
       onPress={onPress}
@@ -694,7 +694,7 @@ function ToggleRow({
       <Switch
         value={isOn}
         disabled={disabled}
-        trackColor={{ false: palette.hairline, true: palette.dancheong }}
+        trackColor={{ false: palette.hairline, true: palette.ink }}
         thumbColor={palette.hanji}
         style={{ pointerEvents: 'none' }}
         focusable={false}
@@ -831,7 +831,7 @@ function PickerSheet({
                 style={({ pressed }) => [
                   styles.pickerRow,
                   {
-                    borderColor: active ? palette.dancheong : palette.hairline,
+                    borderColor: active ? palette.ink : palette.hairline,
                     borderWidth: active ? 2 : 1,
                     backgroundColor: pressed ? palette.cloud : palette.hanji,
                   },
@@ -847,7 +847,7 @@ function PickerSheet({
                     </Text>
                   ) : null}
                 </View>
-                {active ? <Check size={20} color={palette.dancheong} /> : null}
+                {active ? <Check size={20} color={palette.ink} /> : null}
               </Pressable>
             );
           })}
@@ -894,7 +894,7 @@ function DateSheet({
           <Calendar
             current={selected ?? today}
             minDate={minDate}
-            markedDates={selected ? { [selected]: { selected: true, selectedColor: palette.dancheong } } : {}}
+            markedDates={selected ? { [selected]: { selected: true, selectedColor: palette.ink } } : {}}
             onDayPress={(d: { dateString: string }) => setSelected(d.dateString)}
             theme={{
               calendarBackground: palette.hanji,
@@ -1066,8 +1066,8 @@ const styles = StyleSheet.create({
     paddingVertical: space[2],
     minHeight: MIN_TARGET,
     justifyContent: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: palette.meok,
+    borderRadius: radius.sm,
+    backgroundColor: palette.ink,
   },
   disabledHint: {
     paddingHorizontal: space[5],
@@ -1149,14 +1149,14 @@ const styles = StyleSheet.create({
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: palette.cloud,
+    borderRadius: radius.sm,
+    backgroundColor: palette.surfaceSoft,
   },
   confirmBtn: {
     flex: 1,
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.pill,
+    borderRadius: radius.sm,
   },
 });

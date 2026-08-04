@@ -43,7 +43,7 @@ export default function Emergency() {
 
       <ScrollView contentContainerStyle={styles.body}>
         <View style={styles.banner}>
-          <AlertTriangle size={20} color={palette.dancheong} strokeWidth={1.5} />
+          <AlertTriangle size={20} color={palette.error} strokeWidth={1.5} />
           <Text role="sm" color={palette.dancheongDeep}>
             Saved for offline access. Works without signal or data.
           </Text>
@@ -65,7 +65,7 @@ export default function Emergency() {
                 ]}
               >
                 <View style={styles.sectionHeadIcon}>
-                  <Icon size={20} color={palette.dancheong} strokeWidth={1.5} />
+                  <Icon size={20} color={palette.ink} strokeWidth={1.5} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text role="body" weight="semibold">
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     gap: space[3],
   },
   banner: {
-    backgroundColor: palette.dancheongLight,
+    backgroundColor: palette.surfaceSoft,
     padding: space[3],
     borderRadius: radius.card,
     flexDirection: 'row',
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: palette.dancheongLight,
+    backgroundColor: palette.surfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },

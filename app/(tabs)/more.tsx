@@ -115,7 +115,7 @@ export default function MoreTab() {
           <MenuItem
             icon={
               notifState === 'granted' ? (
-                <Bell size={22} color={palette.dancheong} strokeWidth={1.5} />
+                <Bell size={22} color={palette.ink} strokeWidth={1.5} />
               ) : (
                 <BellOff size={22} color={palette.ash} strokeWidth={1.5} />
               )
@@ -125,7 +125,7 @@ export default function MoreTab() {
             onPress={handleNotificationsPress}
           />
           <MenuItem
-            icon={<ShieldAlert size={22} color={palette.dancheong} strokeWidth={1.5} />}
+            icon={<ShieldAlert size={22} color={palette.ink} strokeWidth={1.5} />}
             label="Emergency guide"
             sublabel="Phones, hospitals, embassies"
             onPress={() => router.push('/emergency')}

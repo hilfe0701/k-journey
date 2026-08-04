@@ -12,7 +12,7 @@ import { JourneyCompletePrompt } from '../../src/components/home/JourneyComplete
 import { JourneyModeSwitch } from '../../src/components/home/JourneyModeSwitch';
 import { PhaseTabs } from '../../src/components/home/PhaseTabs';
 import { MissionCard } from '../../src/components/mission/MissionCard';
-import { palette, radius, space } from '../../design-tokens';
+import { elevation, palette, radius, space } from '../../design-tokens';
 import { missionsForHousing, type MissionCategory } from '../../src/data/missions';
 import { useCompletedMissions } from '../../src/hooks/useCompletedMissions';
 import { useJourneyMilestones } from '../../src/hooks/useJourneyMilestones';
@@ -144,8 +144,8 @@ function CultureJourneyHome({ onShowEssentials }: { onShowEssentials: () => void
       >
         <View style={styles.header}>
           <View style={styles.headerCopy}>
-            <Text role="h2">Hi, {profile?.displayName ?? 'traveler'}</Text>
-            <Text role="sm" color={palette.ash}>Make your life in Korea memorable.</Text>
+            <Text role="displayXl">Hi, {profile?.displayName ?? 'traveler'}</Text>
+            <Text role="bodySm" color={palette.muted}>Make your life in Korea memorable.</Text>
           </View>
           <View style={styles.headerActions}>
             <NetworkIndicator />
@@ -189,23 +189,23 @@ function CultureJourneyHome({ onShowEssentials }: { onShowEssentials: () => void
             >
               <View style={styles.focusEyebrow}>
                 <View style={styles.focusIcon}>
-                  <Sparkles size={18} color={palette.hwanggeumDeep} strokeWidth={1.6} />
+                  <Sparkles size={18} color={palette.ink} strokeWidth={1.6} />
                 </View>
-                <Text role="badge" color={palette.hwanggeumDeep}>
+                <Text role="badge" color={palette.muted}>
                   Start here · Phase {activePhase}
                 </Text>
               </View>
-              <Text role="h3">{focusMission.titleEn}</Text>
-              <Text role="sm" color={palette.meokMid} numberOfLines={2}>
+              <Text role="displayMd">{focusMission.titleEn}</Text>
+              <Text role="bodySm" color={palette.body} numberOfLines={2}>
                 {focusMission.summary}
               </Text>
               <View style={styles.focusFooter}>
-                <Text role="sm" color={palette.cheong} weight="semibold">
+                <Text role="link" weight="medium" color={palette.rausch}>
                   {completionsToNextPanel === 0
                     ? 'Your folding screen is complete'
                     : `${completionsToNextPanel} moment${completionsToNextPanel === 1 ? '' : 's'} to panel ${nextPanel}`}
                 </Text>
-                <ArrowRight size={18} color={palette.cheong} strokeWidth={1.7} />
+                <ArrowRight size={18} color={palette.rausch} strokeWidth={1.7} />
               </View>
             </Pressable>
           </View>
@@ -223,7 +223,7 @@ function CultureJourneyHome({ onShowEssentials }: { onShowEssentials: () => void
           >
             <ByeongpungStrip completedCount={totalCompleted} />
           </Pressable>
-          <Text role="sm" color={palette.ash} align="center" style={styles.byeongpungHint}>
+          <Text role="bodySm" color={palette.muted} align="center" style={styles.byeongpungHint}>
             {revealedPanels === 0
               ? 'Complete missions or bucket-list items to reveal your byeongpung (병풍).'
               : `${revealedPanels} of 8 panels revealed · keep exploring`}
@@ -247,7 +247,7 @@ function CultureJourneyHome({ onShowEssentials }: { onShowEssentials: () => void
             if (missions.length === 0) return null;
             return (
               <View key={category} style={styles.missionGroup}>
-                <Text role="h4">{CATEGORY_LABEL[category]}</Text>
+                <Text role="displaySm">{CATEGORY_LABEL[category]}</Text>
                 <View style={styles.missionList}>
                   {missions.map((mission) => (
                     <MissionCard
@@ -268,9 +268,9 @@ function CultureJourneyHome({ onShowEssentials }: { onShowEssentials: () => void
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.hanji },
+  root: { flex: 1, backgroundColor: palette.canvas },
   header: {
-    paddingHorizontal: space[5],
+    paddingHorizontal: space[6],
     paddingVertical: space[4],
     flexDirection: 'row',
     alignItems: 'center',
@@ -279,22 +279,17 @@ const styles = StyleSheet.create({
   },
   headerCopy: { flex: 1, gap: space[1] },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: space[2] },
-  iconButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
-    backgroundColor: palette.cloud,
-  },
-  section: { paddingHorizontal: space[5], paddingVertical: space[3] },
+  section: { paddingHorizontal: space[6], paddingVertical: space[3] },
+  // The featured card is a white surface with the system's one shadow tier —
+  // it earns attention through elevation and the Rausch link, not a tint.
   focusCard: {
     gap: space[2],
-    padding: space[4],
+    padding: space[6],
     borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: palette.hwanggeum + '66',
-    backgroundColor: palette.hwanggeumLight,
+    borderColor: palette.hairline,
+    backgroundColor: palette.canvas,
+    ...elevation.float,
   },
   focusEyebrow: {
     flexDirection: 'row',
@@ -307,21 +302,21 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: palette.hanji,
+    backgroundColor: palette.surfaceSoft,
   },
   focusFooter: {
     minHeight: 36,
     marginTop: space[1],
-    paddingTop: space[2],
+    paddingTop: space[3],
     borderTopWidth: 1,
-    borderTopColor: palette.hwanggeum + '44',
+    borderTopColor: palette.hairlineSoft,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: space[2],
   },
-  byeongpungHint: { marginTop: space[2] },
-  missionGroups: { gap: space[5] },
-  missionGroup: { gap: space[2] },
-  missionList: { gap: space[2] },
+  byeongpungHint: { marginTop: space[3] },
+  missionGroups: { gap: space[8] },
+  missionGroup: { gap: space[3] },
+  missionList: { gap: space[3] },
 });

@@ -79,7 +79,7 @@ export default function ProfileSetup() {
         ) : (
           <View style={{ width: MIN_TARGET }} />
         )}
-        <ProgressBar value={(step + 1) / totalSteps} color={palette.dancheong} />
+        <ProgressBar value={(step + 1) / totalSteps} color={palette.ink} />
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.body}>
@@ -115,7 +115,7 @@ export default function ProfileSetup() {
                     key={uni.id}
                     onPress={() => setUniversityId(uni.id)}
                     style={{
-                      borderColor: active ? palette.dancheong : palette.hairline,
+                      borderColor: active ? palette.ink : palette.hairline,
                       borderWidth: active ? 2 : 1,
                     }}
                   >
@@ -146,7 +146,7 @@ export default function ProfileSetup() {
                     key={t.value}
                     onPress={() => setStayType(t.value)}
                     style={{
-                      borderColor: active ? palette.dancheong : palette.hairline,
+                      borderColor: active ? palette.ink : palette.hairline,
                       borderWidth: active ? 2 : 1,
                     }}
                   >
@@ -175,7 +175,7 @@ export default function ProfileSetup() {
                     key={h.value}
                     onPress={() => setHousing(h.value)}
                     style={{
-                      borderColor: active ? palette.dancheong : palette.hairline,
+                      borderColor: active ? palette.ink : palette.hairline,
                       borderWidth: active ? 2 : 1,
                       flexDirection: 'row',
                       alignItems: 'center',

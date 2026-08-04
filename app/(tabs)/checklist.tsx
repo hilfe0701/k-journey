@@ -201,7 +201,7 @@ export default function ChecklistHome({ onShowCulture }: { onShowCulture?: () =>
           title="Blocked"
           description="The card explains what is holding each task."
           tasks={blockedTasks}
-          icon={<LockKeyhole size={22} color={palette.dancheong} strokeWidth={1.6} />}
+          icon={<LockKeyhole size={22} color={palette.muted} strokeWidth={1.6} />}
           screenName="home_blocked_tasks"
           emptyMessage="No tasks are blocked right now."
           router={router}
@@ -275,7 +275,7 @@ function CurrentPhaseCard({
   return (
     <Card
       padded
-      bg={isDateUnknown ? palette.cloud : palette.hwangto}
+      bg={isDateUnknown ? palette.surfaceSoft : palette.canvas}
       style={styles.phaseCard}
     >
       <View style={styles.cardEyebrow}>
@@ -301,12 +301,11 @@ function RegistrationDeadlineCard({ arrivalDate }: { arrivalDate: string }) {
   );
   const overdue = daysRemaining < 0;
   const imminent = daysRemaining >= 0 && daysRemaining <= 14;
-  const accent = overdue ? palette.dancheong : imminent ? palette.hwanggeumDeep : palette.cheong;
-  const background = overdue
-    ? palette.dancheongLight
-    : imminent
-      ? palette.hwanggeumLight
-      : palette.cloud;
+  // Urgency is carried by the accent tone and the countdown copy, never by a
+  // tinted surface: Rausch is reserved for CTAs and the save state, so an
+  // overdue card that wore it would read as "featured" rather than "late".
+  const accent = overdue ? palette.error : imminent ? palette.ink : palette.muted;
+  const background = palette.surfaceSoft;
   const countdown = overdue
     ? `Overdue by ${Math.abs(daysRemaining)} days`
     : daysRemaining === 0
@@ -339,14 +338,14 @@ function RegistrationDeadlineCard({ arrivalDate }: { arrivalDate: string }) {
 /** REQ-SFR-006 · REQ-SFR-002 · POL-006 · POL-009 · HOME-03. */
 function DepartureLockCard() {
   return (
-    <Card padded bg={palette.dancheongLight} style={styles.warningCard}>
+    <Card padded bg={palette.surfaceSoft} style={styles.warningCard}>
       <View style={styles.cardEyebrow}>
-        <AlertTriangle size={18} color={palette.dancheong} strokeWidth={1.6} />
-        <Text role="badge" color={palette.dancheong}>
+        <AlertTriangle size={18} color={palette.error} strokeWidth={1.6} />
+        <Text role="badge" color={palette.error}>
           Departure lock warning
         </Text>
       </View>
-      <Text role="h3">Check before leaving Korea</Text>
+      <Text role="displaySm">Check before leaving Korea</Text>
       <Text role="body" color={palette.meok}>
         If your registration card is not issued, leaving Korea may cancel your registration.
       </Text>
@@ -432,12 +431,11 @@ function TaskCard({ task, router }: { task: HomeTask; router: ReturnType<typeof 
   const isAvailable = task.status === 'available' || task.status === 'in_progress' || isCompleted;
   const isNotApplicable = task.status === 'not_applicable';
   const isReview = task.status === 'review_required';
-  const accent = isAvailable ? palette.jade : isNotApplicable ? palette.ash : palette.dancheong;
-  const background = isAvailable
-    ? palette.hanji
-    : isNotApplicable
-      ? palette.cloud
-      : palette.dancheongLight;
+  // Blocked and not-applicable recede onto the soft surface with a muted
+  // glyph; the lock icon and the status label carry the state, so nothing here
+  // depends on hue alone (ACCESSIBILITY.md → "state is not color alone").
+  const accent = isAvailable ? palette.ink : palette.muted;
+  const background = isAvailable ? palette.canvas : palette.surfaceSoft;
   const Icon = isCompleted ? CheckCircle2 : isAvailable ? CheckCircle2 : isNotApplicable ? CircleOff : LockKeyhole;
   const label = isCompleted
     ? 'COMPLETED'
@@ -459,18 +457,18 @@ function TaskCard({ task, router }: { task: HomeTask; router: ReturnType<typeof 
       }}
       padded
       bg={background}
-      style={[styles.taskCard, { borderColor: isAvailable ? palette.hairline : accent }]}
+      style={[styles.taskCard, { borderColor: palette.hairline }]}
       accessibilityLabel={`${task.title}. ${label.toLowerCase()}.`}
       accessibilityHint="Tap to open task details."
       {...a11yState({ selected: isCompleted })}
     >
       <View style={styles.taskHeader}>
-        <View style={[styles.taskIcon, { backgroundColor: isAvailable ? palette.jadeLight : isNotApplicable ? palette.cloud : palette.dancheongLight }]}>
+        <View style={[styles.taskIcon, { backgroundColor: isAvailable ? palette.surfaceSoft : palette.surfaceStrong }]}>
           <Icon size={20} color={accent} strokeWidth={1.6} />
         </View>
         <View style={styles.flexCopy}>
-          <Text role="h4">{task.title}</Text>
-          <Text role="sm" color={palette.ash}>
+          <Text role="titleMd" color={isAvailable ? palette.ink : palette.muted}>{task.title}</Text>
+          <Text role="bodySm" color={palette.muted}>
             {task.summary}
           </Text>
         </View>
@@ -939,7 +937,7 @@ const styles = StyleSheet.create({
   },
   warningCard: {
     gap: space[3],
-    borderColor: palette.dancheong,
+    borderColor: palette.hairline,
   },
   closingCard: {
     gap: space[3],

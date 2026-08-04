@@ -234,7 +234,7 @@ export default function Gallery() {
       <View pointerEvents="none" style={styles.offscreen}>
         <View ref={shareRef} collapsable={false} style={styles.shareCard}>
           <View style={styles.shareHeader}>
-            <Text role="badge" color={palette.dancheong}>
+            <Text role="badge" color={palette.muted}>
               K&#x2013;JOURNEY · {theme.era.nameEn}
             </Text>
             <Text role="h1" color={palette.meok} style={{ marginTop: space[2] }}>

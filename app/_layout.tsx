@@ -70,12 +70,12 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return (
     <SafeAreaView style={errorStyles.root} edges={['top', 'bottom']}>
       <View style={errorStyles.icon}>
-        <AlertTriangle size={32} color={palette.dancheong} strokeWidth={1.5} />
+        <AlertTriangle size={32} color={palette.error} strokeWidth={1.5} />
       </View>
-      <Text role="h2" align="center">
+      <Text role="displayLg" align="center">
         Something went wrong
       </Text>
-      <Text role="sm" color={palette.ash} align="center" style={errorStyles.detail}>
+      <Text role="bodySm" color={palette.muted} align="center" style={errorStyles.detail}>
         {error.message}
       </Text>
       <Pressable
@@ -85,7 +85,7 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
         accessibilityHint="Reloads the screen that failed."
         style={({ pressed }) => [errorStyles.btn, { opacity: pressed ? 0.7 : 1 }]}
       >
-        <Text role="body" weight="semibold" color={palette.hanji}>
+        <Text role="buttonMd" color={palette.onPrimary}>
           Try again
         </Text>
       </Pressable>
@@ -94,10 +94,12 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 }
 
 export default function RootLayout() {
+  // One family for the entire scale, the way Airbnb runs Cereal VF across
+  // display, body, nav, and captions. Pretendard stands in for Cereal: same
+  // geometric-humanist proportions, and unlike Inter it carries Hangul. The
+  // Noto Serif display faces are gone with the serif hierarchy they served.
   const [fontsLoaded] = useFonts({
     Pretendard: require('../assets/fonts/PretendardKJourney.ttf'),
-    NotoSerifKR_500Medium: require('../assets/fonts/NotoSerifKR500KJourney.ttf'),
-    NotoSerifKR_700Bold: require('../assets/fonts/NotoSerifKR700KJourney.ttf'),
   });
 
   useEffect(() => {
@@ -231,7 +233,7 @@ const errorStyles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: palette.dancheong + '14',
+    backgroundColor: palette.surfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -242,22 +244,22 @@ const errorStyles = StyleSheet.create({
     marginTop: space[4],
     paddingHorizontal: space[6],
     paddingVertical: space[3],
-    borderRadius: radius.pill,
-    backgroundColor: palette.meok,
+    borderRadius: radius.sm,
+    backgroundColor: palette.rausch,
   },
 });
 
 const shellStyles = StyleSheet.create({
   canvas: {
     flex: 1,
-    backgroundColor: palette.cloud,
+    backgroundColor: palette.surfaceSoft,
   },
   appViewport: {
     flex: 1,
     width: '100%',
     maxWidth: 760,
     alignSelf: 'center',
-    backgroundColor: palette.hanji,
+    backgroundColor: palette.canvas,
     borderLeftWidth: 1,
     borderRightWidth: 1,
     borderColor: palette.hairline,

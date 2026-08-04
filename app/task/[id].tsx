@@ -417,7 +417,7 @@ function StatusSection({
       <SectionHeading
         icon={
           isBlocked ? (
-            <LockKeyhole size={19} color={palette.dancheong} strokeWidth={1.5} />
+            <LockKeyhole size={19} color={palette.muted} strokeWidth={1.5} />
           ) : (
             <CheckCircle2 size={19} color={palette.jade} strokeWidth={1.5} />
           )
@@ -449,7 +449,7 @@ function StatusSection({
       {isBlocked ? (
         <View style={styles.blockedCallout}>
           <View style={styles.calloutHeader}>
-            <LockKeyhole size={18} color={palette.dancheong} strokeWidth={1.5} />
+            <LockKeyhole size={18} color={palette.muted} strokeWidth={1.5} />
             <Text role="h4">{task.status === 'review_required' ? 'Needs a condition check' : 'Blocked'}</Text>
           </View>
           <Text role="body">{task.reason ?? 'This task cannot start yet.'}</Text>
@@ -681,7 +681,15 @@ function HousingDocumentsSection({
 
 function DocumentRow({ document }: { document: HousingDocumentSpec }) {
   const status = document.required === null ? 'CHECK NEEDED' : document.required ? 'REQUIRED' : 'NOT NEEDED';
-  const statusColor = document.required === false ? palette.ash : document.required === null ? palette.hwanggeumDeep : palette.cheong;
+  // Three distinct tones on purpose. "CHECK NEEDED" is an explicit unknown and
+  // must not collapse into the same ink as "REQUIRED" — the label text carries
+  // the state, but the tone has to keep unknown visible rather than settled.
+  const statusColor =
+    document.required === false
+      ? palette.muted
+      : document.required === null
+        ? palette.error
+        : palette.ink;
 
   return (
     <Card padded bg={palette.hanji} style={styles.documentCard}>
@@ -1268,15 +1276,16 @@ function statusLabelFor(task: HomeTask): string {
 }
 
 function statusAccent(task: HomeTask): string {
-  if (task.status === 'completed' || task.status === 'available' || task.status === 'in_progress') return palette.jade;
-  if (task.status === 'not_applicable') return palette.ash;
-  return palette.dancheong;
+  if (task.status === 'completed' || task.status === 'available' || task.status === 'in_progress') return palette.ink;
+  if (task.status === 'not_applicable') return palette.mutedSoft;
+  // Blocked recedes to muted. It must not burn Rausch: the brand voltage means
+  // "act on this", which is the opposite of what a blocked task is saying.
+  return palette.muted;
 }
 
 function statusBackground(task: HomeTask): string {
-  if (task.status === 'completed' || task.status === 'available' || task.status === 'in_progress') return palette.jadeLight;
-  if (task.status === 'not_applicable') return palette.cloud;
-  return palette.dancheongLight;
+  if (task.status === 'completed' || task.status === 'available' || task.status === 'in_progress') return palette.canvas;
+  return palette.surfaceSoft;
 }
 
 function unique(values: readonly string[]): string[] {
@@ -1336,7 +1345,7 @@ const styles = StyleSheet.create({
   factValue: { flex: 1, textAlign: 'right' },
   dependencyBlock: { gap: space[2], padding: space[4], backgroundColor: palette.cloud, borderRadius: radius.card },
   dependencyRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space[2] },
-  blockedCallout: { gap: space[2], padding: space[4], backgroundColor: palette.dancheongLight, borderRadius: radius.card, borderWidth: 1, borderColor: palette.dancheong },
+  blockedCallout: { gap: space[2], padding: space[4], backgroundColor: palette.surfaceSoft, borderRadius: radius.card, borderWidth: 1, borderColor: palette.hairline },
   neutralCallout: { gap: space[2], padding: space[4], backgroundColor: palette.cloud, borderRadius: radius.card, borderWidth: 1, borderColor: palette.hairline },
   calloutHeader: { flexDirection: 'row', alignItems: 'center', gap: space[2] },
   documentList: { gap: space[3] },
@@ -1379,7 +1388,7 @@ const styles = StyleSheet.create({
   radioSelected: { borderColor: palette.dancheong },
   radioDot: { width: 12, height: 12, borderRadius: radius.full, backgroundColor: palette.dancheong },
   photoCard: { gap: space[2], borderColor: palette.hwangtoDeep },
-  warningCallout: { flexDirection: 'row', alignItems: 'flex-start', gap: space[2], padding: space[4], backgroundColor: palette.dancheongLight, borderRadius: radius.card, borderWidth: 1, borderColor: palette.dancheong },
+  warningCallout: { flexDirection: 'row', alignItems: 'flex-start', gap: space[2], padding: space[4], backgroundColor: palette.surfaceSoft, borderRadius: radius.card, borderWidth: 1, borderColor: palette.hairline },
   footer: { paddingHorizontal: space[5], paddingTop: space[3], paddingBottom: space[4], borderTopWidth: 1, borderTopColor: semantic.border.hairline, backgroundColor: palette.hanji },
   missingBody: { flex: 1, paddingHorizontal: space[6], alignItems: 'center', justifyContent: 'center', gap: space[3] },
 });

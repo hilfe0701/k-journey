@@ -155,7 +155,7 @@ function ExportOutcome({ result }: { result: ExportResultView }) {
       >
         <View style={styles.calloutHeader}>
           {failed ? (
-            <AlertTriangle size={19} color={palette.dancheong} strokeWidth={1.5} />
+            <AlertTriangle size={19} color={palette.error} strokeWidth={1.5} />
           ) : (
             <ShieldCheck size={19} color={palette.jade} strokeWidth={1.5} />
           )}
@@ -226,10 +226,10 @@ const styles = StyleSheet.create({
   warningCallout: {
     gap: space[2],
     padding: space[4],
-    backgroundColor: palette.dancheongLight,
+    backgroundColor: palette.surfaceSoft,
     borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: palette.dancheong,
+    borderColor: palette.hairline,
   },
   successCallout: {
     gap: space[2],
