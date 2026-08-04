@@ -363,6 +363,12 @@ Do **not** use `hitSlop` to reach the floor. It does not exist in React Native W
 
 For icon-only controls use `IconButton` (see below), which owns the box.
 
+Text links owe the same box. A single line of URL text measures about 17 px
+tall in a browser, so a `Pressable` with `accessibilityRole="link"` wrapped
+around one needs `minHeight: MIN_TARGET` and `justifyContent: 'center'` of its
+own. A 44pt row *containing* the link is not the target; the pressable is.
+`npm run audit:a11y` measures this on every route.
+
 ### 13.3 Color contrast
 
 * Body text on background: **≥ 4.5:1**

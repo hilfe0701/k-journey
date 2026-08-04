@@ -4,20 +4,17 @@ Ordered by release risk, not by document age.
 
 ## P0 — finish the current reinforcement
 
-1. Run typecheck, lint, all unit tests, and the static web build.
-2. Start the local web build and inspect 390×844 and 1440×900.
-3. Verify direct refresh for `/mission/p1_pack`, a task detail, and a bucket detail.
-4. Verify inactive tabs are absent from the web accessibility tree.
-5. Exercise official-source links, emergency dial links, residence-card unknown state, full text export, and local-data deletion.
-6. Record final asset and bundle sizes.
+Done on 2026-08-04; evidence in "Release verification pass" in `STATUS.md`.
+Repeat with `npm run check`, `npm run build:web`, and `npm run audit:a11y`
+before any release. The audit covers items 2–4 and now fails the build on a
+regression; items 5 and 6 stay manual.
 
 ## P0 — reproducible release
 
-1. Review the full dirty diff and separate unrelated user changes if needed.
-2. Commit the integrated product and documentation with a clean source SHA.
-3. Deploy only the newly generated `dist/` from that SHA.
-4. Record source SHA, deployment ID/URL, build command, verification date, and rollback target in `docs/WEB_DEPLOYMENT.md`.
-5. Run the same browser smoke test against production.
+1. Commit the integrated product and documentation with a clean source SHA.
+2. Rebuild `dist/` from that SHA and deploy only that output.
+3. Record source SHA, deployment ID/URL, build command, verification date, and rollback target in `docs/WEB_DEPLOYMENT.md`.
+4. Run the same browser smoke test against production.
 
 ## P1 — content and art
 
@@ -30,7 +27,7 @@ Ordered by release risk, not by document age.
 
 1. Add mission action types such as checklist, official link, save place, reservation, and reflection where they create real value.
 2. Add component/E2E coverage for tabs, routes, first actions, 5→6 panel unlock, undo/delete, export/reset, and responsive layouts.
-3. ~~Add web focus-visible treatment and audit all icon-only controls for 44×44 targets and labels.~~ Done — see "Accessibility pass" in `STATUS.md`. Still open: automate the DOM audit in `docs/ACCESSIBILITY.md` so it runs in CI instead of by hand.
+3. ~~Add web focus-visible treatment and audit all icon-only controls for 44×44 targets and labels. Automate the DOM audit so it runs as a command instead of by hand.~~ Done — see "Accessibility pass" and "Release verification pass" in `STATUS.md`. `npm run audit:a11y` runs it; wiring that command into CI is the remaining step.
 4. Complete the portable backup/import design before making any restore promise.
 
 ## Validation without interviews

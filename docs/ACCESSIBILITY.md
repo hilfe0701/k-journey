@@ -31,10 +31,11 @@ Target: WCAG 2.1 AA for web and equivalent VoiceOver/TalkBack behavior on native
 - Every actionable element has a visible focus indicator with at least 3:1 contrast.
 - Direct route refresh does not shift focus to an unrelated splash/home page.
 
-## Two React Native Web gaps this app has to work around
+## Four React Native Web gaps this app has to work around
 
-Both are silent — the native build is correct and the code reads correctly, so
-neither shows up without opening a browser. Re-check them after any RNW upgrade.
+All of them are silent — the native build is correct and the code reads
+correctly, so none shows up without opening a browser. Re-check them after any
+RNW upgrade.
 
 1. **`accessibilityState` is dropped by RNW's `Pressable`.** Only
    `TouchableWithoutFeedback` reads it, so `accessibilityState={{ selected }}`
@@ -44,17 +45,49 @@ neither shows up without opening a browser. Re-check them after any RNW upgrade.
    24pt icon with `hitSlop={8}` is a 24×24 target in a browser. Icon-only
    controls must use `IconButton` (`src/components/ui/IconButton.tsx`), which
    lays down a real 44×44 box; never rely on `hitSlop` to reach the minimum.
+   Text links are the same problem in a different shape: a one-line URL is 17px
+   tall, so an official-source link needs `minHeight: MIN_TARGET` of its own —
+   the 44pt row *around* it is not the target.
+3. **`aria-hidden` does not remove anything from the tab order.** The tab
+   screens hid their inactive selves from the accessibility tree correctly, and
+   keyboard focus still walked straight into them: on Byeongpung the tree
+   exposed six controls while Tab reached "Emergency guide", the
+   Essentials/Culture switch, and the Journey task list — focus landing inside
+   an `aria-hidden` subtree, which announces nothing. Root views of tab screens
+   spread `useInactiveScreen()` (`src/lib/inactiveScreen.ts`), which adds the
+   `inert` attribute on web; `inert` is what removes focus, hit-testing, and the
+   accessibility tree together.
+4. **`Alert` is an empty function.** RNW ships
+   `class Alert { static alert() {} }`, so every confirmation and blocking
+   error was invisible on web — including "Delete all local data", which made
+   the only local-erase control unusable in a browser, and the T2/T3 tiers of
+   the error catalog, which made failed mutations look like no-ops. Use
+   `showAlert()` from `src/lib/alert.ts`; `AlertHost` renders it as a real
+   `alertdialog`, with `window.confirm` as the fallback if no host is mounted.
 
 RNW also resets `outline` to none on every `Pressable`, which is why
 `installWebFocusRing()` runs from the root layout.
 
 ## Verifying the first three global rules
 
-Run this in the browser console on each route. It should return empty arrays.
+```
+npm run build:web && npm run audit:a11y
+```
+
+`scripts/a11y-audit.mjs` serves `dist/` with the production catch-all rewrite,
+seeds a completed local profile, sweeps every route at 390×844 and 1440×900,
+and exits non-zero on an undersized target, an unnamed control, a stateful role
+with no state, horizontal page overflow, an uncaught error, or a Tab stop
+inside an inactive tab screen. Chromium comes from
+`npx playwright install chromium`.
+
+The same checks by hand — run this in the browser console on a route. It should
+return empty arrays.
 
 ```js
 const sel = '[role="button"],[role="link"],[role="tab"],[role="radio"],[role="checkbox"],[role="switch"],[tabindex="0"]';
-const c = [...document.querySelectorAll(sel)].filter(e => !e.closest('[aria-hidden="true"]'));
+const c = [...document.querySelectorAll(sel)]
+  .filter(e => !e.closest('[aria-hidden="true"]') && !e.closest('[inert]'));
 ({
   // under the 44pt minimum
   small: c.filter(e => { const r = e.getBoundingClientRect();

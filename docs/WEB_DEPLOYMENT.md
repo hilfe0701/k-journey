@@ -17,16 +17,30 @@ Last verified: 2026-08-02 (Asia/Seoul)
 
 Do not promote the existing `dist/` again. It was generated before the current image optimization and UI fixes.
 
+## Current build measurement
+
+Measured 2026-08-04 from `npm run build:web` on the verification pass described
+in `STATUS.md`:
+
+| Item | Size |
+|---|---|
+| `dist/` total | 23 MB (66 files) |
+| Artwork and fonts (`dist/assets`) | 18 MB |
+| JavaScript, one bundle | 4.97 MB raw / 1.02 MB gzipped |
+
+Artwork dominates the payload; the JS bundle is unchanged by this pass.
+
 ## Release procedure
 
 1. Review and commit the exact release source; record its SHA and rollback SHA.
 2. Run `npm run check`, `npx expo-doctor`, and a fresh `npm run build:web`.
-3. Record output, JS, and artwork sizes.
-4. Create a protected preview with `npx vercel deploy --yes`.
-5. Verify `/`, `/mission/p1_pack`, a task route, and a bucket route by direct refresh.
-6. Verify 390×844 and 1440×900 layouts, inactive-tab accessibility, links, export, and browser console.
-7. Promote the verified deployment with `npx vercel promote <preview-url> --yes`.
-8. Record source SHA, preview/production deployment IDs, verifier, timestamp, and smoke result here.
+3. Run `npm run audit:a11y` against that build; it must exit zero.
+4. Record output, JS, and artwork sizes.
+5. Create a protected preview with `npx vercel deploy --yes`.
+6. Verify `/`, `/mission/p1_pack`, a task route, and a bucket route by direct refresh.
+7. Verify 390×844 and 1440×900 layouts, inactive-tab accessibility, links, export, and browser console.
+8. Promote the verified deployment with `npx vercel promote <preview-url> --yes`.
+9. Record source SHA, preview/production deployment IDs, verifier, timestamp, and smoke result here.
 
 ## Rollback
 

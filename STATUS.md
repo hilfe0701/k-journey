@@ -1,8 +1,8 @@
 # K-Journey current status
 
-- Updated: 2026-08-02
+- Updated: 2026-08-04
 - Branch: `v2-conditional-orchestration`
-- Base HEAD before the current working changes: `4626ad1f4bf3`
+- Base HEAD before the current working changes: `9ccba15`
 - Product SSOT: `reference/K-Journey_PRD_v2_0_KR.md` + `DEC-040`
 - Current model: unified local-first product; no account or per-user server data
 
@@ -68,21 +68,76 @@ Verified across twelve routes at 500px and 1440px: zero undersized targets, zero
 unnamed controls, zero stateful roles missing state. `npm run check` passes
 (237 tests). Not yet re-verified: native iOS/Android and a real screen reader.
 
+## Release verification pass — 2026-08-04
+
+`npm run check` (30 suites, 253 tests, no lint warnings) and a fresh
+`npm run build:web` both pass. The static export was then served with the
+production catch-all rewrite and swept in Chromium at 390×844 and 1440×900.
+Fourteen routes were entered by direct URL — the refresh case — and all
+fourteen rendered their own screen: `/`, `/checklist`, `/byeongpung`,
+`/wantto`, `/more`, `/mission/p1_pack`, two task routes, `/bucket/new`, a
+created `/bucket/<id>`, `/campus`, `/emergency`, `/gallery`, `/settings`,
+`/settings/export`. Zero undersized targets, unnamed controls, stateless roles,
+horizontal overflow, or console errors at either width.
+
+Exercised end to end in the browser: official-source links (open, 44pt),
+emergency call controls, the residence-card unknown state, bucket creation plus
+detail refresh, the full text export, and local-data deletion.
+
+Four defects were found and fixed in this pass. Each one is invisible from the
+code and correct on native:
+
+- **Tab order walked into the inactive tab screen.** `aria-hidden` hides a
+  subtree from a screen reader but leaves it focusable. On Byeongpung the
+  accessibility tree exposed six controls while Tab reached the Journey task
+  list, the Essentials/Culture switch, and "Emergency guide". Root views now
+  spread `useInactiveScreen()`, which adds `inert` on web.
+- **`Alert.alert` is an empty function in React Native Web.** "Delete all local
+  data" therefore did nothing at all in a browser — the only local-erase
+  control the product offers was unusable — as did deleting a Want-to list, the
+  T2/T3 error tiers, and every share/save result. `src/lib/alert.ts` +
+  `AlertHost` render them; deletion is verified working on web.
+- **Analytics contacted PostHog with no key configured.** `disabled: true`
+  stops capture but not the remote-config fetch, so every page load sent
+  `GET .../array/phc_analytics_disabled/config` — a 404 per route. The client is
+  no longer constructed without a real key.
+- **Undersized web targets survived the last pass.** Official-source links were
+  17px tall (`hitSlop` again), the notification "Open Settings" button 36pt.
+  The gallery's 720px off-screen capture canvas sat at `left: 0`, so the page
+  scrolled sideways at phone width. The emergency screen had no heading.
+
+`scripts/a11y-audit.mjs` (`npm run audit:a11y`) now runs the whole sweep and
+exits non-zero on any of these, so this class of defect fails a command instead
+of waiting for a manual browser pass.
+
+Final build: `dist` 23 MB total, artwork 18 MB, one JS bundle at 4.97 MB raw /
+1.02 MB gzipped, 66 files.
+
+Still not verified: native iOS/Android and a real screen reader.
+
 ## Deployment
 
 The previously deployed web version is [k-journey-three.vercel.app](https://k-journey-three.vercel.app), deployment `dpl_6DHArMDvrJvYYWakQ4TenHDVKrPC`.
 
-That deployment predates the current audit and reinforcement changes. Do not describe it as equivalent to this working tree. The current changes have not been committed or redeployed yet.
+That deployment predates the current audit and reinforcement changes. Do not describe it as equivalent to this working tree. Nothing from this pass has been redeployed.
 
 ## Known release blockers
 
-- complete `npm run check` and resolve all new failures/warnings;
-- rebuild static web output after asset optimization;
-- verify 390×844 and 1440×900 layouts, direct detail URL refresh, tabs, links, export, and reset;
-- pin a clean commit SHA to any new deployment;
+Cleared on 2026-08-04: `npm run check`, the rebuilt static export, and the
+390×844 / 1440×900 browser pass over routes, refresh, tabs, links, export, and
+deletion. Remaining:
+
+- pin a clean commit SHA to any new deployment, and deploy only the `dist/`
+  built from it;
 - finish production privacy operator/contact/processor details;
-- complete source metadata audit for volatile cultural, university, and emergency content;
-- replace the independent-panel artwork with connected 8-panel masters when art production is authorized.
+- complete source metadata audit for volatile cultural, university, and
+  emergency content;
+- replace the independent-panel artwork with connected 8-panel masters when art
+  production is authorized — three concept masters are staged, unapproved and
+  not wired to runtime, under `assets/byeongpung/masters/`;
+- verify on native iOS/Android with a real screen reader; every web fix in this
+  pass was a browser-only behaviour, but the native paths have not been
+  re-walked.
 
 ## Historical documents
 

@@ -4,6 +4,8 @@
 
 The deployed web app may run without a PostHog key. In that state no product funnel is being measured. Targets below are hypotheses for future instrumented builds, not observed results.
 
+"No key" now means no client: `src/lib/posthog.ts` skips construction entirely rather than passing `disabled: true`. The earlier shape still let the SDK fetch its remote config on boot — the web build sent `GET https://us-assets.i.posthog.com/array/phc_analytics_disabled/config` on every page load, one 404 per route in the browser console — so an installation documented as unmeasured was still announcing itself, with its IP and user agent, to PostHog.
+
 Session replay is disabled. Product analytics uses allowlisted event names and coarse properties only.
 
 ## North-star behavior
