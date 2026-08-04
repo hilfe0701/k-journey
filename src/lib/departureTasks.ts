@@ -103,15 +103,42 @@ const BANK_ACCOUNT_CLOSURE: TaskSourceMetadata = {
     'An account cannot be closed after you leave Korea, but a dormitory deposit may arrive after departure. Both outcomes are shown instead of one recommendation.',
 };
 
-/** No primary source confirms these two. The structure exists; the value is empty. */
-const UNIVERSITY_UNCONFIRMED: TaskSourceMetadata = {
+/**
+ * G3. No national rule governs a dormitory deposit refund: each hall sets its
+ * own residence regulations, and the ones published by Korean universities
+ * differ on both the deduction and when the money moves. So the source stays
+ * empty on purpose — but the task no longer states a procedure to go with it,
+ * and the note says why the field is blank rather than leaving the reader to
+ * read "Not confirmed" as an oversight.
+ */
+const DORMITORY_DEPOSIT_SOURCE: TaskSourceMetadata = {
   sourceUrl: '',
   sourceLabel: UNKNOWN_VALUE_LABEL,
   checkedAt: null,
   reviewAfter: null,
-  finalAuthority: 'your university dormitory office and international office',
-  conflictNote: null,
+  finalAuthority: 'your dormitory office',
+  conflictNote:
+    'Deposit refunds are set by each dormitory’s own residence regulations, not by a national rule, so K-Journey does not state an amount, a deduction, or a date. Ask your dormitory office how and when yours is paid.',
   volatility: 'unknown',
+  owner: UNKNOWN_VALUE_LABEL,
+  conflictValues: [],
+};
+
+/**
+ * G6. The Ministry of Education publishes the university transcript service
+ * itself, which settles that the certificate exists and is issued by the
+ * university. Everything the reader actually needs next — overseas dispatch,
+ * whether a digital copy is accepted — is set by their own registrar.
+ */
+const TRANSCRIPT_SOURCE: TaskSourceMetadata = {
+  sourceUrl: 'https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13404000008',
+  sourceLabel: 'Government24 — university transcript service (교육부)',
+  checkedAt: '2026-08-04',
+  reviewAfter: null,
+  finalAuthority: 'your university registrar',
+  conflictNote:
+    'The national listing covers the certificate. Overseas postage, digital issuance, and fees are set by each university.',
+  volatility: 'medium',
   owner: UNKNOWN_VALUE_LABEL,
   conflictValues: [],
 };
@@ -222,21 +249,22 @@ export const DEPARTURE_TASKS: readonly DepartureTaskSpec[] = [
     sourceId: 'G3',
     title: 'Receive your dormitory deposit refund',
     summary:
-      'The refund may be paid after you leave, which is why the account decision comes first.',
+      'Ask your dormitory office how and when the refund is paid. If it can arrive after you fly, it needs an account that is still open.',
     timing: 'after_departure',
     timingLabel: 'After departure',
     dependsOn: [],
-    source: UNIVERSITY_UNCONFIRMED,
+    source: DORMITORY_DEPOSIT_SOURCE,
   },
   {
     taskId: DEPARTURE_TASK_IDS.transcript,
     sourceId: 'G6',
     title: 'Request your transcript',
-    summary: 'Delivery method and timing are set by your university.',
+    summary:
+      'Your university issues it. Ask your registrar whether it can be sent abroad or issued digitally before you leave.',
     timing: 'after_departure',
     timingLabel: 'After departure',
     dependsOn: [],
-    source: UNIVERSITY_UNCONFIRMED,
+    source: TRANSCRIPT_SOURCE,
   },
 ] as const;
 

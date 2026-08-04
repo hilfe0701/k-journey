@@ -178,16 +178,42 @@ const UNIVERSITY_GROUP_SOURCE: TaskSourceMetadata = {
   finalAuthority: 'your university international office',
 };
 
-const UNCONFIRMED_SOURCE: TaskSourceMetadata = {
-  sourceUrl: '',
-  sourceLabel: UNKNOWN_SOURCE_VALUE,
-  checkedAt: null,
+/**
+ * `departure-order` is a decision aid, not a claim: it orders two tasks that
+ * each answer to a different office. It previously carried an empty source,
+ * which read as an oversight rather than as the truth that no single authority
+ * settles the order.
+ *
+ * So the provenance names both sides instead. Neither is primary — the bank
+ * side rests on institutional departure guidance, and the dormitory side on
+ * regulations that differ per hall — and the note says so, because this task
+ * tells the user to make a choice and they are entitled to know how thin the
+ * ground under it is.
+ */
+const DEPARTURE_ORDER_SOURCE: TaskSourceMetadata = {
+  sourceUrl: 'https://www.fulbright.or.kr/en/handbook/leaving-korea/',
+  sourceLabel: 'Fulbright Korea leaving-Korea handbook (institutional guidance, not a primary authority)',
+  checkedAt: '2026-07-25',
   reviewAfter: null,
-  finalAuthority: 'your university international office',
-  conflictNote: null,
-  volatility: 'unknown',
+  finalAuthority: 'your bank branch and your dormitory office',
+  conflictNote:
+    'No single authority sets this order. Closing an account generally needs a branch visit, and a deposit may be paid after you fly, so the two tasks pull opposite ways. K-Journey shows both outcomes and leaves the choice to you.',
+  volatility: 'medium',
   owner: UNKNOWN_OWNER,
-  conflictValues: [],
+  conflictValues: [
+    {
+      value: 'Close the account before departure',
+      sourceLabel: 'Fulbright Korea and SUNY Korea departure guidance',
+      sourceUrl: 'https://www.fulbright.or.kr/en/handbook/leaving-korea/',
+      checkedAt: '2026-07-25',
+    },
+    {
+      value: 'Keep the account until the deposit arrives',
+      sourceLabel: 'Dormitory residence regulations — set per hall, no national rule',
+      sourceUrl: '',
+      checkedAt: null,
+    },
+  ],
 };
 
 /**
@@ -223,7 +249,7 @@ export const CORE_TASK_METADATA: readonly TaskMetadata[] = [
     taskId: 'departure-order',
     title: 'Departure order',
     summary: 'Choose how to handle your deposit and account before leaving Korea.',
-    source: UNCONFIRMED_SOURCE,
+    source: DEPARTURE_ORDER_SOURCE,
   },
 ] as const;
 
