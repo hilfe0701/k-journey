@@ -11,8 +11,6 @@ export default function OnboardingLayout() {
       }}
     >
       <Stack.Screen name="splash" />
-      <Stack.Screen name="sign-in" />
-      <Stack.Screen name="profile" />
       <Stack.Screen name="university" />
       <Stack.Screen name="program" />
       <Stack.Screen name="housing" />

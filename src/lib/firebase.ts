@@ -61,7 +61,6 @@ export interface UserProfile {
   displayName: string | null;
   photoUrl: null;
   university: string | null;
-  stayType: 'exchange-1' | 'exchange-2' | 'language' | 'working-holiday' | null;
   housing: 'dormitory' | 'off-campus' | null;
   /** Condition axes. `UNKNOWN` is intentionally persisted as a value. */
   universityId: string | UnknownValue;
@@ -130,7 +129,6 @@ export const EMPTY_PROFILE: UserProfile = {
   displayName: null,
   photoUrl: null,
   university: null,
-  stayType: null,
   housing: null,
   universityId: UNKNOWN,
   programType: UNKNOWN,

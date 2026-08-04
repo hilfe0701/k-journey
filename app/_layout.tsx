@@ -187,7 +187,7 @@ function RouteGate() {
     const onboardingComplete = !!profile?.onboardingCompletedAt;
 
     if (!onboardingComplete) {
-      if (!inOnboarding || subRoute === 'sign-in' || subRoute === 'profile') {
+      if (!inOnboarding) {
         router.replace(onboardingRoutePath(getOnboardingProgress()?.currentRoute ?? 'university'));
       }
       return;
