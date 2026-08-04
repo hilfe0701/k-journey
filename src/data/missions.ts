@@ -46,11 +46,14 @@ export const MISSIONS: Mission[] = [
     phase: 1,
     category: 'settle',
     titleEn: 'Prepare your visa documents',
-    summary: 'Most exchange students need a D-2 student visa. Start early.',
+    // Named a visa type and an application route for everyone. K-Journey asks
+    // for `visaTypeOrStatus` precisely because it does not infer this, and it
+    // supports visa-free stays, for which both claims were wrong.
+    summary: 'Settle your entry paperwork before you fly. Which route applies depends on your programme and nationality.',
     tips: [
-      'Apply at the Korean consulate in your home country, not on arrival.',
-      'Bring two paper copies of your Certificate of Admission and bank statement.',
-      'Processing time depends on the consulate and season. Use the consulate\'s current estimate before booking travel.',
+      'Your Korean embassy or consulate decides what you need, which route applies, and how long it takes. Ask them — the requirements differ by country and by season.',
+      'Your university international office issues the Certificate of Admission. Ask which documents they send and which you have to produce yourself.',
+      'Start before you book a flight you cannot change.',
     ],
     icon: 'FileText',
   },
@@ -185,13 +188,19 @@ export const MISSIONS: Mission[] = [
     category: 'settle',
     titleEn: 'Apply for your Alien Registration Card (외국인등록증)',
     titleKo: '외국인등록증',
-    summary: 'Required if you stay over 90 days. Apply within 90 days of arrival.',
+    // Three claims here disagreed with the sourced track, so they were removed
+    // rather than repeated. "Required if you stay over 90 days" contradicted
+    // `evaluateResidenceRegistration`, which also excuses a visa-free stay of
+    // any length. "Slots fill up weeks in advance" contradicted
+    // `APPOINTMENT_LEAD_TIME_DAYS`, which is permanently unknown on purpose.
+    // And one Seoul office was pinned for every reader, though jurisdiction
+    // follows the registered address.
+    summary: 'Register as a foreign resident if your stay calls for it. Essentials works out whether it applies to you.',
     tips: [
-      'Book online at hikorea.go.kr — slots fill up weeks in advance.',
-      'Use HiKorea and your university\'s current checklist for documents and fees; requirements can change.',
-      'Processing and delivery times vary. Ask the immigration office when and how your card will be issued.',
+      'Essentials checks your stay length and status against the registration rule and carries the official fee sources. Start there — this card does not repeat the deadline, because the answer depends on conditions only Essentials holds.',
+      'Book the immigration appointment first, at hikorea.go.kr. K-Journey does not estimate how far ahead slots go, so check real availability rather than planning around a number.',
+      'Which office is yours follows your registered address. Confirm it before you travel to one.',
     ],
-    mapHint: 'Seoul Immigration Office, Mok-dong (목동)',
     icon: 'IdCard',
   },
   {
@@ -199,11 +208,13 @@ export const MISSIONS: Mission[] = [
     phase: 2,
     category: 'settle',
     titleEn: 'Open a Korean bank account',
-    summary: 'Needed for rent, utility autopay, and KakaoPay setup.',
+    summary: 'A Korean account is what makes rent, utility autopay, and local payment apps work.',
     tips: [
-      'Woori, KB, and Shinhan have English-speaking branches near major campuses.',
-      'You need: ARC, passport, university enrollment letter, Korean phone number.',
-      'A debit card is issued same day — most cards accept Apple Pay/Samsung Pay.',
+      // The old list read as a universal requirement and the card issuance as a
+      // guarantee. Both are set by the bank, and neither had a source.
+      'Bring your passport and residence card. Branches also ask for some proof of address or enrolment and a Korean number, but the exact list differs by bank and even by branch — call the one you plan to visit.',
+      'Woori, KB, Shinhan, and Hana all serve foreign customers. Your international office knows which branch near campus its students use.',
+      'Ask what the account can do on the first day and what lifts any limits, so a transfer you are counting on does not fail later.',
     ],
     icon: 'Building2',
   },
