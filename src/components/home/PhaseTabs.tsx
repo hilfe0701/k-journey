@@ -3,6 +3,7 @@ import { ScrollView, Pressable, StyleSheet } from 'react-native';
 import { Text } from '../ui/Text';
 import { palette, space, radius, phaseColors } from '../../../design-tokens';
 import { Phase } from '../../hooks/usePhase';
+import { a11yState } from '../../lib/a11y';
 
 const PHASES: { phase: Phase; label: string; colorKey: keyof typeof phaseColors }[] = [
   { phase: 1, label: 'Pre-arrival', colorKey: 'preArrival' },
@@ -33,7 +34,7 @@ export function PhaseTabs({ active, onChange, countsByPhase }: PhaseTabsProps) {
             key={phase}
             onPress={() => onChange(phase)}
             accessibilityRole="tab"
-            accessibilityState={{ selected: isActive }}
+            {...a11yState({ selected: isActive })}
             accessibilityLabel={`Phase ${phase}, ${label}, ${counts.done} of ${counts.total} complete`}
             style={({ pressed }) => [
               styles.tab,

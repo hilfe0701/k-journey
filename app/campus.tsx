@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
@@ -15,7 +15,7 @@ import {
   KeyRound,
 } from 'lucide-react-native';
 
-import { Text, EmptyState } from '../src/components/ui';
+import { Text, EmptyState, IconButton, MIN_TARGET } from '../src/components/ui';
 import { palette, space, radius } from '../design-tokens';
 import { useProfile } from '../src/hooks/useProfile';
 import { universityById, University } from '../src/data/universities';
@@ -31,13 +31,16 @@ export default function Campus() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={24} color={palette.meok} />
-        </Pressable>
+        <IconButton
+          icon={ChevronLeft}
+          size={24}
+          accessibilityLabel="Back"
+          onPress={() => router.back()}
+        />
         <Text role="body" weight="semibold">
           Campus guide
         </Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: MIN_TARGET }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>

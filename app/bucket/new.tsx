@@ -4,13 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Plus, Minus } from 'lucide-react-native';
 
-import { Text, Button, Input } from '../../src/components/ui';
+import { Text, Button, Input, IconButton, MIN_TARGET } from '../../src/components/ui';
 import { palette, space, radius } from '../../design-tokens';
 import { BUCKET_TEMPLATES, BucketTemplateKey } from '../../src/data/bucketTemplates';
 import { BUCKET_TEMPLATE_IMAGES } from '../../src/components/byeongpung/motifs';
 import { createBucket } from '../../src/lib/firebase';
 import { showOperationError } from '../../src/lib/errorAlert';
 import { track } from '../../src/lib/posthog';
+import { a11yState } from '../../src/lib/a11y';
 
 const MAX_OPTIONS = [5, 8, 10, 12, 15, 20];
 
@@ -69,18 +70,16 @@ export default function NewBucket() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={8}
-          accessibilityRole="button"
+        <IconButton
+          icon={ChevronLeft}
+          size={24}
           accessibilityLabel="Back"
-        >
-          <ChevronLeft size={24} color={palette.meok} />
-        </Pressable>
+          onPress={() => router.back()}
+        />
         <Text role="body" weight="semibold">
           New bucket
         </Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: MIN_TARGET }} />
       </View>
 
       <KeyboardAvoidingView
@@ -125,7 +124,7 @@ export default function NewBucket() {
             <Text role="sm" color={palette.ash}>
               Max wishes per bucket
             </Text>
-            <View style={styles.maxRow}>
+            <View style={styles.maxRow} accessibilityRole="radiogroup">
               {MAX_OPTIONS.map((n) => {
                 const active = n === maxItems;
                 return (
@@ -135,6 +134,9 @@ export default function NewBucket() {
                       setMaxItems(n);
                       if (items.length > n) setItems(items.slice(0, n));
                     }}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`${n} wishes`}
+                    {...a11yState({ selected: active })}
                     style={[
                       styles.maxChip,
                       active && { backgroundColor: palette.meok, borderColor: palette.meok },
@@ -153,13 +155,16 @@ export default function NewBucket() {
             <Text role="sm" color={palette.ash}>
               Painting template
             </Text>
-            <View style={styles.templateGrid}>
+            <View style={styles.templateGrid} accessibilityRole="radiogroup">
               {BUCKET_TEMPLATES.map((tpl) => {
                 const active = tpl.key === templateKey;
                 return (
                   <Pressable
                     key={tpl.key}
                     onPress={() => setTemplateKey(tpl.key)}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`${tpl.nameEn} template — ${tpl.hintFor}`}
+                    {...a11yState({ selected: active })}
                     style={[
                       styles.templateCard,
                       {
@@ -210,18 +215,24 @@ export default function NewBucket() {
                     />
                   </View>
                   {items.length > 1 ? (
-                    <Pressable
+                    <IconButton
+                      icon={Minus}
+                      size={18}
+                      color={palette.ash}
+                      accessibilityLabel={`Remove wish ${idx + 1}`}
                       onPress={() => removeItem(idx)}
-                      hitSlop={8}
                       style={styles.itemRemove}
-                    >
-                      <Minus size={18} color={palette.ash} strokeWidth={1.6} />
-                    </Pressable>
+                    />
                   ) : null}
                 </View>
               ))}
               {items.length < maxItems ? (
-                <Pressable onPress={addItemRow} style={styles.addRow}>
+                <Pressable
+                  onPress={addItemRow}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add another wish"
+                  style={styles.addRow}
+                >
                   <Plus size={18} color={palette.meok} strokeWidth={1.6} />
                   <Text role="sm" color={palette.meok} weight="semibold">
                     Add another
@@ -282,6 +293,10 @@ const styles = StyleSheet.create({
   section: { gap: space[2] },
   maxRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
   maxChip: {
+    minWidth: MIN_TARGET,
+    minHeight: MIN_TARGET,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: space[3],
     paddingVertical: space[2],
     borderRadius: radius.pill,
@@ -315,12 +330,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   itemRow: { flexDirection: 'row', gap: space[2], alignItems: 'flex-start' },
-  itemRemove: {
-    height: 52,
-    width: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  itemRemove: { height: 52 },
   addRow: {
     flexDirection: 'row',
     alignItems: 'center',

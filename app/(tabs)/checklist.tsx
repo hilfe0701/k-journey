@@ -47,6 +47,7 @@ import {
 } from '../../src/lib/immigrationAppointment';
 import { UNKNOWN, type LocalTaskProgress, type UserProfile } from '../../src/lib/firebase';
 import { palette, radius, semantic, space } from '../../design-tokens';
+import { a11yState } from '../../src/lib/a11y';
 
 const PHASE_LABEL: Record<Phase, string> = {
   1: 'Pre-arrival',
@@ -141,7 +142,7 @@ export default function ChecklistHome({ onShowCulture }: { onShowCulture?: () =>
               style={styles.iconButton}
               accessibilityRole="button"
               accessibilityLabel="Emergency guide"
-              accessibilityState={{ disabled: false }}
+              {...a11yState({ disabled: false })}
             >
               <ShieldAlert size={22} color={palette.meok} strokeWidth={1.5} />
             </Pressable>
@@ -461,7 +462,7 @@ function TaskCard({ task, router }: { task: HomeTask; router: ReturnType<typeof 
       style={[styles.taskCard, { borderColor: isAvailable ? palette.hairline : accent }]}
       accessibilityLabel={`${task.title}. ${label.toLowerCase()}.`}
       accessibilityHint="Tap to open task details."
-      accessibilityState={{ selected: isCompleted }}
+      {...a11yState({ selected: isCompleted })}
     >
       <View style={styles.taskHeader}>
         <View style={[styles.taskIcon, { backgroundColor: isAvailable ? palette.jadeLight : isNotApplicable ? palette.cloud : palette.dancheongLight }]}>

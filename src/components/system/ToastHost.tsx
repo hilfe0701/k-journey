@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, StyleSheet, Pressable, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Text } from '../ui';
+import { MIN_TARGET, Text } from '../ui';
 import { palette, space, radius, elevation } from '../../../design-tokens';
 import { subscribeErrors, type ErrorEvent } from '../../lib/errors/host';
 import { useReduceMotion } from '../../lib/a11y';
@@ -170,10 +170,13 @@ const styles = StyleSheet.create({
     backgroundColor: palette.dancheong,
   },
   bannerCta: {
+    // A filled pill button, not an inline link — it owes the full 44pt target.
+    minHeight: MIN_TARGET,
+    justifyContent: 'center',
     paddingHorizontal: space[3],
     paddingVertical: space[2],
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: palette.hanji + '2E',
   },
   toastSafe: {
     position: 'absolute',
@@ -196,6 +199,8 @@ const styles = StyleSheet.create({
     paddingVertical: space[3],
   },
   toastCta: {
+    minHeight: MIN_TARGET,
+    justifyContent: 'center',
     paddingHorizontal: space[2],
     paddingVertical: space[1],
   },

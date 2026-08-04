@@ -22,7 +22,7 @@ import { Calendar } from 'react-native-calendars';
 import { format } from 'date-fns';
 import Constants from 'expo-constants';
 
-import { Text, Button } from '../../src/components/ui';
+import { Text, Button, IconButton, MIN_TARGET } from '../../src/components/ui';
 import { palette, space, radius, semantic, elevation } from '../../design-tokens';
 import { useProfile } from '../../src/hooks/useProfile';
 import {
@@ -56,6 +56,7 @@ import {
   selectUniversityId,
   universityProfilePatch,
 } from '../../src/lib/profileCompat';
+import { a11yState } from '../../src/lib/a11y';
 
 type Section =
   | { key: 'notifications'; title: string; data: 'notifications'[] }
@@ -110,16 +111,14 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={8}
-          accessibilityRole="button"
+        <IconButton
+          icon={ChevronLeft}
+          size={24}
           accessibilityLabel="Back"
-        >
-          <ChevronLeft size={24} color={palette.meok} />
-        </Pressable>
+          onPress={() => router.back()}
+        />
         <Text role="h3">Settings</Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: MIN_TARGET }} />
       </View>
 
       <SectionList<string, Section>
@@ -659,24 +658,51 @@ function ToggleRow({
   disabled: boolean;
 }) {
   const [value, setValue] = useNotificationPref(code);
+  const isOn = value && !disabled;
+
+  function toggle(next: boolean) {
+    setValue(next);
+    track('notification_pref_change', { code, value: next });
+  }
+
+  // The `Switch` itself renders at 40×20 — under the 44pt minimum and impossible
+  // to resize portably. The whole 56pt row is the target instead, and the switch
+  // is left non-focusable so keyboard users get one stop, not two.
   return (
-    <View style={[styles.row, styles.rowDivider]}>
+    <Pressable
+      onPress={() => toggle(!isOn)}
+      disabled={disabled}
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      {...a11yState({ checked: isOn, disabled })}
+      style={({ pressed }) => [
+        styles.row,
+        styles.rowDivider,
+        pressed && !disabled ? { backgroundColor: semantic.bg.tertiary } : null,
+      ]}
+    >
       <Text role="body" color={disabled ? palette.stone : palette.meok} style={{ flex: 1 }}>
         {label}
       </Text>
+      {/*
+        Purely the indicator. `pointerEvents: none` stops a tap on the switch
+        from firing both handlers (which would toggle twice and net zero), and
+        the a11y props keep it out of the tree on every platform — native honours
+        `accessibilityElementsHidden`/`importantForAccessibility`, web honours
+        `aria-hidden`.
+      */}
       <Switch
-        value={value && !disabled}
+        value={isOn}
         disabled={disabled}
-        onValueChange={(next) => {
-          setValue(next);
-          track('notification_pref_change', { code, value: next });
-        }}
         trackColor={{ false: palette.hairline, true: palette.dancheong }}
         thumbColor={palette.hanji}
-        accessibilityLabel={`${label}, switch, ${value && !disabled ? 'on' : 'off'}`}
-        accessibilityState={{ disabled }}
+        style={{ pointerEvents: 'none' }}
+        focusable={false}
+        aria-hidden
+        importantForAccessibility="no-hide-descendants"
+        accessibilityElementsHidden
       />
-    </View>
+    </Pressable>
   );
 }
 
@@ -801,7 +827,7 @@ function PickerSheet({
                 onPress={() => onSelect(opt.value)}
                 accessibilityRole="button"
                 accessibilityLabel={`${opt.label}${active ? ', selected' : ''}`}
-                accessibilityState={{ selected: active }}
+                {...a11yState({ selected: active })}
                 style={({ pressed }) => [
                   styles.pickerRow,
                   {
@@ -937,7 +963,7 @@ function EraSheet({
               onPress={() => setPending(era.key)}
               accessibilityRole="button"
               accessibilityLabel={`${era.nameEn}${active ? ', selected' : ''}`}
-              accessibilityState={{ selected: active }}
+              {...a11yState({ selected: active })}
               style={({ pressed }) => [
                 styles.eraCard,
                 {
@@ -988,14 +1014,7 @@ function SheetFrame({
             <Text role="h4" style={{ flex: 1 }}>
               {title}
             </Text>
-            <Pressable
-              onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              hitSlop={8}
-            >
-              <X size={22} color={palette.meok} />
-            </Pressable>
+            <IconButton icon={X} accessibilityLabel="Close" onPress={onClose} />
           </View>
           <View style={styles.sheetBody}>{children}</View>
         </SafeAreaView>

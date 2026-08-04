@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
 import type { ImageSourcePropType } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, MapPin, Lightbulb, Check, Building2, X, CircleCheckBig } from 'lucide-react-native';
 import { resolveIcon } from '../../src/lib/icons';
 
-import { Text, Button, Badge } from '../../src/components/ui';
+import { Text, Button, Badge, IconButton, MIN_TARGET } from '../../src/components/ui';
 import { palette, space, radius, categoryColors } from '../../design-tokens';
 import { missionById, Mission } from '../../src/data/missions';
 import { universityById, University } from '../../src/data/universities';
@@ -102,18 +102,16 @@ export default function MissionDetail() {
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
         <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            accessibilityRole="button"
+          <IconButton
+            icon={ChevronLeft}
+            size={24}
             accessibilityLabel="Back"
-          >
-            <ChevronLeft size={24} color={palette.meok} />
-          </Pressable>
+            onPress={() => router.back()}
+          />
           <Text role="body" weight="semibold">
             Mission not found
           </Text>
-          <View style={{ width: 24 }} />
+          <View style={{ width: MIN_TARGET }} />
         </View>
       </SafeAreaView>
     );
@@ -126,16 +124,14 @@ export default function MissionDetail() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={8}
-          accessibilityRole="button"
+        <IconButton
+          icon={ChevronLeft}
+          size={24}
           accessibilityLabel="Back"
-        >
-          <ChevronLeft size={24} color={palette.meok} />
-        </Pressable>
+          onPress={() => router.back()}
+        />
         <Badge label={`PHASE ${mission.phase}`} color={color} bg={color + '1F'} />
-        <View style={{ width: 24 }} />
+        <View style={{ width: MIN_TARGET }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>

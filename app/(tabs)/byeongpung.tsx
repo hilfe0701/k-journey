@@ -25,6 +25,7 @@ import {
 } from '../../src/components/byeongpung/motifs';
 import { shareByeongpungImage, saveByeongpungImage } from '../../src/lib/share';
 import { track } from '../../src/lib/posthog';
+import { a11yState } from '../../src/lib/a11y';
 
 export default function ByeongpungTab() {
   const isFocused = useIsFocused();
@@ -238,7 +239,7 @@ export default function ByeongpungTab() {
           disabled={!canExport || busy !== null}
           accessibilityRole="button"
           accessibilityLabel="Share current folding screen"
-          accessibilityState={{ disabled: !canExport || busy !== null }}
+          {...a11yState({ disabled: !canExport || busy !== null })}
           style={({ pressed }) => [
             styles.actionBtn,
             { opacity: !canExport || busy !== null ? 0.4 : pressed ? 0.7 : 1 },
@@ -254,7 +255,7 @@ export default function ByeongpungTab() {
           disabled={!canExport || busy !== null}
           accessibilityRole="button"
           accessibilityLabel="Save current folding screen image"
-          accessibilityState={{ disabled: !canExport || busy !== null }}
+          {...a11yState({ disabled: !canExport || busy !== null })}
           style={({ pressed }) => [
             styles.actionBtn,
             { opacity: !canExport || busy !== null ? 0.4 : pressed ? 0.7 : 1 },

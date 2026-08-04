@@ -66,6 +66,7 @@ import {
 import { buildHomeTasks, type HomeTask } from '../(tabs)/checklist';
 import { palette, radius, semantic, space } from '../../design-tokens';
 import { KST, toKstStartOfDay } from '../../src/lib/dates';
+import { a11yState } from '../../src/lib/a11y';
 
 const DOCUMENT_SPECIFICATIONS: Record<string, string> = {
   'dormitory-confirmation': 'Full confirmation with the residence address and official stamp.',
@@ -269,7 +270,7 @@ export default function TaskDetail() {
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel="Back"
-          accessibilityState={{ disabled: false }}
+          {...a11yState({ disabled: false })}
           style={styles.backButton}
         >
           <ChevronLeft size={24} color={palette.meok} strokeWidth={1.6} />
@@ -1056,7 +1057,7 @@ function ChoiceCard({
       accessibilityRole="radio"
       accessibilityLabel={title}
       accessibilityHint={description}
-      accessibilityState={{ selected, disabled }}
+      {...a11yState({ selected, disabled })}
       style={[
         styles.choiceCard,
         {
@@ -1099,7 +1100,7 @@ function MissingTask({ onBack }: { onBack: () => void }) {
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel="Back"
-          accessibilityState={{ disabled: false }}
+          {...a11yState({ disabled: false })}
           style={styles.backButton}
         >
           <ChevronLeft size={24} color={palette.meok} strokeWidth={1.6} />

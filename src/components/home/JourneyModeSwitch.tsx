@@ -1,7 +1,8 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { palette, radius, space } from '../../../design-tokens';
-import { Text } from '../ui';
+import { MIN_TARGET, Text } from '../ui';
+import { a11yState } from '../../lib/a11y';
 
 export type JourneyMode = 'essentials' | 'culture';
 
@@ -42,7 +43,7 @@ function ModeButton({
       onPress={onPress}
       accessibilityRole="tab"
       accessibilityLabel={`${label} journey view`}
-      accessibilityState={{ selected }}
+      {...a11yState({ selected })}
       style={({ pressed }) => [
         styles.button,
         selected && styles.buttonSelected,
@@ -71,7 +72,8 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    minHeight: 42,
+    // 44pt exactly — measured at 42 in the browser audit, under the minimum.
+    minHeight: MIN_TARGET,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.pill,

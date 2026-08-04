@@ -35,6 +35,39 @@ Administrative task status does not unlock artwork. User-owned state is stored i
 - subset runtime fonts from about 35MB to about 0.8MB; fresh web output is 23MB with
   4.96MB raw / 1.02MB gzip JavaScript.
 
+## Accessibility pass
+
+Three React Native Web behaviours had been silently voiding accepted criteria in
+`docs/ACCESSIBILITY.md`. Each was verified in Chrome before and after; the native
+build was unaffected in all three cases, which is why none surfaced in review.
+
+- **No focus indicator at all.** RNW sets `outline-style: none` on every
+  `Pressable`, so the web build shipped with nothing for keyboard users.
+  `src/lib/webFocusRing.ts` installs a `:focus-visible` ring — a `meok` outline
+  plus a `hanji` halo, because no single token clears 3:1 on both the hanji
+  surfaces and the dark gallery/overlay headers.
+- **`accessibilityState` dropped on web.** RNW's `Pressable` never forwards it,
+  so 27 selected/checked/expanded states announced nothing — including the
+  Essentials/Culture switch, the phase tabs, and every onboarding radio. Added
+  `a11yState()` in `src/lib/a11y.ts`, which emits both dialects, and applied it
+  at every call site.
+- **`hitSlop` does not exist on web.** Icon controls sized to 44pt via `hitSlop`
+  measured 24×24 in a browser. Added the `IconButton` primitive, which lays down
+  a real 44×44 box and requires an `accessibilityLabel`, and converted every
+  icon-only control to it.
+
+Also fixed alongside: the tab bar overwrote its own bottom safe-area inset;
+the Essentials/Culture buttons were 42pt; the gallery share button exposed no
+disabled reason; bucket chips, template cards, item checkboxes, and the
+notification switches carried no role, name, or state.
+
+`DESIGN.md` §13.2 previously instructed using `hitSlop` to reach the 44pt floor —
+the direct source of that defect class — and now says the opposite.
+
+Verified across twelve routes at 500px and 1440px: zero undersized targets, zero
+unnamed controls, zero stateful roles missing state. `npm run check` passes
+(237 tests). Not yet re-verified: native iOS/Android and a real screen reader.
+
 ## Deployment
 
 The previously deployed web version is [k-journey-three.vercel.app](https://k-journey-three.vercel.app), deployment `dpl_6DHArMDvrJvYYWakQ4TenHDVKrPC`.

@@ -5,12 +5,13 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft, ChevronDown, ChevronUp, AlertTriangle, AlertCircle } from 'lucide-react-native';
 import { resolveIcon } from '../src/lib/icons';
 
-import { Text } from '../src/components/ui';
+import { Text, IconButton } from '../src/components/ui';
 import { palette, space, radius } from '../design-tokens';
 import { EMERGENCY_SECTIONS } from '../src/data/emergency';
 import { setJson, getJson, KEYS } from '../src/lib/storage';
 import { track } from '../src/lib/posthog';
 import { surfaceError } from '../src/lib/errorAlert';
+import { a11yState } from '../src/lib/a11y';
 
 // Cache emergency data on first render so it's available offline.
 setJson(KEYS.emergencyCache, EMERGENCY_SECTIONS);
@@ -27,14 +28,12 @@ export default function Emergency() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={8}
-          accessibilityRole="button"
+        <IconButton
+          icon={ChevronLeft}
+          size={24}
           accessibilityLabel="Back"
-        >
-          <ChevronLeft size={24} color={palette.meok} />
-        </Pressable>
+          onPress={() => router.back()}
+        />
         <Text role="body" weight="semibold">
           Emergency guide
         </Text>
@@ -58,7 +57,7 @@ export default function Emergency() {
                 onPress={() => setExpanded(isOpen ? null : section.id)}
                 accessibilityRole="button"
                 accessibilityLabel={section.titleEn}
-                accessibilityState={{ expanded: isOpen }}
+                {...a11yState({ expanded: isOpen })}
                 style={({ pressed }) => [
                   styles.sectionHead,
                   { backgroundColor: pressed ? palette.cloud : palette.hanji },

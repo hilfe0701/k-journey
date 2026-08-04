@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, View, ActivityIndicator, ViewStyle, StyleProp } from 'react-native';
 import { Text } from './Text';
 import { palette, radius, space, semantic } from '../../../design-tokens';
+import { a11yState } from '../../lib/a11y';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 
@@ -43,7 +44,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      {...a11yState({ disabled: isDisabled, busy: loading })}
       style={({ pressed }) => [
         {
           height: 52,

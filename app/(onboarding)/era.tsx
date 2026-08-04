@@ -17,6 +17,7 @@ import { clearOnboardingProgress } from '../../src/lib/storage';
 import { kstNow } from '../../src/lib/dates';
 import { track } from '../../src/lib/posthog';
 import { showOperationError } from '../../src/lib/errorAlert';
+import { a11yState } from '../../src/lib/a11y';
 
 export default function EraScreen() {
   const router = useRouter();
@@ -74,7 +75,7 @@ export default function EraScreen() {
               onPress={() => setSelected(era.key)}
               accessibilityRole="radio"
               accessibilityLabel={`${era.nameEn} (${era.nameKo})`}
-              accessibilityState={{ selected: active, disabled: false }}
+              {...a11yState({ selected: active, disabled: false })}
               style={({ pressed }) => [
                 styles.card,
                 {

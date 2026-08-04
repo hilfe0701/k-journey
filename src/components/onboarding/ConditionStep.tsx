@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
-import { Pressable, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Text, Button, Card, ProgressBar } from '../ui';
+import { Text, Button, Card, ProgressBar, IconButton, MIN_TARGET } from '../ui';
 import { palette, radius, semantic, space } from '../../../design-tokens';
 import { useProfile } from '../../hooks/useProfile';
 import {
@@ -14,6 +14,7 @@ import {
   type OnboardingRoute,
 } from '../../lib/storage';
 import type { UserProfile } from '../../lib/firebase';
+import { a11yState } from '../../lib/a11y';
 
 export const UNKNOWN_LABEL = 'Unknown / not sure';
 
@@ -48,15 +49,12 @@ export function OnboardingStepShell({
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
         {showBack ? (
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            accessibilityRole="button"
+          <IconButton
+            icon={ChevronLeft}
+            size={24}
             accessibilityLabel="Back"
-            accessibilityState={{ disabled: false }}
-          >
-            <ChevronLeft size={24} color={palette.meok} strokeWidth={1.6} />
-          </Pressable>
+            onPress={() => router.back()}
+          />
         ) : (
           <View style={styles.headerSpacer} />
         )}
@@ -117,7 +115,7 @@ export function ChoiceCard<T extends string>({
       onPress={() => onSelect(option.value)}
       accessibilityRole="radio"
       accessibilityLabel={accessibilityLabel ?? option.label}
-      accessibilityState={{ selected, disabled: false }}
+      {...a11yState({ selected, disabled: false })}
       style={[
         styles.choiceCard,
         {
@@ -185,7 +183,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerSpacer: { width: 24, height: 24 },
+  headerSpacer: { width: MIN_TARGET, height: MIN_TARGET },
   progressWrap: { paddingHorizontal: space[5] },
   scroll: { flex: 1 },
   body: {

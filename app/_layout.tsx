@@ -28,8 +28,13 @@ import { usePushPermissionWatcher } from '../src/lib/permissions';
 import { surfaceError } from '../src/lib/errorAlert';
 import { getOnboardingProgress, onboardingRoutePath } from '../src/lib/storage';
 import { knownProfileDate } from '../src/lib/profileCompat';
+import { installWebFocusRing } from '../src/lib/webFocusRing';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// React Native Web zeroes the outline on every Pressable, so the browser build
+// ships without any keyboard focus indicator unless this runs. No-op on native.
+installWebFocusRing();
 
 // Boot path: MMKV migrations + clock-skew diagnostic. Both are synchronous and
 // must precede any hook that reads MMKV (for example, useProfile). See
@@ -74,6 +79,9 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
       </Text>
       <Pressable
         onPress={retry}
+        accessibilityRole="button"
+        accessibilityLabel="Try again"
+        accessibilityHint="Reloads the screen that failed."
         style={({ pressed }) => [errorStyles.btn, { opacity: pressed ? 0.7 : 1 }]}
       >
         <Text role="body" weight="semibold" color={palette.hanji}>

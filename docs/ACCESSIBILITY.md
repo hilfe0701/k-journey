@@ -31,6 +31,46 @@ Target: WCAG 2.1 AA for web and equivalent VoiceOver/TalkBack behavior on native
 - Every actionable element has a visible focus indicator with at least 3:1 contrast.
 - Direct route refresh does not shift focus to an unrelated splash/home page.
 
+## Two React Native Web gaps this app has to work around
+
+Both are silent — the native build is correct and the code reads correctly, so
+neither shows up without opening a browser. Re-check them after any RNW upgrade.
+
+1. **`accessibilityState` is dropped by RNW's `Pressable`.** Only
+   `TouchableWithoutFeedback` reads it, so `accessibilityState={{ selected }}`
+   emits no `aria-selected`. Use `a11yState()` from `src/lib/a11y.ts`, which
+   emits both dialects, on every selectable, checkable, or expandable control.
+2. **`hitSlop` does not exist on web.** It is absent from RNW's `Pressable`, so a
+   24pt icon with `hitSlop={8}` is a 24×24 target in a browser. Icon-only
+   controls must use `IconButton` (`src/components/ui/IconButton.tsx`), which
+   lays down a real 44×44 box; never rely on `hitSlop` to reach the minimum.
+
+RNW also resets `outline` to none on every `Pressable`, which is why
+`installWebFocusRing()` runs from the root layout.
+
+## Verifying the first three global rules
+
+Run this in the browser console on each route. It should return empty arrays.
+
+```js
+const sel = '[role="button"],[role="link"],[role="tab"],[role="radio"],[role="checkbox"],[role="switch"],[tabindex="0"]';
+const c = [...document.querySelectorAll(sel)].filter(e => !e.closest('[aria-hidden="true"]'));
+({
+  // under the 44pt minimum
+  small: c.filter(e => { const r = e.getBoundingClientRect();
+    return r.height > 0 && (r.height < 44 || r.width < 44); }),
+  // icon-only control with no accessible name
+  unnamed: c.filter(e => !e.getAttribute('aria-label') && !e.innerText.trim()),
+  // stateful role that never announces its state
+  stateless: c.filter(e => {
+    const r = e.getAttribute('role');
+    if (r === 'tab' || r === 'radio') return e.getAttribute('aria-selected') === null;
+    if (r === 'checkbox' || r === 'switch') return e.getAttribute('aria-checked') === null;
+    return false;
+  }),
+})
+```
+
 ## Contrast token notes
 
 - `palette.stone` was darkened for AA body-text use on hanji.

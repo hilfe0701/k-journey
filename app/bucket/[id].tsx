@@ -14,7 +14,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Plus, Check, Trash2, MoreVertical, ListPlus } from 'lucide-react-native';
 
-import { Text, Input, Button, ProgressBar, Badge, EmptyState } from '../../src/components/ui';
+import {
+  Text,
+  Input,
+  Button,
+  ProgressBar,
+  Badge,
+  EmptyState,
+  IconButton,
+  MIN_TARGET,
+} from '../../src/components/ui';
 import { palette, space, radius } from '../../design-tokens';
 import { BUCKET_TEMPLATES } from '../../src/data/bucketTemplates';
 import { BUCKET_TEMPLATE_IMAGES } from '../../src/components/byeongpung/motifs';
@@ -32,6 +41,7 @@ import { showOperationError } from '../../src/lib/errorAlert';
 import { track } from '../../src/lib/posthog';
 import { hapticDestructive } from '../../src/lib/haptics';
 import { MissionCompleteOverlay } from '../../src/components/mission/MissionCompleteOverlay';
+import { a11yState } from '../../src/lib/a11y';
 
 interface OverlayState {
   iconName: string;
@@ -57,14 +67,12 @@ export default function BucketDetail() {
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
         <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            accessibilityRole="button"
+          <IconButton
+            icon={ChevronLeft}
+            size={24}
             accessibilityLabel="Back"
-          >
-            <ChevronLeft size={24} color={palette.meok} />
-          </Pressable>
+            onPress={() => router.back()}
+          />
           <Text role="body" weight="semibold">
             Loading
           </Text>
@@ -78,14 +86,12 @@ export default function BucketDetail() {
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
         <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            accessibilityRole="button"
+          <IconButton
+            icon={ChevronLeft}
+            size={24}
             accessibilityLabel="Back"
-          >
-            <ChevronLeft size={24} color={palette.meok} />
-          </Pressable>
+            onPress={() => router.back()}
+          />
           <Text role="body" weight="semibold">
             Bucket not found
           </Text>
@@ -187,23 +193,19 @@ export default function BucketDetail() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={8}
-          accessibilityRole="button"
+        <IconButton
+          icon={ChevronLeft}
+          size={24}
           accessibilityLabel="Back"
-        >
-          <ChevronLeft size={24} color={palette.meok} />
-        </Pressable>
+          onPress={() => router.back()}
+        />
         <Badge label={template.nameEn} color={template.primaryColor} bg={template.primaryColor + '1F'} />
-        <Pressable
-          onPress={handleDeleteBucket}
-          hitSlop={8}
-          accessibilityRole="button"
+        <IconButton
+          icon={MoreVertical}
           accessibilityLabel="Delete bucket"
-        >
-          <MoreVertical size={22} color={palette.meok} strokeWidth={1.5} />
-        </Pressable>
+          accessibilityHint="Asks you to confirm before deleting."
+          onPress={handleDeleteBucket}
+        />
       </View>
 
       <KeyboardAvoidingView
@@ -261,15 +263,25 @@ export default function BucketDetail() {
                       <Pressable
                         onPress={() => handleToggle(it.id)}
                         disabled={busyItem === it.id}
-                        style={[
-                          styles.itemCheck,
-                          {
-                            borderColor: done ? template.primaryColor : palette.hairline,
-                            backgroundColor: done ? template.primaryColor : 'transparent',
-                          },
-                        ]}
+                        accessibilityRole="checkbox"
+                        accessibilityLabel={it.text}
+                        {...a11yState({ checked: done, disabled: busyItem === it.id })}
+                        style={styles.itemCheckTarget}
                       >
-                        {done ? <Check size={16} color={palette.hanji} strokeWidth={2.4} /> : null}
+                        {/* The 24pt circle is the visual; the 44pt parent is the target. */}
+                        <View
+                          style={[
+                            styles.itemCheck,
+                            {
+                              borderColor: done ? template.primaryColor : palette.hairline,
+                              backgroundColor: done ? template.primaryColor : 'transparent',
+                            },
+                          ]}
+                        >
+                          {done ? (
+                            <Check size={16} color={palette.hanji} strokeWidth={2.4} />
+                          ) : null}
+                        </View>
                       </Pressable>
                       <Text
                         role="body"
@@ -281,9 +293,13 @@ export default function BucketDetail() {
                       >
                         {it.text}
                       </Text>
-                      <Pressable onPress={() => handleDeleteItem(it.id)} hitSlop={8}>
-                        <Trash2 size={16} color={palette.ash} strokeWidth={1.6} />
-                      </Pressable>
+                      <IconButton
+                        icon={Trash2}
+                        size={16}
+                        color={palette.ash}
+                        accessibilityLabel={`Delete wish: ${it.text}`}
+                        onPress={() => handleDeleteItem(it.id)}
+                      />
                     </View>
                   );
                 })}
@@ -372,6 +388,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.hairline,
     backgroundColor: palette.hanji,
+  },
+  itemCheckTarget: {
+    width: MIN_TARGET,
+    height: MIN_TARGET,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   itemCheck: {
     width: 24,

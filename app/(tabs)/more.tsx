@@ -13,7 +13,7 @@ import {
   Settings as SettingsIcon,
 } from 'lucide-react-native';
 
-import { Text } from '../../src/components/ui';
+import { IconButton, Text } from '../../src/components/ui';
 import { palette, space, radius } from '../../design-tokens';
 import { useProfile } from '../../src/hooks/useProfile';
 import { universityById } from '../../src/data/universities';
@@ -96,15 +96,12 @@ export default function MoreTab() {
                 </Text>
               ) : null}
             </View>
-            <Pressable
-              onPress={() => router.push('/settings' as never)}
-              hitSlop={8}
-              accessibilityRole="button"
+            <IconButton
+              icon={SettingsIcon}
               accessibilityLabel="Open settings"
-              style={({ pressed }) => [styles.gearBtn, { opacity: pressed ? 0.85 : 1 }]}
-            >
-              <SettingsIcon size={22} color={palette.meok} strokeWidth={1.5} />
-            </Pressable>
+              surface
+              onPress={() => router.push('/settings' as never)}
+            />
           </View>
         </View>
 

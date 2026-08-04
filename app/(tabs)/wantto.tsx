@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { Plus, BookmarkPlus } from 'lucide-react-native';
 import { useIsFocused } from '@react-navigation/native';
 
-import { Text, ProgressBar, EmptyState } from '../../src/components/ui';
+import { Text, ProgressBar, EmptyState, IconButton } from '../../src/components/ui';
 import { palette, space, radius } from '../../design-tokens';
 import { BUCKET_TEMPLATES } from '../../src/data/bucketTemplates';
 import { BUCKET_TEMPLATE_IMAGES } from '../../src/components/byeongpung/motifs';
@@ -32,15 +32,14 @@ export default function WantToTab() {
               <Text role="h1">Your bucket lists</Text>
             </View>
             {hasBuckets ? (
-              <Pressable
-                onPress={() => router.push('/bucket/new')}
-                hitSlop={8}
-                style={styles.headerAdd}
-                accessibilityRole="button"
+              <IconButton
+                icon={Plus}
+                size={20}
+                tone="inverse"
                 accessibilityLabel="Add bucket"
-              >
-                <Plus size={20} color={palette.hanji} strokeWidth={2} />
-              </Pressable>
+                onPress={() => router.push('/bucket/new')}
+                style={styles.headerAdd}
+              />
             ) : null}
           </View>
           <Text role="body" color={palette.ash} style={{ marginTop: 4 }}>
@@ -158,12 +157,8 @@ const styles = StyleSheet.create({
     gap: space[2],
   },
   headerAdd: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    borderRadius: radius.full,
     backgroundColor: palette.meok,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   section: {
     paddingHorizontal: space[5],

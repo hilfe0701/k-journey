@@ -30,7 +30,7 @@ Ordered by release risk, not by document age.
 
 1. Add mission action types such as checklist, official link, save place, reservation, and reflection where they create real value.
 2. Add component/E2E coverage for tabs, routes, first actions, 5→6 panel unlock, undo/delete, export/reset, and responsive layouts.
-3. Add web focus-visible treatment and audit all icon-only controls for 44×44 targets and labels.
+3. ~~Add web focus-visible treatment and audit all icon-only controls for 44×44 targets and labels.~~ Done — see "Accessibility pass" in `STATUS.md`. Still open: automate the DOM audit in `docs/ACCESSIBILITY.md` so it runs in CI instead of by hand.
 4. Complete the portable backup/import design before making any restore promise.
 
 ## Validation without interviews

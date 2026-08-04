@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Building2, Home as HomeIcon } from 'lucide-react-native';
 
-import { Text, Button, Input, Card, ProgressBar } from '../../src/components/ui';
+import { Text, Button, Input, Card, ProgressBar, IconButton, MIN_TARGET } from '../../src/components/ui';
 import { palette, space, radius, semantic } from '../../design-tokens';
 import { updateUserProfile } from '../../src/lib/firebase';
 import { UNIVERSITIES } from '../../src/data/universities';
@@ -70,16 +70,14 @@ export default function ProfileSetup() {
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
         {step > 0 ? (
-          <Pressable
-            onPress={() => setStep((s) => s - 1)}
-            hitSlop={8}
-            accessibilityRole="button"
+          <IconButton
+            icon={ChevronLeft}
+            size={24}
             accessibilityLabel="Back"
-          >
-            <ChevronLeft size={24} color={palette.meok} />
-          </Pressable>
+            onPress={() => setStep((s) => s - 1)}
+          />
         ) : (
-          <View style={{ width: 24 }} />
+          <View style={{ width: MIN_TARGET }} />
         )}
         <ProgressBar value={(step + 1) / totalSteps} color={palette.dancheong} />
       </View>

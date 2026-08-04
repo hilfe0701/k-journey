@@ -20,6 +20,7 @@ import {
 import { showOperationError, surfaceError } from '../../src/lib/errorAlert';
 import { validateDates, DATE_ERROR_MESSAGES } from '../../src/lib/validation';
 import { track } from '../../src/lib/posthog';
+import { a11yState } from '../../src/lib/a11y';
 
 type DateSelection = string | UnknownValue | null;
 type DateField = 'programStart' | 'arrival' | 'departure';
@@ -195,7 +196,7 @@ export default function DatesScreen() {
             hitSlop={8}
             accessibilityRole="radio"
             accessibilityLabel={`${fieldLabel(pickingFor)} — ${UNKNOWN_LABEL}`}
-            accessibilityState={{ selected: selected === UNKNOWN, disabled: false }}
+            {...a11yState({ selected: selected === UNKNOWN, disabled: false })}
             style={[styles.unknownButton, selected === UNKNOWN ? styles.unknownButtonSelected : null]}
           >
             <Text role="sm" weight="semibold" color={selected === UNKNOWN ? palette.dancheong : palette.ash}>
@@ -283,7 +284,7 @@ function DateChip({
       hitSlop={8}
       accessibilityRole="radio"
       accessibilityLabel={`${label} — ${valueLabel}`}
-      accessibilityState={{ selected: active, disabled: false }}
+      {...a11yState({ selected: active, disabled: false })}
       style={({ pressed }) => [
         styles.dateChip,
         {

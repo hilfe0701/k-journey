@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, ViewStyle, StyleProp, Pressable } from 'react-native';
 import { radius, space, semantic, elevation } from '../../../design-tokens';
+import { a11yState, type A11yState } from '../../lib/a11y';
 
 interface CardProps {
   children: React.ReactNode;
@@ -14,7 +15,7 @@ interface CardProps {
   accessibilityHint?: string;
   /** Override role (e.g. "radio" for selectable lists). Defaults to "button" when pressable. */
   accessibilityRole?: 'button' | 'link' | 'radio' | 'checkbox' | 'tab';
-  accessibilityState?: { selected?: boolean; disabled?: boolean; checked?: boolean };
+  accessibilityState?: A11yState;
 }
 
 export function Card({
@@ -45,7 +46,7 @@ export function Card({
         accessibilityRole={accessibilityRole ?? 'button'}
         accessibilityLabel={accessibilityLabel}
         accessibilityHint={accessibilityHint}
-        accessibilityState={accessibilityState}
+        {...(accessibilityState ? a11yState(accessibilityState) : null)}
         style={({ pressed }) => [
           wrapperStyle,
           pressed ? { backgroundColor: semantic.bg.tertiary } : null,

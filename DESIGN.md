@@ -271,6 +271,17 @@ The full component library lives in `src/components/ui/`. Below is the contract.
 
 All buttons: radius `md` (8) for normal, `pill` (28) for search-style. Press: scale `0.97` + 200ms.
 
+### IconButton
+
+The only way to build an icon-only control. Never hand-roll a `Pressable` around a bare glyph.
+
+- Target: 44×44 minimum as a real box (`MIN_TARGET`), independent of glyph size
+- `accessibilityLabel` is **required by the type** — an icon carries no name
+- Tones: `default` (`meok`), `inverse` (`hanji`, for dark headers), `accent` (`dancheong`)
+- `surface` draws the filled circular `cloud` backing used in screen headers
+- Disabled: 0.4 opacity **plus** `disabledReason`, which is announced as the hint
+- Pressed: 0.6 opacity, so one rule reads on both light and dark surfaces
+
 ### MissionCard
 
 - Height: 76px
@@ -288,7 +299,7 @@ All buttons: radius `md` (8) for normal, `pill` (28) for search-style. Press: sc
 
 ### BottomNav
 
-- Height: 64px (+ safe area)
+- Height: 64px **+ `insets.bottom`**, folded in explicitly. `tabBarStyle` merges last inside `BottomTabBar`, after its own `paddingBottom: insets.bottom`, so a literal height replaces the safe-area inset instead of adding to it.
 - Background: `hanji` with 1px top border `hairline`
 - 4 slots — each: icon + 11px label, active = theme `primary`
 
@@ -337,14 +348,20 @@ Every interactive element MUST set:
 
 * `accessibilityLabel` — what it is (e.g. "Sign in with Apple")
 * `accessibilityRole` — `button`, `tab`, `radio`, `checkbox`, `link`, `summary`, etc.
-* `accessibilityState` — `{ disabled, busy, selected, checked }` as applicable
+* state — `{...a11yState({ disabled, busy, selected, checked, expanded })}` as applicable
 * `accessibilityHint` — optional; only when the action is non-obvious
 
-The shared primitives `Button` and `Card` emit these from props (see `src/components/ui/Button.tsx` and `Card.tsx`). New components MUST follow the same pattern. `docs/ACCESSIBILITY.md` keeps the per-component checklist.
+Use `a11yState()` from `src/lib/a11y.ts` rather than a bare `accessibilityState` prop. React Native Web's `Pressable` ignores `accessibilityState`, so the bare prop announces nothing at all on web; the helper emits the `aria-*` equivalents alongside it.
+
+The shared primitives `Button`, `IconButton`, and `Card` emit these from props (see `src/components/ui/`). New components MUST follow the same pattern. `docs/ACCESSIBILITY.md` keeps the per-component checklist.
 
 ### 13.2 Touch targets
 
-iOS HIG floor: **≥ 44 × 44 pt**. Use `hitSlop` to reach the floor when the visible chrome is smaller (icons, close affordances).
+iOS HIG floor: **≥ 44 × 44 pt**, as a real box — `minWidth`/`minHeight` or explicit size.
+
+Do **not** use `hitSlop` to reach the floor. It does not exist in React Native Web, so a 24pt icon with `hitSlop={8}` is a compliant 40pt target on device and a 24pt target in a browser. `hitSlop` is fine as extra forgiveness on top of a box that already measures 44.
+
+For icon-only controls use `IconButton` (see below), which owns the box.
 
 ### 13.3 Color contrast
 

@@ -2,6 +2,7 @@ import React, { forwardRef, useState } from 'react';
 import { TextInput, TextInputProps, TextStyle, View } from 'react-native';
 import { Text } from './Text';
 import { radius, space, semantic, typography } from '../../../design-tokens';
+import { a11yState } from '../../lib/a11y';
 
 interface InputProps {
   value: string;
@@ -49,7 +50,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         accessibilityRole="text"
         accessibilityLabel={accessibilityLabel ?? label ?? placeholder}
         accessibilityHint={accessibilityHint}
-        accessibilityState={{ disabled: false }}
+        {...a11yState({ disabled: false })}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         style={{

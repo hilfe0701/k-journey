@@ -5,7 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowRight, ShieldAlert, Sparkles } from 'lucide-react-native';
 import { useIsFocused } from '@react-navigation/native';
 
-import { NetworkIndicator, Text } from '../../src/components/ui';
+import { IconButton, NetworkIndicator, Text } from '../../src/components/ui';
 import { ByeongpungStrip } from '../../src/components/byeongpung/ByeongpungStrip';
 import { DDayBanner } from '../../src/components/home/DDayBanner';
 import { JourneyCompletePrompt } from '../../src/components/home/JourneyCompletePrompt';
@@ -152,18 +152,15 @@ function CultureJourneyHome({ onShowEssentials }: { onShowEssentials: () => void
           </View>
           <View style={styles.headerActions}>
             <NetworkIndicator />
-            <Pressable
+            <IconButton
+              icon={ShieldAlert}
+              accessibilityLabel="Emergency guide"
+              surface
               onPress={() => {
                 track('emergency_open');
                 router.push('/emergency');
               }}
-              hitSlop={8}
-              style={styles.iconButton}
-              accessibilityRole="button"
-              accessibilityLabel="Emergency guide"
-            >
-              <ShieldAlert size={22} color={palette.meok} strokeWidth={1.5} />
-            </Pressable>
+            />
           </View>
         </View>
 

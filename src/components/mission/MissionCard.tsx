@@ -6,6 +6,7 @@ import { Text } from '../ui/Text';
 import { palette, space, radius, categoryColors } from '../../../design-tokens';
 import { Mission, MissionCategory } from '../../data/missions';
 import { resolveIcon } from '../../lib/icons';
+import { a11yState } from '../../lib/a11y';
 
 interface MissionCardProps {
   mission: Mission;
@@ -30,7 +31,7 @@ export function MissionCard({ mission, completed, onPress }: MissionCardProps) {
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={a11yLabel}
-      accessibilityState={{ selected: completed }}
+      {...a11yState({ selected: completed })}
       accessibilityHint={completed ? 'Tap to see details.' : 'Tap to open this mission.'}
       style={({ pressed }) => [
         styles.card,

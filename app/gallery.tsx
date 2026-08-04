@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, ScrollView, StyleSheet, Pressable, Image } from 'react-native';
+import { View, ScrollView, StyleSheet, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Share2 } from 'lucide-react-native';
 import { format } from 'date-fns';
 import { resolveIcon } from '../src/lib/icons';
 
-import { Text, EmptyState } from '../src/components/ui';
+import { Text, EmptyState, IconButton } from '../src/components/ui';
 import { palette, space, radius, categoryColors } from '../design-tokens';
 import { useTheme } from '../src/theme/ThemeProvider';
 import { calcDatePhase, dDay } from '../src/hooks/usePhase';
@@ -76,20 +76,28 @@ export default function Gallery() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={24} color={palette.hanji} />
-        </Pressable>
+        <IconButton
+          icon={ChevronLeft}
+          size={24}
+          tone="inverse"
+          accessibilityLabel="Back"
+          onPress={() => router.back()}
+        />
         <Text role="body" weight="semibold" color={palette.hanji}>
           Memory gallery
         </Text>
-        <Pressable
+        <IconButton
+          icon={Share2}
+          tone="inverse"
+          accessibilityLabel="Share your byeongpung"
           onPress={handleShare}
           disabled={!canShare || sharing}
-          hitSlop={8}
-          style={{ opacity: !canShare || sharing ? 0.4 : 1 }}
-        >
-          <Share2 size={22} color={palette.hanji} strokeWidth={1.6} />
-        </Pressable>
+          disabledReason={
+            sharing
+              ? 'Preparing the image.'
+              : 'Complete at least one mission or bucket-list item first.'
+          }
+        />
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
