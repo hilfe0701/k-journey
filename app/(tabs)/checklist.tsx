@@ -17,7 +17,7 @@ import {
 } from 'lucide-react-native';
 import { formatInTimeZone } from 'date-fns-tz';
 
-import { Badge, Card, EmptyState, NetworkIndicator, Text } from '../../src/components/ui';
+import { Badge, Card, EmptyState, MIN_TARGET, NetworkIndicator, Text } from '../../src/components/ui';
 import { JourneyModeSwitch } from '../../src/components/home/JourneyModeSwitch';
 import { useProfile, useTaskProgress } from '../../src/hooks/useProfile';
 import { calcDatePhase, dDay, type Phase } from '../../src/hooks/usePhase';
@@ -517,7 +517,7 @@ function TaskCard({ task, router }: { task: HomeTask; router: ReturnType<typeof 
             accessibilityRole="link"
             accessibilityLabel={`Open official basis for ${task.title}`}
             onPress={() => Linking.openURL(task.sourceUrl!).catch(() => surfaceError('unknown'))}
-            hitSlop={8}
+            style={styles.sourceLink}
           >
             <Text role="xs" color={palette.cheong} selectable>
               {task.sourceUrl}
@@ -992,6 +992,12 @@ const styles = StyleSheet.create({
     paddingTop: space[2],
     borderTopWidth: 1,
     borderTopColor: semantic.border.hairline,
+  },
+  // A one-line URL is 17px tall in a browser; `hitSlop` does not exist there,
+  // so the target has to be a real box. docs/ACCESSIBILITY.md → 44pt minimum.
+  sourceLink: {
+    minHeight: MIN_TARGET,
+    justifyContent: 'center',
   },
   checklist: {
     gap: space[2],

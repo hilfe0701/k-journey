@@ -13,7 +13,6 @@ import {
   Linking,
   TextInput,
   Image,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -49,6 +48,7 @@ import { validateDates, validateName } from '../../src/lib/validation';
 import { emitError } from '../../src/lib/errors/host';
 import { ERROR_CATALOG } from '../../src/lib/errors/catalog';
 import { track } from '../../src/lib/posthog';
+import { showAlert } from '../../src/lib/alert';
 import { resetAhaMoment } from '../../src/components/onboarding/AhaMomentTour';
 import {
   housingProfilePatch,
@@ -244,7 +244,7 @@ export default function SettingsScreen() {
                     destructive
                     isLast
                     onPress={() => {
-                      Alert.alert(
+                      showAlert(
                         'Delete this journey?',
                         'This permanently removes profile answers, task progress, cultural missions, Want-to lists, and byeongpung progress from this device. Export first if you need a readable copy.',
                         [
@@ -1064,6 +1064,8 @@ const styles = StyleSheet.create({
   linkBtn: {
     paddingHorizontal: space[3],
     paddingVertical: space[2],
+    minHeight: MIN_TARGET,
+    justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: palette.meok,
   },

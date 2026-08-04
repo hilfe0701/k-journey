@@ -20,9 +20,11 @@ import { universityById } from '../../src/data/universities';
 import { getPermissionState, PermissionState } from '../../src/lib/notifications';
 import { NotificationPriming } from '../../src/components/onboarding/NotificationPriming';
 import { selectUniversityId } from '../../src/lib/profileCompat';
+import { useInactiveScreen } from '../../src/lib/inactiveScreen';
 
 export default function MoreTab() {
   const isFocused = useIsFocused();
+  const inactiveProps = useInactiveScreen(isFocused);
   const router = useRouter();
   const { profile } = useProfile();
   const universityId = selectUniversityId(profile);
@@ -78,13 +80,7 @@ export default function MoreTab() {
         : 'Tap to enable phase + D-Day reminders';
 
   return (
-    <SafeAreaView
-      style={styles.root}
-      edges={['top']}
-      accessibilityElementsHidden={!isFocused}
-      importantForAccessibility={isFocused ? 'auto' : 'no-hide-descendants'}
-      aria-hidden={!isFocused}
-    >
+    <SafeAreaView style={styles.root} edges={['top']} {...inactiveProps}>
       <ScrollView contentContainerStyle={{ paddingBottom: space[16] }}>
         <View style={styles.header}>
           <View style={styles.headerRow}>

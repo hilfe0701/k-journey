@@ -4,7 +4,6 @@ import {
   ScrollView,
   StyleSheet,
   Pressable,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Image,
@@ -39,6 +38,7 @@ import {
 import { firePanelUnlock, claimPanelUnlock } from '../../src/lib/notifications';
 import { showOperationError } from '../../src/lib/errorAlert';
 import { track } from '../../src/lib/posthog';
+import { showAlert } from '../../src/lib/alert';
 import { hapticDestructive } from '../../src/lib/haptics';
 import { MissionCompleteOverlay } from '../../src/components/mission/MissionCompleteOverlay';
 import { a11yState } from '../../src/lib/a11y';
@@ -168,7 +168,7 @@ export default function BucketDetail() {
 
   function handleDeleteBucket() {
     if (!bucket) return;
-    Alert.alert(
+    showAlert(
       'Delete this bucket?',
       'This removes the bucket and all items. The painting progress is lost.',
       [

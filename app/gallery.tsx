@@ -346,10 +346,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // The share card is laid out only so `captureRef` has something to snapshot.
+  // At `left: 0` its 720px width extended the document's scroll width, so the
+  // whole gallery page scrolled sideways at phone widths. A negative offset
+  // keeps it rendered without contributing to the scrollable area.
   offscreen: {
     position: 'absolute',
     top: -10000,
-    left: 0,
+    left: -10000,
   },
   shareCard: {
     width: SHARE_CARD_WIDTH,

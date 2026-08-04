@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft, ChevronDown, ChevronUp, AlertTriangle, AlertCircle } from 'lucide-react-native';
 import { resolveIcon } from '../src/lib/icons';
 
-import { Text, IconButton } from '../src/components/ui';
+import { Text, IconButton, MIN_TARGET } from '../src/components/ui';
 import { palette, space, radius } from '../design-tokens';
 import { EMERGENCY_SECTIONS } from '../src/data/emergency';
 import { setJson, getJson, KEYS } from '../src/lib/storage';
@@ -34,10 +34,11 @@ export default function Emergency() {
           accessibilityLabel="Back"
           onPress={() => router.back()}
         />
-        <Text role="body" weight="semibold">
-          Emergency guide
-        </Text>
-        <View style={{ width: 24 }} />
+        {/* A heading, not plain bar text: this screen had no heading at all,
+            so a screen reader offered nothing to navigate it by. */}
+        <Text role="h4">Emergency guide</Text>
+        {/* Matches the back button's 44pt box so the title stays centred. */}
+        <View style={{ width: MIN_TARGET }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>

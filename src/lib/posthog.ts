@@ -8,24 +8,37 @@ import PostHog from 'posthog-react-native';
 const rawKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? '';
 const host = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com';
 
-// A real key is one that exists and is not the .env.example placeholder.
-const hasUsableKey = rawKey.length > 0 && !rawKey.startsWith('phc_REPLACE');
+/** A real key is one that exists and is not the .env.example placeholder. */
+export function isUsableProjectKey(key: string): boolean {
+  return key.length > 0 && !key.startsWith('phc_REPLACE');
+}
 
-// PostHog's constructor throws on an empty key, so `disabled` below was never
-// reached without one and the app could not boot at all. Pass a placeholder and
-// let `disabled` do the intended work.
-const apiKey = hasUsableKey ? rawKey : 'phc_analytics_disabled';
+const hasUsableKey = isUsableProjectKey(rawKey);
 
-export const posthog = new PostHog(apiKey, {
-  host,
-  // Profiles contain visa, housing, insurance, and date conditions. Event
-  // analytics may be enabled with an explicit project key, but replay remains
-  // off until a separate consent and redaction design is approved.
-  enableSessionReplay: false,
-  flushAt: 20,
-  flushInterval: 30_000,
-  disabled: !hasUsableKey,
-});
+/**
+ * `null` whenever no project key is configured — which is the current default.
+ *
+ * The earlier shape constructed the client with a `phc_analytics_disabled`
+ * placeholder and `disabled: true`, because the constructor throws on an empty
+ * key. `disabled` does suppress event capture, but the SDK still fetches its
+ * remote config on init: every page load of the "analytics is off" build sent
+ * `GET https://us-assets.i.posthog.com/array/phc_analytics_disabled/config` —
+ * observed in the browser network log, one 404 per route — which contacts
+ * PostHog with the visitor's IP and user agent and contradicts
+ * `docs/MEASUREMENT_AND_EXPERIMENTS.md`. Not constructing the client is the
+ * only way to send nothing at all.
+ */
+export const posthog: PostHog | null = hasUsableKey
+  ? new PostHog(rawKey, {
+      host,
+      // Profiles contain visa, housing, insurance, and date conditions. Event
+      // analytics may be enabled with an explicit project key, but replay
+      // remains off until a separate consent and redaction design is approved.
+      enableSessionReplay: false,
+      flushAt: 20,
+      flushInterval: 30_000,
+    })
+  : null;
 
 export type KJEvent =
   | 'mission_complete'
@@ -73,17 +86,17 @@ export type KJEvent =
 type Props = Record<string, string | number | boolean | null | undefined>;
 
 export function track(event: KJEvent, properties?: Props) {
-  posthog.capture(event, (properties ?? {}) as any);
+  posthog?.capture(event, (properties ?? {}) as any);
 }
 
 export function identify(uid: string, properties?: Props) {
-  posthog.identify(uid, (properties ?? {}) as any);
+  posthog?.identify(uid, (properties ?? {}) as any);
 }
 
 export function trackScreen(name: string, properties?: Props) {
-  posthog.screen(name, (properties ?? {}) as any);
+  posthog?.screen(name, (properties ?? {}) as any);
 }
 
 export function reset() {
-  posthog.reset();
+  posthog?.reset();
 }

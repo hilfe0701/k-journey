@@ -6,7 +6,6 @@ import {
   Pressable,
   Image,
   ActionSheetIOS,
-  Alert,
   Platform,
   useWindowDimensions,
 } from 'react-native';
@@ -26,9 +25,12 @@ import {
 import { shareByeongpungImage, saveByeongpungImage } from '../../src/lib/share';
 import { track } from '../../src/lib/posthog';
 import { a11yState } from '../../src/lib/a11y';
+import { showAlert } from '../../src/lib/alert';
+import { useInactiveScreen } from '../../src/lib/inactiveScreen';
 
 export default function ByeongpungTab() {
   const isFocused = useIsFocused();
+  const inactiveProps = useInactiveScreen(isFocused);
   const { width: windowWidth } = useWindowDimensions();
   const visiblePanelWidth = Platform.OS === 'web' && windowWidth >= 760 ? 88 : 104;
   const theme = useTheme();
@@ -79,7 +81,7 @@ export default function ByeongpungTab() {
     const reveal = (totalCompleted - panelIdx * 6) / 6;
     if (reveal < 1) {
       const needed = (panelIdx + 1) * 6 - totalCompleted;
-      Alert.alert(
+      showAlert(
         'Panel not yet complete',
         `Panel ${panelIdx + 1} (${PANEL_MOTIF_NAMES[panelIdx]}) must be 100% revealed before it can be saved on its own. ${needed} more completion${needed > 1 ? 's' : ''} needed.`,
       );
@@ -120,13 +122,7 @@ export default function ByeongpungTab() {
   }
 
   return (
-    <SafeAreaView
-      style={styles.root}
-      edges={['top']}
-      accessibilityElementsHidden={!isFocused}
-      importantForAccessibility={isFocused ? 'auto' : 'no-hide-descendants'}
-      aria-hidden={!isFocused}
-    >
+    <SafeAreaView style={styles.root} edges={['top']} {...inactiveProps}>
       <View style={styles.header}>
         <Text role="h1">Your folding screen</Text>
         <Text role="body" color={palette.ash} style={{ marginTop: 4 }}>
@@ -372,10 +368,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: space[5],
     paddingVertical: space[3],
   },
+  // Off to the left as well as above: at `left: 0` the wide capture canvas
+  // widens the document's scroll area in a browser and the page starts
+  // scrolling sideways. See the same note in `app/gallery.tsx`.
   offscreen: {
     position: 'absolute',
     top: -10000,
-    left: 0,
+    left: -10000,
   },
   singlePanel: {
     position: 'absolute',

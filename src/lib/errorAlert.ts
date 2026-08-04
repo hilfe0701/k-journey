@@ -2,7 +2,8 @@
  * Async-mutator error surface (ADR-0012). Routes through the 4-tier catalog
  * in src/lib/errors/catalog.ts via the singleton bus in src/lib/errors/host.ts.
  * UI hosts (ToastHost) subscribe and render T1 toasts / T4 banners. T2/T3
- * render via Alert.
+ * render as modal alerts through `./alert`, which is web-safe — React Native
+ * Web's own `Alert.alert` is an empty function.
  *
  * Call sites use `showOperationError(action, error, options)`. Pass
  * `options.onPrimary` to make the T1 "Retry" / T2 "Try again" button re-run
@@ -11,9 +12,10 @@
  * (phase-changed, export-already-queued) — the rows stay static + testable.
  */
 
-import { Alert, Linking } from 'react-native';
+import { Linking } from 'react-native';
 import { getCrashlytics, recordError } from '@react-native-firebase/crashlytics';
 
+import { showAlert } from './alert';
 import { resolveErrorRow, ERROR_CATALOG, type ErrorRow } from './errors/catalog';
 import { emitError } from './errors/host';
 
@@ -76,11 +78,11 @@ function routeRow(row: ErrorRow, options?: SurfaceOptions) {
           onPress: options?.onSecondary,
         });
       }
-      Alert.alert(row.title ?? "Couldn't complete that", body, buttons);
+      showAlert(row.title ?? "Couldn't complete that", body, buttons);
       return;
     }
     case 'T3': {
-      Alert.alert(
+      showAlert(
         row.title ?? 'Permission needed',
         body,
         [

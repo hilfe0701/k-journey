@@ -16,6 +16,7 @@ import { ThemeProvider } from '../src/theme/ThemeProvider';
 import { useProfile } from '../src/hooks/useProfile';
 import { posthog } from '../src/lib/posthog';
 import { Text } from '../src/components/ui';
+import { AlertHost } from '../src/components/system/AlertHost';
 import { ToastHost } from '../src/components/system/ToastHost';
 import {
   AhaMomentTour,
@@ -113,9 +114,15 @@ export default function RootLayout() {
     <GestureHandlerRootView style={shellStyles.canvas}>
       <View style={shellStyles.appViewport}>
         <SafeAreaProvider>
-          <PostHogProvider client={posthog} autocapture={false}>
+          {/* No key configured → no client, and therefore no provider: mounting
+              one would put the SDK back on the network. */}
+          {posthog ? (
+            <PostHogProvider client={posthog} autocapture={false}>
+              <RouteGate />
+            </PostHogProvider>
+          ) : (
             <RouteGate />
-          </PostHogProvider>
+          )}
         </SafeAreaProvider>
       </View>
     </GestureHandlerRootView>
@@ -206,6 +213,7 @@ function RouteGate() {
         onDismiss={() => setShowTour(false)}
       />
       <ToastHost />
+      <AlertHost />
     </ThemeProvider>
   );
 }

@@ -20,7 +20,7 @@ import {
   UserRound,
 } from 'lucide-react-native';
 
-import { Badge, Button, Card, Text } from '../../src/components/ui';
+import { Badge, Button, Card, MIN_TARGET, Text } from '../../src/components/ui';
 import { useProfile, useTaskProgress } from '../../src/hooks/useProfile';
 import { calcDatePhase, type Phase } from '../../src/hooks/usePhase';
 import {
@@ -588,7 +588,7 @@ function SourceField({
           accessibilityLabel={accessibilityLabel ?? `Open ${value}`}
           accessibilityHint="Opens the official source in your browser."
           onPress={() => Linking.openURL(href).catch((error) => showOperationError('open the official source', error))}
-          hitSlop={8}
+          style={styles.sourceLink}
         >
           {valueText}
         </Pressable>
@@ -612,7 +612,7 @@ function ConflictValueRow({ value }: { value: TaskSourceValue }) {
         accessibilityRole="link"
         accessibilityLabel={`Open source from ${value.sourceLabel}`}
         onPress={() => Linking.openURL(value.sourceUrl).catch((error) => showOperationError('open the source', error))}
-        hitSlop={8}
+        style={styles.sourceLink}
       >
         <Text role="xs" color={palette.cheong} selectable>
           {value.sourceUrl}
@@ -1350,6 +1350,10 @@ const styles = StyleSheet.create({
   },
   sourceLabel: { textTransform: 'none' },
   sourceValue: { flexShrink: 1 },
+  // The link text itself is 17px tall in a browser and `hitSlop` does not exist
+  // there, so the pressable needs a real 44pt box of its own — the 44pt
+  // `sourceField` around it is not the target.
+  sourceLink: { minHeight: MIN_TARGET, justifyContent: 'center' },
   conflictCallout: {
     gap: space[3],
     padding: space[4],

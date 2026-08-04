@@ -19,6 +19,7 @@ import { useJourneyMilestones } from '../../src/hooks/useJourneyMilestones';
 import { calcDatePhase, calcPhase, dDay, setPhaseOverride, type Phase } from '../../src/hooks/usePhase';
 import { useProfile } from '../../src/hooks/useProfile';
 import { useTotalCompletions } from '../../src/hooks/useTotalCompletions';
+import { useInactiveScreen } from '../../src/lib/inactiveScreen';
 import { knownProfileDate, selectMissionHousing } from '../../src/lib/profileCompat';
 import { track } from '../../src/lib/posthog';
 import ChecklistHome from './checklist';
@@ -39,6 +40,7 @@ const CATEGORY_LABEL: Record<MissionCategory, string> = {
 
 export default function JourneyHome() {
   const isFocused = useIsFocused();
+  const inactiveProps = useInactiveScreen(isFocused);
   const router = useRouter();
   const { view } = useLocalSearchParams<{ view?: string }>();
   const [mode, setMode] = React.useState<'essentials' | 'culture'>(
@@ -57,12 +59,7 @@ export default function JourneyHome() {
   }
 
   return (
-    <View
-      style={styles.root}
-      accessibilityElementsHidden={!isFocused}
-      importantForAccessibility={isFocused ? 'auto' : 'no-hide-descendants'}
-      aria-hidden={!isFocused}
-    >
+    <View style={styles.root} {...inactiveProps}>
       {mode === 'essentials' ? (
         <ChecklistHome onShowCulture={() => changeMode('culture')} />
       ) : (

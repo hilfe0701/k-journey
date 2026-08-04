@@ -10,21 +10,17 @@ import { palette, space, radius } from '../../design-tokens';
 import { BUCKET_TEMPLATES } from '../../src/data/bucketTemplates';
 import { BUCKET_TEMPLATE_IMAGES } from '../../src/components/byeongpung/motifs';
 import { useBuckets } from '../../src/hooks/useBuckets';
+import { useInactiveScreen } from '../../src/lib/inactiveScreen';
 
 export default function WantToTab() {
   const isFocused = useIsFocused();
+  const inactiveProps = useInactiveScreen(isFocused);
   const router = useRouter();
   const { buckets } = useBuckets();
   const hasBuckets = buckets.length > 0;
 
   return (
-    <SafeAreaView
-      style={styles.root}
-      edges={['top']}
-      accessibilityElementsHidden={!isFocused}
-      importantForAccessibility={isFocused ? 'auto' : 'no-hide-descendants'}
-      aria-hidden={!isFocused}
-    >
+    <SafeAreaView style={styles.root} edges={['top']} {...inactiveProps}>
       <ScrollView contentContainerStyle={{ paddingBottom: space[16] }}>
         <View style={styles.header}>
           <View style={styles.headerRow}>
