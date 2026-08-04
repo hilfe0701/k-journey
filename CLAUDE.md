@@ -54,7 +54,7 @@ This file is the concise implementation guardrail for the current product. Histo
 ## MUST
 
 1. Use colors and spacing from `design-tokens.ts`; do not add arbitrary hex values.
-2. Body text weight is 500. Headings use 600 or 700.
+2. The visual system is Airbnb (see `DESIGN.md`, rewritten 2026-08-04). Body text weight is 400; headings use 500–700. Rausch (`#FF385C`) is the only accent and is spent solely on primary CTAs, the completion/save state, the active nav tab, and brand links — warnings use `error`, and blocked states recede to `muted` on `surfaceSoft`.
 3. Use English first and Korean in parentheses for Korean proper nouns.
 4. Use sentence case. Badge micro-labels may use uppercase.
 5. Use Lucide for functional icons; artwork motifs are not controls.
