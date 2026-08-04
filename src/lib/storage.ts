@@ -11,7 +11,10 @@ import { MMKV } from 'react-native-mmkv';
 export const storage = new MMKV({ id: 'k-journey' });
 
 export const KEYS = {
-  emergencyCache: 'emergency:v1',
+  // v2 adds per-item `ContentEvidence`. A v1 payload cached on a device that
+  // updates would render items with no source at all, which is the exact
+  // failure the evidence field exists to prevent, so the key moves instead.
+  emergencyCache: 'emergency:v2',
   profileCache: 'profile:cache:v1',
   onboardingProgress: 'onboarding:progress:v1',
   completedMissionsCache: 'missions:completed:v1',

@@ -15,7 +15,7 @@
  */
 
 import { addDays, differenceInCalendarDays, parseISO } from 'date-fns';
-import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { formatInTimeZone, fromZonedTime, toZonedTime } from 'date-fns-tz';
 
 export const KST = 'Asia/Seoul';
 
@@ -35,6 +35,24 @@ export function toKstStartOfDay(dateOrIso: string | Date): Date {
 /** Calendar-day delta in KST. Positive when `later` is after `earlier`. */
 export function kstDifferenceInDays(later: Date, earlier: Date): number {
   return differenceInCalendarDays(toZonedTime(later, KST), toZonedTime(earlier, KST));
+}
+
+/** A KST calendar date rendered for reading, e.g. `Aug 4, 2026`. */
+export function formatKstDate(isoDate: string): string {
+  return formatInTimeZone(parseISO(`${isoDate}T00:00:00+09:00`), KST, 'MMM d, yyyy');
+}
+
+/**
+ * The KST calendar date `days` after `isoDate`, as `YYYY-MM-DD`.
+ *
+ * `isoDate` is anchored at KST midnight as a real instant rather than being run
+ * through `toKstStartOfDay`. That helper mutates local-time fields, so on a
+ * device far enough east the round-trip lands a day early — harmless for
+ * display, wrong for a review deadline that gates whether guidance is shown as
+ * stale.
+ */
+export function kstDatePlusDays(isoDate: string, days: number): string {
+  return formatInTimeZone(addDays(parseISO(`${isoDate}T00:00:00+09:00`), days), KST, 'yyyy-MM-dd');
 }
 
 /**
