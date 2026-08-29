@@ -1,5 +1,5 @@
 // Screen ID: ONB-05 — Stay length.
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -18,23 +18,31 @@ import { showOperationError } from '../../src/lib/errorAlert';
 import { track } from '../../src/lib/posthog';
 
 export default function StayLengthScreen() {
-  const router = useRouter();
   const profile = useOnboardingStepGuard('stay-length');
-  const [stayDays, setStayDays] = useState('');
-  const [unknown, setUnknown] = useState(false);
-  const [saving, setSaving] = useState(false);
   const profileTotalStayDays = profile?.totalStayDays;
+  const initialUnknown = profileTotalStayDays === UNKNOWN;
+  const initialStayDays = initialUnknown ? '' : String(profileTotalStayDays ?? '');
 
-  useEffect(() => {
-    if (!profile) return;
-    if (profileTotalStayDays === UNKNOWN) {
-      setUnknown(true);
-      setStayDays('');
-      return;
-    }
-    setUnknown(false);
-    setStayDays(String(profileTotalStayDays ?? ''));
-  }, [profile, profileTotalStayDays]);
+  return (
+    <StayLengthForm
+      key={JSON.stringify([!!profile, initialStayDays, initialUnknown])}
+      initialStayDays={initialStayDays}
+      initialUnknown={initialUnknown}
+    />
+  );
+}
+
+function StayLengthForm({
+  initialStayDays,
+  initialUnknown,
+}: {
+  initialStayDays: string;
+  initialUnknown: boolean;
+}) {
+  const router = useRouter();
+  const [stayDays, setStayDays] = useState(initialStayDays);
+  const [unknown, setUnknown] = useState(initialUnknown);
+  const [saving, setSaving] = useState(false);
 
   const parsedDays = Number(stayDays);
   // REQ-DAR-003 · REQ-QUR-002 · POL-003: validate and label stay length explicitly.

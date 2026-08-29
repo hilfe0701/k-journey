@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Linking, View, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
 import type { ImageSourcePropType } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, MapPin, Lightbulb, Check, Building2, X, CircleCheckBig } from 'lucide-react-native';
-import { resolveIcon } from '../../src/lib/icons';
+import { ChevronLeft, MapPin, Lightbulb, Check, Building2, X, CircleCheckBig, ExternalLink } from 'lucide-react-native';
+import { iconElement } from '../../src/lib/icons';
 
 import { Text, Button, Badge, IconButton, MIN_TARGET } from '../../src/components/ui';
 import { palette, space, radius, categoryColors } from '../../design-tokens';
@@ -23,6 +23,7 @@ import { BYEONGPUNG_PANEL_IMAGES } from '../../src/components/byeongpung/motifs'
 import { selectUniversityId } from '../../src/lib/profileCompat';
 import { evidenceNeedsReview } from '../../src/lib/contentEvidence';
 import { formatKstDate } from '../../src/lib/dates';
+import { openExternalLink } from '../../src/lib/linking';
 
 interface OverlayState {
   iconName: string;
@@ -121,7 +122,6 @@ export default function MissionDetail() {
 
   const isCompleted = completedSet.has(mission.id);
   const color = categoryColors[mission.category];
-  const Icon = resolveIcon(mission.icon);
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -138,7 +138,7 @@ export default function MissionDetail() {
 
       <ScrollView contentContainerStyle={styles.body}>
         <View style={[styles.iconHero, { backgroundColor: color + '14' }]}>
-          <Icon size={48} color={color} strokeWidth={1.4} />
+          {iconElement(mission.icon, { size: 48, color, strokeWidth: 1.4 })}
         </View>
 
         <View style={{ gap: space[2] }}>
@@ -186,6 +186,34 @@ export default function MissionDetail() {
         </View>
 
         <MissionEvidenceBlock mission={mission} />
+
+        {mission.seasonal ? (
+          <View style={styles.seasonalBlock}>
+            <Text role="body" weight="semibold">Seasonal check</Text>
+            <Text role="sm" color={palette.meokMid}>{mission.seasonal.note}</Text>
+          </View>
+        ) : null}
+
+        {mission.actions.length ? (
+          <View style={styles.actionBlock}>
+            <Text role="body" weight="semibold">Next action</Text>
+            {mission.actions.map((action) => (
+              <Pressable
+                key={`${action.type}-${action.href}`}
+                accessibilityRole="link"
+                accessibilityLabel={action.label}
+                accessibilityHint="Opens an external guide or map."
+                onPress={() => void openExternalLink(action.href)}
+                style={({ pressed }) => [styles.actionLink, pressed ? styles.evidencePressed : null]}
+              >
+                <Text role="sm" color={palette.cheong} weight="semibold" style={{ flex: 1 }}>
+                  {action.label}
+                </Text>
+                <ExternalLink size={17} color={palette.cheong} strokeWidth={1.6} />
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
 
         {mission.mapHint ? (
           <View style={styles.mapBlock}>
@@ -252,7 +280,7 @@ function MissionEvidenceBlock({ mission }: { mission: Mission }) {
           accessibilityRole="link"
           accessibilityLabel={`Open mission source: ${evidence.sourceTitle}`}
           accessibilityHint="Opens the source in your browser."
-          onPress={() => Linking.openURL(evidence.sourceUrl).catch(() => undefined)}
+          onPress={() => void openExternalLink(evidence.sourceUrl, 'open the mission source')}
           style={({ pressed }) => [styles.evidenceLink, pressed ? styles.evidencePressed : null]}
         >
           <Text role="xs" color={palette.cheong}>
@@ -327,11 +355,11 @@ function UniversityContextBlock({
         <View style={styles.sectionHead}>
           <Building2 size={18} color={palette.hwanggeumDeep} strokeWidth={1.6} />
           <Text role="body" weight="semibold">
-            {uni.shortName} dorm desk
+            {uni.shortName} dorm checkout
           </Text>
         </View>
         <Text role="sm" color={palette.meokMid} style={{ marginTop: space[2] }}>
-          Hand the key in at the same desk you checked in: {uni.dorm.checkin}
+          Check the current dormitory notice or ask the residence office where and when to return the key. The check-in guidance is context only: {uni.dorm.checkin}
         </Text>
       </View>
     );
@@ -423,6 +451,30 @@ const styles = StyleSheet.create({
   },
   evidencePressed: {
     opacity: 0.72,
+  },
+  actionBlock: {
+    gap: space[2],
+    padding: space[4],
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: palette.hairline,
+    backgroundColor: palette.hanji,
+  },
+  seasonalBlock: {
+    gap: space[2],
+    padding: space[4],
+    borderRadius: radius.card,
+    backgroundColor: palette.cloud,
+  },
+  actionLink: {
+    minHeight: MIN_TARGET,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[2],
+    paddingHorizontal: space[3],
+    paddingVertical: space[2],
+    borderRadius: radius.md,
+    backgroundColor: palette.cloud,
   },
   bullet: {
     flexDirection: 'row',

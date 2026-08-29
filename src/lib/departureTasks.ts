@@ -13,9 +13,9 @@
  *     of the Immigration Act lists three re-entry exceptions, so a temporary
  *     departure must never be judged "return required" — it becomes
  *     `review_required` with the final authority named.
- *  2. G3 (deposit refund, paid *after* departure) and G4 (account closure,
- *     possible *only before* departure) genuinely conflict. Neither is a rule
- *     violation, so the app presents both outcomes instead of one answer.
+ *  2. G3 (deposit refund) and G4 (account closure) can conflict when the hall
+ *     schedules the refund after the user leaves. There is no universal timing,
+ *     so the app asks the user to confirm both outcomes before departure.
  */
 
 import type { TaskMetadata, TaskSourceMetadata } from './taskState';
@@ -57,26 +57,43 @@ const IMMIGRATION_ACT_37: TaskSourceMetadata = {
 };
 
 const TELECOM_CANCELLATION: TaskSourceMetadata = {
-  sourceUrl:
-    'https://www.easylaw.go.kr/CSP/CnpClsMainBtr.laf?popMenu=ov&csmSeq=1650&ccfNo=3&cciNo=2&cnpClsNo=1',
-  sourceLabel: 'Easy Law Korea — telecommunications contract termination procedure',
-  checkedAt: '2026-07-25',
+  sourceUrl: 'https://www.tworld.co.kr/poc/eng/html/EN1.33T.html',
+  sourceLabel: 'SKT, KT, and LG U+ official cancellation/contact pages',
+  checkedAt: '2026-08-30',
   reviewAfter: null,
   finalAuthority: 'your mobile carrier',
   conflictNote:
-    'Whether the contract can be cancelled from outside Korea is not confirmed. Check with the carrier before you leave.',
+    'Cancellation channels, identity documents, remaining charges, and refunds vary by carrier and plan. Overseas or proxy handling is not confirmed. KT official English pages conflict on whether customer-centre cancellation is available; confirm your exact line before leaving.',
   volatility: 'medium',
   owner: UNKNOWN_VALUE_LABEL,
-  conflictValues: [],
+  conflictValues: [
+    {
+      value: 'SKT Easy plans: T World web/app, 114, multilingual 080-252-5011, or an SKT store',
+      sourceLabel: 'SKT official foreign-customer plan and support pages',
+      sourceUrl: 'https://www.tworld.co.kr/poc/eng/html/EN1.33T.html',
+      checkedAt: '2026-08-30',
+    },
+    {
+      value: 'KT: call 080-448-0100 and plan for a store visit because official English pages differ',
+      sourceLabel: 'KT official Global Store support pages',
+      sourceUrl: 'https://globalshop.kt.com/support/supportNeed.do',
+      checkedAt: '2026-08-30',
+    },
+    {
+      value: 'LG U+: use the official cancellation page or ask 114 / 1544-0010 / 080-019-7000 or a U+ store',
+      sourceLabel: 'LG U+ official service cancellation and customer-centre pages',
+      sourceUrl: 'https://www.lguplus.com/mypage/info/cancel',
+      checkedAt: '2026-08-30',
+    },
+  ],
 };
 
 const NHIS_ELECTRONIC_BILL: TaskSourceMetadata = {
-  sourceUrl:
-    'https://che.yonsei.ac.kr/che/community_che/notice.do?mode=download&articleNo=113543&attachNo=95814',
-  sourceLabel: 'National Health Insurance Service guidance for foreign subscribers',
-  checkedAt: '2026-07-25',
+  sourceUrl: 'https://www.nhis.or.kr/english/wbheaa02000m01.do',
+  sourceLabel: 'National Health Insurance Service English contact guidance',
+  checkedAt: '2026-08-30',
   reviewAfter: null,
-  finalAuthority: 'NHIS 1577-1000 (press 7 for foreign-language service)',
+  finalAuthority: 'NHIS 1577-1000 (press 6 for foreign-language service)',
   conflictNote: null,
   volatility: 'high',
   owner: UNKNOWN_VALUE_LABEL,
@@ -170,7 +187,7 @@ export const DEPARTURE_TASKS: readonly DepartureTaskSpec[] = [
     sourceId: 'G5',
     title: 'Switch health-insurance billing to electronic',
     summary:
-      'Paper bills are posted to your registered address, so the final one arrives after you have gone.',
+      'If your bills are still mailed, ask NHIS how to receive the final notice after your address changes.',
     timing: 'before_departure',
     timingLabel: 'Before departure',
     dependsOn: [],
@@ -181,7 +198,7 @@ export const DEPARTURE_TASKS: readonly DepartureTaskSpec[] = [
     sourceId: 'G7',
     title: 'Stop transit-card auto-charge',
     summary:
-      'Auto-charge debits your account about twice a month, so stop it before you close the account.',
+      'If auto-charge is enabled, stop the recurring debit before you close its linked account.',
     timing: 'before_departure',
     timingLabel: 'Before departure — ahead of closing your account',
     dependsOn: [],
@@ -192,7 +209,7 @@ export const DEPARTURE_TASKS: readonly DepartureTaskSpec[] = [
     sourceId: 'G2',
     title: 'Cancel your mobile contract',
     summary:
-      'Cancel in person, by phone, by fax, or online. Overpaid charges and deposits are refunded separately.',
+      'Contact your carrier before departure; the available channel and required documents depend on your carrier and plan.',
     timing: 'before_departure',
     timingLabel: 'Before departure — required',
     dependsOn: [],
@@ -213,7 +230,7 @@ export const DEPARTURE_TASKS: readonly DepartureTaskSpec[] = [
     sourceId: 'G9',
     title: 'Get an entry and exit record certificate',
     summary:
-      'Issued at a community service centre or an immigration office. The fee reported by the handbook is 2,000 won.',
+      'Check the current issue route, required identification, and fee with Government24 or the issuing office.',
     timing: 'before_departure',
     timingLabel: 'Before departure',
     dependsOn: [],
@@ -224,9 +241,9 @@ export const DEPARTURE_TASKS: readonly DepartureTaskSpec[] = [
     sourceId: 'G4',
     title: 'Decide what to do with your bank account',
     summary:
-      'Closing an account requires a branch visit and cannot be done once you have left Korea.',
+      'Ask your bank whether closure requires an in-person visit, and resolve recurring charges and incoming refunds before leaving.',
     timing: 'before_departure',
-    timingLabel: 'Before departure — the only window',
+    timingLabel: 'Before departure — confirm with your bank',
     dependsOn: [
       DEPARTURE_TASK_IDS.transitAutoCharge,
       DEPARTURE_TASK_IDS.telecom,
@@ -248,11 +265,11 @@ export const DEPARTURE_TASKS: readonly DepartureTaskSpec[] = [
   {
     taskId: DEPARTURE_TASK_IDS.dormitoryDeposit,
     sourceId: 'G3',
-    title: 'Receive your dormitory deposit refund',
+    title: 'Confirm your dormitory deposit refund',
     summary:
-      'Ask your dormitory office how and when the refund is paid. If it can arrive after you fly, it needs an account that is still open.',
-    timing: 'after_departure',
-    timingLabel: 'After departure',
+      'Your dormitory decides whether the refund is processed before or after departure. Confirm the schedule and eligible receiving account before closing your bank account.',
+    timing: 'before_departure',
+    timingLabel: 'Before departure — settlement timing varies',
     dependsOn: [],
     source: DORMITORY_DEPOSIT_SOURCE,
   },
@@ -403,13 +420,13 @@ export const DEPOSIT_ACCOUNT_OUTCOMES: readonly DepositAccountOutcome[] = [
     choice: 'deposit-first',
     title: 'Keep the account open until the deposit arrives',
     outcome:
-      'The refund has somewhere to land, but you keep an account you can no longer visit a branch to manage, and online banking needs a certificate renewed each year.',
+      'The refund keeps its current receiving account, but confirm how you can manage or close that account after departure.',
   },
   {
     choice: 'account-first',
     title: 'Close the account before you leave',
     outcome:
-      'Nothing is left running, but a deposit refunded after departure has no account to arrive in and you cannot reopen one from abroad.',
+      'The account is closed before departure, but agree on another eligible refund route with the dormitory first.',
   },
 ];
 

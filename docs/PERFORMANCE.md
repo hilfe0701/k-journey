@@ -8,18 +8,20 @@ Current source-asset targets and approximate post-optimization totals:
 
 | Asset group | Count | Target | Current approximate total |
 |---|---:|---:|---:|
-| byeongpung panels | 24 | normally <700KB each | ~13MB |
+| byeongpung panels | 24 | normally <700KB each | 15,545,759 bytes |
 | bucket templates | 6 | normally <900KB each | ~3.9MB |
-| combined | 30 | <20MB | ~17MB |
+| combined | 30 | <20MB | ~18.7MiB |
 
 The web audit also found about 35MB of full Korean font files. Runtime fonts are now local
 subsets covering every glyph used by `app/` and `src/` plus Latin Extended (858 characters):
 roughly 0.8MB total instead of 35MB. User-authored characters outside that subset rely on the
 platform fallback font; regenerate the subsets whenever shipped UI/data introduces new glyphs.
 
-Fresh 2026-08-02 production export after optimization: `dist/` 23MB; JavaScript
-4,960,536 bytes raw / 1,017,350 bytes gzip. The previous output was 55MB before font
-subsetting and 114MB before artwork optimization.
+Fresh 2026-08-30 Expo 57 production export after the release-candidate changes:
+`dist/` 25MB (65 files); JavaScript 5,735,307 bytes raw / 1,126,811 bytes gzip. The
+emitted font subset is 296,628 bytes. The previous output was 55MB before font
+subsetting and 114MB before artwork optimization. The current JavaScript is
+above the 1MB goal but remains below the 1.25MB release-block threshold.
 
 ## Budgets
 

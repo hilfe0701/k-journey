@@ -77,6 +77,7 @@ export type KJEvent =
   | 'task_uncomplete'
   | 'task_order_choice'
   | 'task_housing_address_check'
+  | 'task_residence_district'
   // Event names only. DEC-027 is confirmed but its rules have never run in
   // code, so no condition, task, or cohort payload is attached to these.
   | 'task_departure_type'

@@ -1,5 +1,5 @@
 // Screen ID: ONB-03 — Program and visa.
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -24,27 +24,38 @@ const PROGRAM_OPTIONS = [
 ] satisfies readonly { value: ProgramType; label: string }[];
 
 const VISA_OPTIONS = [
-  { value: 'D-2-6', label: 'D-2-6' },
-  { value: 'D-2-8', label: 'D-2-8' },
+  { value: 'D-2-6', label: 'D-2-6 — Exchange Student' },
+  { value: 'D-2-8', label: 'D-2-8 — Visiting Student' },
   { value: 'visa_free', label: 'Visa-free stay' },
   { value: 'other', label: 'Another visa or status' },
   { value: UNKNOWN, label: UNKNOWN_LABEL },
 ] satisfies readonly { value: VisaTypeOrStatus; label: string }[];
 
 export default function ProgramScreen() {
-  const router = useRouter();
   const profile = useOnboardingStepGuard('program');
-  const [programType, setProgramType] = useState<ProgramType>(UNKNOWN);
-  const [visaTypeOrStatus, setVisaTypeOrStatus] = useState<VisaTypeOrStatus>(UNKNOWN);
-  const [saving, setSaving] = useState(false);
-  const profileProgramType = profile?.programType;
-  const profileVisaTypeOrStatus = profile?.visaTypeOrStatus;
+  const initialProgramType = profile?.programType ?? UNKNOWN;
+  const initialVisaTypeOrStatus = profile?.visaTypeOrStatus ?? UNKNOWN;
 
-  useEffect(() => {
-    if (!profile) return;
-    setProgramType(profileProgramType ?? UNKNOWN);
-    setVisaTypeOrStatus(profileVisaTypeOrStatus ?? UNKNOWN);
-  }, [profile, profileProgramType, profileVisaTypeOrStatus]);
+  return (
+    <ProgramForm
+      key={JSON.stringify([!!profile, initialProgramType, initialVisaTypeOrStatus])}
+      initialProgramType={initialProgramType}
+      initialVisaTypeOrStatus={initialVisaTypeOrStatus}
+    />
+  );
+}
+
+function ProgramForm({
+  initialProgramType,
+  initialVisaTypeOrStatus,
+}: {
+  initialProgramType: ProgramType;
+  initialVisaTypeOrStatus: VisaTypeOrStatus;
+}) {
+  const router = useRouter();
+  const [programType, setProgramType] = useState<ProgramType>(initialProgramType);
+  const [visaTypeOrStatus, setVisaTypeOrStatus] = useState<VisaTypeOrStatus>(initialVisaTypeOrStatus);
+  const [saving, setSaving] = useState(false);
 
   async function handleContinue() {
     setSaving(true);

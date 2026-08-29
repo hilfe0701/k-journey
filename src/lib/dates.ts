@@ -14,32 +14,63 @@
  * usages that previously read device-local time. See Round 2 plan Part E.1.
  */
 
-import { addDays, differenceInCalendarDays, parseISO } from 'date-fns';
-import { formatInTimeZone, fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { isValid, parseISO } from 'date-fns';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 
 export const KST = 'Asia/Seoul';
 
-/** Current time, expressed as a Date in KST. */
+const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** Current instant. Calendar-day consumers must render it through the KST helpers below. */
 export function kstNow(): Date {
-  return toZonedTime(new Date(), KST);
+  return new Date();
 }
 
-/** KST 00:00 of the calendar day containing `dateOrIso`. */
+function assertDateOnly(value: string): [number, number, number] {
+  const match = DATE_ONLY.exec(value);
+  if (!match) throw new RangeError(`Invalid calendar date: ${value}`);
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  if (
+    probe.getUTCFullYear() !== year ||
+    probe.getUTCMonth() !== month - 1 ||
+    probe.getUTCDate() !== day
+  ) {
+    throw new RangeError(`Invalid calendar date: ${value}`);
+  }
+  return [year, month, day];
+}
+
+/** KST calendar date (`YYYY-MM-DD`) for an instant or already date-only value. */
+export function kstCalendarDate(dateOrIso: string | Date): string {
+  if (typeof dateOrIso === 'string' && DATE_ONLY.test(dateOrIso)) {
+    assertDateOnly(dateOrIso);
+    return dateOrIso;
+  }
+  const date = typeof dateOrIso === 'string' ? parseISO(dateOrIso) : dateOrIso;
+  if (!isValid(date)) throw new RangeError(`Invalid date: ${String(dateOrIso)}`);
+  return formatInTimeZone(date, KST, 'yyyy-MM-dd');
+}
+
+/** Real instant corresponding to KST 00:00 of the calendar day containing `dateOrIso`. */
 export function toKstStartOfDay(dateOrIso: string | Date): Date {
-  const d = typeof dateOrIso === 'string' ? parseISO(dateOrIso) : dateOrIso;
-  const kst = toZonedTime(d, KST);
-  kst.setHours(0, 0, 0, 0);
-  return kst;
+  return fromZonedTime(`${kstCalendarDate(dateOrIso)}T00:00:00`, KST);
 }
 
 /** Calendar-day delta in KST. Positive when `later` is after `earlier`. */
 export function kstDifferenceInDays(later: Date, earlier: Date): number {
-  return differenceInCalendarDays(toZonedTime(later, KST), toZonedTime(earlier, KST));
+  const ordinal = (value: Date) => {
+    const [year, month, day] = assertDateOnly(kstCalendarDate(value));
+    return Date.UTC(year, month - 1, day) / 86_400_000;
+  };
+  return ordinal(later) - ordinal(earlier);
 }
 
 /** A KST calendar date rendered for reading, e.g. `Aug 4, 2026`. */
 export function formatKstDate(isoDate: string): string {
-  return formatInTimeZone(parseISO(`${isoDate}T00:00:00+09:00`), KST, 'MMM d, yyyy');
+  return formatInTimeZone(toKstStartOfDay(isoDate), KST, 'MMM d, yyyy');
 }
 
 /**
@@ -52,7 +83,25 @@ export function formatKstDate(isoDate: string): string {
  * stale.
  */
 export function kstDatePlusDays(isoDate: string, days: number): string {
-  return formatInTimeZone(addDays(parseISO(`${isoDate}T00:00:00+09:00`), days), KST, 'yyyy-MM-dd');
+  const [year, month, day] = assertDateOnly(isoDate);
+  const shifted = new Date(Date.UTC(year, month - 1, day + days));
+  return [
+    shifted.getUTCFullYear().toString().padStart(4, '0'),
+    (shifted.getUTCMonth() + 1).toString().padStart(2, '0'),
+    shifted.getUTCDate().toString().padStart(2, '0'),
+  ].join('-');
+}
+
+/** Shift a KST calendar date by whole years, clamping leap day to month end. */
+export function kstDatePlusYears(isoDate: string, years: number): string {
+  const [year, month, day] = assertDateOnly(isoDate);
+  const targetYear = year + years;
+  const lastDay = new Date(Date.UTC(targetYear, month, 0)).getUTCDate();
+  return [
+    targetYear.toString().padStart(4, '0'),
+    month.toString().padStart(2, '0'),
+    Math.min(day, lastDay).toString().padStart(2, '0'),
+  ].join('-');
 }
 
 /**
@@ -62,7 +111,7 @@ export function kstDatePlusDays(isoDate: string, days: number): string {
  * if `daysBefore` is large.
  */
 export function scheduleAtKstMorning(target: string | Date, daysBefore: number): Date {
-  const targetMidnight = toKstStartOfDay(target);
-  targetMidnight.setHours(9, 0, 0, 0);
-  return fromZonedTime(addDays(targetMidnight, -daysBefore), KST);
+  const targetDate = kstCalendarDate(target);
+  const fireDate = kstDatePlusDays(targetDate, -daysBefore);
+  return fromZonedTime(`${fireDate}T09:00:00`, KST);
 }

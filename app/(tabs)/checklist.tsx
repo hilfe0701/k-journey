@@ -911,6 +911,7 @@ function buildJurisdictionTask(profile: UserProfile, progress: LocalTaskProgress
   const resolution = resolveAdministrativeAuthorities({
     universityId: profile.universityId,
     housingType: profile.housingType,
+    residenceDistrict: profile.residenceDistrict,
   });
 
   if (resolution.status === 'review_required') {
@@ -962,6 +963,7 @@ function conditionAxisLabel(axis: string): string {
     arrivalDate: 'your arrival date',
     departureDate: 'your departure date',
     programStartDate: 'your program start date',
+    residenceDistrict: 'your registered residence district',
   };
   return labels[axis] ?? axis;
 }

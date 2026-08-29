@@ -97,10 +97,7 @@ describe('task state axes', () => {
   it('preserves all four fee values instead of selecting a single amount', () => {
     const registration = TASK_METADATA.find((task) => task.taskId === 'residence-registration');
     expect(registration?.source.conflictValues.map((entry) => entry.value)).toEqual([
-      '30,000 won',
-      '34,000 won',
       '35,000 won',
-      '40,000 won',
     ]);
   });
 });

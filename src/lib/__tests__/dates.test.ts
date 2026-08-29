@@ -1,4 +1,6 @@
-import { kstDifferenceInDays, kstNow, scheduleAtKstMorning, toKstStartOfDay } from '../dates';
+import { formatInTimeZone } from 'date-fns-tz';
+
+import { KST, kstCalendarDate, kstDatePlusDays, kstDatePlusYears, kstDifferenceInDays, kstNow, scheduleAtKstMorning, toKstStartOfDay } from '../dates';
 
 describe('KST helpers', () => {
   describe('kstNow', () => {
@@ -6,8 +8,7 @@ describe('KST helpers', () => {
       const now = kstNow();
       const real = new Date();
       expect(now).toBeInstanceOf(Date);
-      // Within 1s of "real" UTC time, since toZonedTime returns a Date whose
-      // getTime() in epoch ms matches the source instant.
+      // A Date is an instant. KST is applied only when deriving calendar fields.
       expect(Math.abs(now.getTime() - real.getTime())).toBeLessThan(1000);
     });
   });
@@ -15,15 +16,33 @@ describe('KST helpers', () => {
   describe('toKstStartOfDay', () => {
     it('snaps an ISO date string to 00:00 of that calendar day in KST', () => {
       const midnight = toKstStartOfDay('2026-04-01');
-      expect(midnight.getHours()).toBe(0);
-      expect(midnight.getMinutes()).toBe(0);
-      expect(midnight.getSeconds()).toBe(0);
+      expect(midnight.toISOString()).toBe('2026-03-31T15:00:00.000Z');
+      expect(formatInTimeZone(midnight, KST, 'HH:mm:ss')).toBe('00:00:00');
     });
 
     it('idempotent over Date input', () => {
       const a = toKstStartOfDay('2026-04-15');
       const b = toKstStartOfDay(a);
       expect(a.getTime()).toBe(b.getTime());
+    });
+  });
+
+  describe('calendar arithmetic', () => {
+    it('derives the Korean calendar day from an instant', () => {
+      expect(kstCalendarDate(new Date('2026-08-01T16:00:00.000Z'))).toBe('2026-08-02');
+    });
+
+    it('adds calendar days without depending on host DST', () => {
+      expect(kstDatePlusDays('2026-08-01', 90)).toBe('2026-10-30');
+      expect(kstDatePlusDays('2028-02-28', 1)).toBe('2028-02-29');
+    });
+
+    it('shifts leap-day years with a month-end clamp', () => {
+      expect(kstDatePlusYears('2028-02-29', 1)).toBe('2029-02-28');
+    });
+
+    it('rejects rolled-over date-only input', () => {
+      expect(() => toKstStartOfDay('2026-02-30')).toThrow(RangeError);
     });
   });
 
@@ -69,6 +88,12 @@ describe('KST helpers', () => {
       const d7Mid = toKstStartOfDay('2026-07-25');
       // The scheduled time should be 9 hours after KST midnight of D-7.
       expect(d7.getTime()).toBe(d7Mid.getTime() + 9 * 60 * 60 * 1000);
+    });
+
+    it('calculates an arrival-plus-90-day deadline on the correct KST date', () => {
+      const deadline = scheduleAtKstMorning('2026-08-01', -90);
+      expect(deadline.toISOString()).toBe('2026-10-30T00:00:00.000Z');
+      expect(formatInTimeZone(deadline, KST, 'yyyy-MM-dd HH:mm')).toBe('2026-10-30 09:00');
     });
   });
 });

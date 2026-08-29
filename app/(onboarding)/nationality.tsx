@@ -1,5 +1,5 @@
 // Screen ID: ONB-06 — Nationality and home-country insurance.
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -25,26 +25,36 @@ const INSURANCE_OPTIONS = [
 ] satisfies readonly { value: HomeCountryInsurance; label: string }[];
 
 export default function NationalityScreen() {
-  const router = useRouter();
   const profile = useOnboardingStepGuard('nationality');
-  const [nationality, setNationality] = useState('');
-  const [nationalityUnknown, setNationalityUnknown] = useState(false);
-  const [homeCountryInsurance, setHomeCountryInsurance] = useState<HomeCountryInsurance>(UNKNOWN);
-  const [saving, setSaving] = useState(false);
   const profileNationality = profile?.nationality;
-  const profileHomeCountryInsurance = profile?.homeCountryInsurance;
+  const initialNationalityUnknown = profileNationality === UNKNOWN;
+  const initialNationality = initialNationalityUnknown ? '' : (profileNationality ?? '');
+  const initialHomeCountryInsurance = profile?.homeCountryInsurance ?? UNKNOWN;
 
-  useEffect(() => {
-    if (!profile) return;
-    if (profileNationality === UNKNOWN) {
-      setNationalityUnknown(true);
-      setNationality('');
-    } else {
-      setNationalityUnknown(false);
-      setNationality(profileNationality ?? '');
-    }
-    setHomeCountryInsurance(profileHomeCountryInsurance ?? UNKNOWN);
-  }, [profile, profileHomeCountryInsurance, profileNationality]);
+  return (
+    <NationalityForm
+      key={JSON.stringify([!!profile, initialNationality, initialNationalityUnknown, initialHomeCountryInsurance])}
+      initialNationality={initialNationality}
+      initialNationalityUnknown={initialNationalityUnknown}
+      initialHomeCountryInsurance={initialHomeCountryInsurance}
+    />
+  );
+}
+
+function NationalityForm({
+  initialNationality,
+  initialNationalityUnknown,
+  initialHomeCountryInsurance,
+}: {
+  initialNationality: string;
+  initialNationalityUnknown: boolean;
+  initialHomeCountryInsurance: HomeCountryInsurance;
+}) {
+  const router = useRouter();
+  const [nationality, setNationality] = useState(initialNationality);
+  const [nationalityUnknown, setNationalityUnknown] = useState(initialNationalityUnknown);
+  const [homeCountryInsurance, setHomeCountryInsurance] = useState<HomeCountryInsurance>(initialHomeCountryInsurance);
+  const [saving, setSaving] = useState(false);
 
   const canContinue = (nationalityUnknown || nationality.trim().length > 0) && !!homeCountryInsurance;
 

@@ -12,7 +12,7 @@ import {
 import type { RefObject } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Share2, Download, Sparkles } from 'lucide-react-native';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused } from 'expo-router';
 
 import { ProgressBar, Text } from '../../src/components/ui';
 import { palette, space, radius } from '../../design-tokens';
@@ -61,7 +61,7 @@ export default function ByeongpungTab() {
     }
   }
 
-  async function captureAndSave(ref: RefObject<View>, panelIndex: number | null) {
+  async function captureAndSave(ref: RefObject<View | null>, panelIndex: number | null) {
     setBusy('save');
     try {
       const ok = await saveByeongpungImage(ref);
@@ -89,7 +89,7 @@ export default function ByeongpungTab() {
     }
     const node = panelRefs.current[panelIdx];
     if (!node) return;
-    const ref = { current: node } as RefObject<View>;
+    const ref = { current: node } as RefObject<View | null>;
     captureAndSave(ref, panelIdx);
   }
 
@@ -334,13 +334,13 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   panelImage: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     width: '100%',
     height: '100%',
     transform: [{ scale: 1.035 }],
   },
   lockedWash: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   panelLabel: {
     padding: space[2],

@@ -86,6 +86,8 @@ export function normalizeUserProfile(profile: Partial<UserProfile>): UserProfile
     uid: EMPTY_PROFILE.uid,
     email: null,
     photoUrl: null,
+    residenceDistrict:
+      typeof profile.residenceDistrict === 'string' ? profile.residenceDistrict : null,
     universityId,
     university: profile.university ?? (universityId === UNKNOWN ? null : universityId),
     housingType,

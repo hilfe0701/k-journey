@@ -6,12 +6,12 @@ Last verified: 2026-08-29 (Asia/Seoul)
 
 - Public URL: https://k-journey-three.vercel.app
 - Vercel project: `wodbs990701-3298s-projects/k-journey`
-- Production deployment: `dpl_6DHArMDvrJvYYWakQ4TenHDVKrPC`
-- Previous production deployment (rollback): `dpl_4mVLsoEyKgK93AdfcUqQNdCCHKo3`
+- Production deployment: `dpl_CAW2wJRHYnzUxjyXmuRkD3JBaDcv`
+- Previous production deployment (rollback): `dpl_6DHArMDvrJvYYWakQ4TenHDVKrPC`
 - Build command: `npm run build:web`
 - Output directory: `dist`
 - Routing mode: Expo Router single-page export with a Vercel catch-all rewrite
-- Source commit: `3d61e32` (integrated local release source; documentation-only record follows this commit)
+- Source commit: not recorded in Vercel metadata for this 2026-08-04 CLI deployment
 - Reproducibility: **proven locally** — clean commit, `npm run build:web`, and asset/a11y checks passed
 - Product parity: **stale** — it predates the 2026-08-02 full audit and reinforcement work
 
@@ -19,26 +19,28 @@ Do not promote the existing `dist/` again. It was generated before the current i
 
 ## Current build measurement
 
-Measured 2026-08-29 from `npm run build:web` after the source/content integration
-pass described in `STATUS.md`:
+Measured 2026-08-30 from the release-candidate `npm run build:web` described in
+`STATUS.md`:
 
 | Item | Size |
 |---|---|
-| `dist/` total | 24 MB (64 files) |
+| `dist/` total | 25 MB (65 files) |
 | Artwork and fonts (`dist/assets`) | 19 MB |
-| JavaScript, one bundle | 5.04 MB raw / 1.04 MB gzipped |
+| JavaScript, one bundle | 5,735,307 bytes raw / 1,126,811 bytes gzipped |
 
-Build verification: `npm run build:web` completed with Expo 52.0.49 from the
-integrated source. The build includes the 24 sliced byeongpung runtime assets and
-the source/freshness UI.
+Build verification: `npm run build:web` completed with Expo 57.0.18 from the
+release-candidate working tree. The build includes the 24 sliced byeongpung
+runtime assets, source/freshness UI, typed actions, Want-to suggestions, and
+current administrative guidance.
 
-Artwork dominates the payload; the JS bundle is unchanged by this pass.
+Artwork still dominates the payload. The SDK 57 migration increased the web
+bundle, but its 1,126,811-byte gzip size remains below the 1.25MB release block.
 
 ## Release procedure
 
 1. Review and commit the exact release source; record its SHA and rollback SHA.
 2. Run `npm run check`, `npx expo-doctor`, and a fresh `npm run build:web`.
-3. Run `npm run audit:a11y` against that build; it must exit zero.
+3. Run `npm run audit:a11y` and `npm run test:e2e:web` against that build; both must exit zero.
 4. Record output, JS, and artwork sizes.
 5. Create a protected preview with `npx vercel deploy --yes`.
 6. Verify `/`, `/mission/p1_pack`, a task route, and a bucket route by direct refresh.
@@ -55,5 +57,8 @@ If the app fails to boot, a direct route stops returning HTTP 200, or a release 
 - `EXPO_PUBLIC_*` values are embedded in the browser bundle. Only public client configuration belongs there.
 - PostHog remains disabled until a real public project key is provided as `EXPO_PUBLIC_POSTHOG_API_KEY`.
 - CLI deployments work. Git-triggered automatic deployments require connecting the GitHub login in the Vercel account and then linking `hilfe0701/k-journey`.
-- `npm audit --omit=dev` reports 44 transitive findings (including high/critical issues) in the Expo 52 toolchain. Its proposed remediation upgrades Expo to 57 and React Native to 0.86, so it must be handled as a tested framework migration rather than an unattended production patch.
+- Expo 57 / RN 0.86 / React 19 is now the verified release-candidate toolchain.
+  `npm audit --omit=dev` reports 14 moderate findings and zero high/critical
+  findings. All 14 are the Expo build-tooling `xcode → uuid` path; a forced
+  audit fix proposes an invalid Expo package downgrade and is not used.
 - iOS packaging, signing, TestFlight, and App Store release are intentionally deferred to the iOS release phase.

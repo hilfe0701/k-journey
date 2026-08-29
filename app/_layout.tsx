@@ -76,7 +76,9 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
         Something went wrong
       </Text>
       <Text role="bodySm" color={palette.muted} align="center" style={errorStyles.detail}>
-        {error.message}
+        {__DEV__
+          ? error.message
+          : 'The screen could not be loaded. Try again; your saved journey stays on this device.'}
       </Text>
       <Pressable
         onPress={retry}
@@ -136,16 +138,13 @@ function RouteGate() {
   const segments = useSegments();
   const router = useRouter();
   const coldStartHandledRef = useRef(false);
-  const [showTour, setShowTour] = React.useState(false);
-
-  // Aha-moment tour: surface exactly once after onboarding completes (PRD §4.6).
-  React.useEffect(() => {
-    if (!profile?.onboardingCompletedAt) return;
-    if (hasShownAhaMoment()) return;
-    const segs = segments as string[];
-    if (segs[0] !== '(tabs)') return;
-    setShowTour(true);
-  }, [profile?.onboardingCompletedAt, segments]);
+  const [dismissedTourCompletion, setDismissedTourCompletion] = React.useState<string | null>(null);
+  const onboardingCompletedAt = profile?.onboardingCompletedAt ?? null;
+  const showTour =
+    !!onboardingCompletedAt &&
+    dismissedTourCompletion !== onboardingCompletedAt &&
+    (segments as string[])[0] === '(tabs)' &&
+    !hasShownAhaMoment();
 
   // Surface a one-time clock-jump banner if boot detected device-clock skew
   // (ADR-0022, ADR-0028 T4). Deferred to an effect so the ToastHost is mounted.
@@ -212,7 +211,7 @@ function RouteGate() {
       <AhaMomentTour
         visible={showTour}
         era={era}
-        onDismiss={() => setShowTour(false)}
+        onDismiss={() => setDismissedTourCompletion(onboardingCompletedAt)}
       />
       <ToastHost />
       <AlertHost />

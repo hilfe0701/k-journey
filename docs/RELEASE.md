@@ -2,17 +2,17 @@
 
 ## Source and decision gate
 
-- [ ] PRD v2.0, `DEC-040`, ADR-0036, and current code agree.
+- [x] PRD v2.0, `DEC-040`, ADR-0036, and current code agree.
 - [ ] Working tree reviewed; release source committed.
 - [ ] Source commit SHA and rollback SHA recorded.
-- [ ] No historical Auth/Firestore instructions are being executed.
+- [x] No historical Auth/Firestore instructions are being executed.
 
 ## Quality gate
 
-- [ ] `npm run check` passes without avoidable warnings.
-- [ ] `npm run build:web` or native release build succeeds.
-- [ ] Asset, JS, and output sizes meet `docs/PERFORMANCE.md`.
-- [ ] Integrated scenarios in `docs/TESTING.md` pass.
+- [x] `npm run check` passes without avoidable warnings. (38 suites / 338 tests, 2026-08-30)
+- [x] `npm run build:web` succeeds. (2026-08-30)
+- [x] Asset, JS, and output sizes meet `docs/PERFORMANCE.md`.
+- [x] Integrated web scenarios in `docs/TESTING.md` pass through `audit:a11y` and `test:e2e:web`.
 - [ ] Privacy notice and store disclosures match the exact build configuration.
 
 ## Web release

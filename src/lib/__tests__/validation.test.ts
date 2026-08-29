@@ -20,6 +20,10 @@ describe('validateDates', () => {
     expect(validateDates('2026-04-01', 'nope')).toBe('departure_invalid');
   });
 
+  it('rejects a date-only value that rolls into another month', () => {
+    expect(validateDates('2026-02-30', '2026-08-01')).toBe('arrival_invalid');
+  });
+
   it('rejects arrival after departure', () => {
     expect(validateDates('2026-08-01', '2026-04-01')).toBe('arrival_after_departure');
   });

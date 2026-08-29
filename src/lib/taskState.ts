@@ -128,38 +128,19 @@ const UNKNOWN_OWNER = UNKNOWN_SOURCE_VALUE;
 const RESIDENCE_REGISTRATION_SOURCE: TaskSourceMetadata = {
   sourceUrl: 'https://www.immigration.go.kr/bbs/immigration/47/590299/artclView.do',
   sourceLabel: 'Ministry of Justice Foreign Residence Card fee notice',
-  checkedAt: '2026-07-27',
-  reviewAfter: null,
+  checkedAt: '2026-08-30',
+  reviewAfter: '2027-08-30',
   finalAuthority: 'the Ministry of Justice and HiKorea',
   conflictNote:
-    'University and third-party guides quote different amounts, but neither is the fee authority. The CIEE figure is secondary application guidance; check the Ministry of Justice or HiKorea route before paying.',
+    'The government issuance or reissuance fee is 35,000 won. A university, delivery service, or application agent may quote a different total because separate service or delivery charges are not part of the government fee; confirm those charges with that provider.',
   volatility: 'high',
   owner: UNKNOWN_OWNER,
   conflictValues: [
     {
-      value: '30,000 won',
-      sourceLabel: 'University guidance',
-      sourceUrl:
-        'https://gsc.korea.ac.kr/gsc/ExchangeVisitingProgram/Visa_Immigration/Visa/Visa.do',
-      checkedAt: '2026-07-25',
-    },
-    {
-      value: '34,000 won',
-      sourceLabel: 'CIEE application experience (secondary; not an authority)',
-      sourceUrl: 'https://www.ciee.org/go-abroad/college-study-abroad/blog/getting-arc-without-hirevisa',
-      checkedAt: '2026-07-25',
-    },
-    {
       value: '35,000 won',
-      sourceLabel: 'Ministry of Justice notice',
-      sourceUrl: 'https://www.immigration.go.kr/bbs/immigration_eng/229/590314/artclView.do',
-      checkedAt: '2026-07-25',
-    },
-    {
-      value: '40,000 won',
-      sourceLabel: 'HiKorea application route',
-      sourceUrl: 'https://www.hikorea.go.kr/board/BoardApplicationListR.pt',
-      checkedAt: '2026-07-25',
+      sourceLabel: 'Ministry of Justice statutory fee notice',
+      sourceUrl: 'https://www.immigration.go.kr/bbs/immigration/47/590299/artclView.do',
+      checkedAt: '2026-08-30',
     },
   ],
 };
@@ -225,8 +206,9 @@ const DEPARTURE_ORDER_SOURCE: TaskSourceMetadata = {
  * REQ-DAR-002 · REQ-DAR-006 · REQ-DAR-007 · POL-007 · POL-008:
  * shared task metadata for TASK-03 and Journey Home source evidence.
  *
- * REQ-SFR-007 puts the immigration appointment ahead of `housing-proof`:
- * appointment slots, not paperwork, are the scarce resource.
+ * REQ-SFR-007 puts the immigration appointment ahead of `housing-proof` as a
+ * planning workflow. Availability is read live from HiKorea; the app does not
+ * assert a fixed release cadence or invent a lead time.
  */
 export const CORE_TASK_METADATA: readonly TaskMetadata[] = [
   IMMIGRATION_APPOINTMENT_METADATA,

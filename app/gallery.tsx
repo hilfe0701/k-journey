@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     borderColor: palette.hwanggeum + '88',
   },
   miniPanelImage: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     width: '100%',
     height: '100%',
   },
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
     borderColor: palette.hwanggeum,
   },
   sharePanelImage: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     width: '100%',
     height: '100%',
   },

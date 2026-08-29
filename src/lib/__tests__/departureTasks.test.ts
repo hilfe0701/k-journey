@@ -36,12 +36,9 @@ describe('REQ-SFR-002 pre-departure stage', () => {
   });
 
   it('TC-006 / AC1: splits the nine across before, at, and after departure', () => {
-    expect(departureTasksForTiming('before_departure')).toHaveLength(6);
+    expect(departureTasksForTiming('before_departure')).toHaveLength(7);
     expect(departureTasksForTiming('at_departure').map((task) => task.sourceId)).toEqual(['G1']);
-    expect(departureTasksForTiming('after_departure').map((task) => task.sourceId)).toEqual([
-      'G3',
-      'G6',
-    ]);
+    expect(departureTasksForTiming('after_departure').map((task) => task.sourceId)).toEqual(['G6']);
   });
 
   it('TC-006 / AC1: three prerequisites gate the account closure', () => {
@@ -143,7 +140,7 @@ describe('REQ-SFR-002 pre-departure stage', () => {
     // an account open; it may not present a timing as established.
     const summary = departureTaskSpec(DEPARTURE_TASK_IDS.dormitoryDeposit)?.summary ?? '';
 
-    expect(summary).toMatch(/Ask your dormitory office/);
+    expect(summary).toMatch(/dormitory decides/i);
     expect(summary).not.toMatch(/is paid after|will be paid after/);
   });
 

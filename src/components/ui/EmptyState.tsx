@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Animated, Easing, Pressable, Platform } from 'react-native';
 import { Text } from './Text';
 import { palette, space, radius } from '../../../design-tokens';
@@ -34,7 +34,7 @@ export function EmptyState({
   screenName,
 }: EmptyStateProps) {
   const reduceMotion = useReduceMotion();
-  const opacity = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
+  const [opacity] = useState(() => new Animated.Value(reduceMotion ? 1 : 0));
   const emptyViewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {

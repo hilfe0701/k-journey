@@ -1,0 +1,59 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - v2-conditional-orchestration
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      EXPO_NO_TELEMETRY: "1"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck, lint, and test
+        run: npm run check
+
+      - name: Recheck KST rules outside the runner timezone
+        run: |
+          TZ=Australia/Sydney npm test -- --runInBand src/lib/__tests__/dates.test.ts src/hooks/__tests__/usePhase.test.ts src/lib/__tests__/validation.test.ts
+          TZ=Pacific/Auckland npm test -- --runInBand src/lib/__tests__/dates.test.ts src/hooks/__tests__/usePhase.test.ts src/lib/__tests__/validation.test.ts
+          TZ=America/Los_Angeles npm test -- --runInBand src/lib/__tests__/dates.test.ts src/hooks/__tests__/usePhase.test.ts src/lib/__tests__/validation.test.ts
+
+      - name: Validate Expo dependencies
+        run: npx expo-doctor
+
+      - name: Build production web export
+        run: npm run build:web
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Audit web accessibility and routes
+        run: npm run audit:a11y
+
+      - name: Run stateful web smoke test
+        run: npm run test:e2e:web

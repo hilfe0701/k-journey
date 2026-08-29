@@ -39,6 +39,16 @@ export default function NewBucket() {
     if (items.length >= maxItems) return;
     setItems((prev) => [...prev, '']);
   }
+  function addSuggestedItem(suggestion: string) {
+    setItems((prev) => {
+      if (prev.some((item) => item.trim() === suggestion)) return prev;
+      const firstEmpty = prev.findIndex((item) => item.trim().length === 0);
+      if (firstEmpty >= 0) {
+        return prev.map((item, index) => (index === firstEmpty ? suggestion : item));
+      }
+      return prev.length < maxItems ? [...prev, suggestion] : prev;
+    });
+  }
 
   const filledItems = items.filter((t) => t.trim().length > 0);
   const canSave = themeName.trim().length > 0 && !busy;
@@ -203,6 +213,33 @@ export default function NewBucket() {
                 Wishes ({filledItems.length}/{maxItems})
               </Text>
             </View>
+            <View style={styles.suggestions}>
+              <Text role="xs" color={palette.ash}>
+                Optional ideas — tap to add
+              </Text>
+              <View style={styles.suggestionList}>
+                {template.suggestedItems.map((suggestion) => {
+                  const added = items.some((item) => item.trim() === suggestion);
+                  const disabled = added || filledItems.length >= maxItems;
+                  return (
+                    <Pressable
+                      key={suggestion}
+                      onPress={() => addSuggestedItem(suggestion)}
+                      disabled={disabled}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${added ? 'Added' : 'Add'} suggestion: ${suggestion}`}
+                      {...a11yState({ disabled })}
+                      style={[styles.suggestionChip, disabled && styles.suggestionChipDisabled]}
+                    >
+                      <Plus size={16} color={disabled ? palette.muted : palette.meok} strokeWidth={1.6} />
+                      <Text role="xs" color={disabled ? palette.muted : palette.meok}>
+                        {suggestion}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
             <View style={{ gap: space[2] }}>
               {items.map((it, idx) => (
                 <View key={idx} style={styles.itemRow}>
@@ -328,6 +365,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  suggestions: {
+    gap: space[2],
+  },
+  suggestionList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space[2],
+  },
+  suggestionChip: {
+    minHeight: MIN_TARGET,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[2],
+    paddingHorizontal: space[3],
+    paddingVertical: space[2],
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: palette.hairline,
+    backgroundColor: palette.cloud,
+  },
+  suggestionChipDisabled: {
+    opacity: 0.55,
   },
   itemRow: { flexDirection: 'row', gap: space[2], alignItems: 'flex-start' },
   itemRemove: { height: 52 },

@@ -13,6 +13,19 @@ import type { ContentEvidence } from '../lib/contentEvidence';
 export type MissionCategory = 'settle' | 'food' | 'activity' | 'culture';
 
 export type MissionAppliesTo = 'dormitory' | 'off-campus';
+export type MissionActionType = 'official_link' | 'save_place' | 'reservation';
+
+export interface MissionAction {
+  type: MissionActionType;
+  label: string;
+  href: string;
+}
+
+export interface MissionSeasonality {
+  kind: 'weather' | 'annual_schedule';
+  reviewEachYear: true;
+  note: string;
+}
 
 export interface Mission {
   id: string;
@@ -23,6 +36,8 @@ export interface Mission {
   summary: string;
   tips: string[];
   mapHint?: string;
+  /** Stable single-place query used for a map action; broader hints do not get one. */
+  mapSearchQuery?: string;
   icon: string;
   /** When omitted, the mission applies to both dorm and off-campus students. */
   appliesTo?: MissionAppliesTo;
@@ -32,9 +47,12 @@ export interface Mission {
   evidence: ContentEvidence;
   /** Accountable editorial role for keeping this card current. */
   owner: string;
+  /** Optional direct next steps; completion remains an explicit user action. */
+  actions: readonly MissionAction[];
+  seasonal?: MissionSeasonality;
 }
 
-type MissionDraft = Omit<Mission, 'completeWhen' | 'evidence' | 'owner'>;
+type MissionDraft = Omit<Mission, 'completeWhen' | 'evidence' | 'owner' | 'actions'>;
 
 const MISSION_DRAFTS: MissionDraft[] = [
   // ═══════════════════════ PHASE 1 — Pre-arrival (9 missions) ═══════════════════════
@@ -54,18 +72,17 @@ const MISSION_DRAFTS: MissionDraft[] = [
   {
     id: 'p1_visa',
     phase: 1,
-    category: 'settle',
-    titleEn: 'Prepare your visa documents',
-    // Named a visa type and an application route for everyone. K-Journey asks
-    // for `visaTypeOrStatus` precisely because it does not infer this, and it
-    // supports visa-free stays, for which both claims were wrong.
-    summary: 'Settle your entry paperwork before you fly. Which route applies depends on your programme and nationality.',
+    category: 'culture',
+    // Legacy ID retained so existing local completion records survive the
+    // move away from an administrative task that duplicated Essentials.
+    titleEn: 'Prepare a Korean arrival phrase card',
+    summary: 'Keep the words you will need during your first hour in Korea close at hand.',
     tips: [
-      'Your Korean embassy or consulate decides what you need, which route applies, and how long it takes. Ask them — the requirements differ by country and by season.',
-      'Your university international office issues the Certificate of Admission. Ask which documents they send and which you have to produce yourself.',
-      'Start before you book a flight you cannot change.',
+      'Write your campus or accommodation name in Korean so you can show it to a driver or station worker.',
+      'Add “여기 어떻게 가요?” (yeogi eotteoke gayo?) — “How do I get here?”',
+      'Keep the note offline with 112, 119, and your university contact.',
     ],
-    icon: 'FileText',
+    icon: 'Languages',
   },
   {
     id: 'p1_dorm_rules',
@@ -196,37 +213,28 @@ const MISSION_DRAFTS: MissionDraft[] = [
     id: 'p2_arc',
     phase: 2,
     category: 'settle',
-    titleEn: 'Apply for your Alien Registration Card (외국인등록증)',
-    titleKo: '외국인등록증',
-    // Three claims here disagreed with the sourced track, so they were removed
-    // rather than repeated. "Required if you stay over 90 days" contradicted
-    // `evaluateResidenceRegistration`, which also excuses a visa-free stay of
-    // any length. "Slots fill up weeks in advance" contradicted
-    // `APPOINTMENT_LEAD_TIME_DAYS`, which is permanently unknown on purpose.
-    // And one Seoul office was pinned for every reader, though jurisdiction
-    // follows the registered address.
-    summary: 'Register as a foreign resident if your stay calls for it. Essentials works out whether it applies to you.',
+    titleEn: 'Save your Korean address',
+    titleKo: '한국 주소',
+    summary: 'A reusable address note makes taxis, deliveries, and asking for directions easier.',
     tips: [
-      'Essentials checks your stay length and status against the registration rule and carries the official fee sources. Start there — this card does not repeat the deadline, because the answer depends on conditions only Essentials holds.',
-      'Book the immigration appointment first, at hikorea.go.kr. K-Journey does not estimate how far ahead slots go, so check real availability rather than planning around a number.',
-      'Which office is yours follows your registered address. Confirm it before you travel to one.',
+      'Copy the full road-name address in Korean from your housing document.',
+      'Add the building name, room number, and one nearby landmark on separate lines.',
+      'Save it offline and avoid posting your full room address publicly.',
     ],
-    icon: 'IdCard',
+    icon: 'MapPinned',
   },
   {
     id: 'p2_bank',
     phase: 2,
-    category: 'settle',
-    titleEn: 'Open a Korean bank account',
-    summary: 'A Korean account is what makes rent, utility autopay, and local payment apps work.',
+    category: 'culture',
+    titleEn: 'Use a Korean self-service kiosk',
+    summary: 'Complete one everyday order on a kiosk, with help if you need it.',
     tips: [
-      // The old list read as a universal requirement and the card issuance as a
-      // guarantee. Both are set by the bank, and neither had a source.
-      'Bring your passport and residence card. Branches also ask for some proof of address or enrolment and a Korean number, but the exact list differs by bank and even by branch — call the one you plan to visit.',
-      'Woori, KB, Shinhan, and Hana all serve foreign customers. Your international office knows which branch near campus its students use.',
-      'Ask what the account can do on the first day and what lifts any limits, so a transfer you are counting on does not fail later.',
+      'Look for an English or language button before starting.',
+      'Check quantity, options, and the final amount before paying.',
+      'If the flow is unclear, ask staff rather than guessing at an allergy or payment option.',
     ],
-    icon: 'Building2',
+    icon: 'MonitorSmartphone',
   },
   {
     id: 'p2_dorm_checkin',
@@ -377,6 +385,7 @@ const MISSION_DRAFTS: MissionDraft[] = [
       'Cash works better than card at family-run stalls.',
     ],
     mapHint: 'Gwangjang Market (광장시장), Jongno-gu',
+    mapSearchQuery: 'Gwangjang Market 광장시장',
     icon: 'Store',
   },
   {
@@ -444,6 +453,7 @@ const MISSION_DRAFTS: MissionDraft[] = [
       'Most close by 8pm. Afternoon visit is best.',
     ],
     mapHint: 'Insadong (인사동), Jongno-gu',
+    mapSearchQuery: 'Insadong 인사동',
     icon: 'Coffee',
   },
 
@@ -461,6 +471,11 @@ const MISSION_DRAFTS: MissionDraft[] = [
       'Banpo Bridge fountain show runs nightly in summer (Apr–Oct).',
     ],
     mapHint: 'Yeouido / Ttukseom / Banpo Han River Park',
+    seasonal: {
+      kind: 'weather',
+      reviewEachYear: true,
+      note: 'Park conditions, fountain operation, rain, heat, and daylight change by season; check the current park notice and forecast.',
+    },
     icon: 'Trees',
   },
   {
@@ -475,6 +490,11 @@ const MISSION_DRAFTS: MissionDraft[] = [
       'Trails close at sunset. Start by 1pm at the latest in winter.',
     ],
     mapHint: 'Bukhansan, Gwanaksan, or Inwangsan trailheads',
+    seasonal: {
+      kind: 'weather',
+      reviewEachYear: true,
+      note: 'Trail access, fire-risk closures, daylight, heat, and ice are seasonal; check the current park and weather notices.',
+    },
     icon: 'Mountain',
   },
   {
@@ -488,7 +508,8 @@ const MISSION_DRAFTS: MissionDraft[] = [
       'Busan, Gyeongju, Jeonju, and Gangneung have different travel times and services, so plan from the live timetable.',
       'Book on KorailTalk or the KORAIL website; check the current eligibility and terms for any foreigner pass.',
     ],
-    mapHint: 'Seoul Station (서울역) KTX platform',
+    mapHint: 'Seoul Station (서울역); confirm the current KTX departure track on your ticket',
+    mapSearchQuery: 'Seoul Station 서울역',
     icon: 'TrainFront',
   },
   {
@@ -502,6 +523,11 @@ const MISSION_DRAFTS: MissionDraft[] = [
       'Summer: Boryeong Mud Festival (mid-July). Wear clothes you\'ll throw away.',
       'Fall: Busan Fireworks (October), Jeonju Hanok Festival (October).',
     ],
+    seasonal: {
+      kind: 'annual_schedule',
+      reviewEachYear: true,
+      note: 'Festival dates and locations are announced each year; choose from the current official calendar rather than these examples.',
+    },
     icon: 'Sparkles',
   },
   {
@@ -573,7 +599,8 @@ const MISSION_DRAFTS: MissionDraft[] = [
       'Wearing hanbok waives admission at Gyeongbokgung, Changdeokgung, Changgyeonggung, Deoksugung and Jongmyo.',
       'Hanbok hair-styling adds ₩5,000 and saves you 30 minutes.',
     ],
-    mapHint: 'Gyeongbokgung Station (경복궁역) Exit 3',
+    mapHint: 'Gyeongbokgung Palace (경복궁); the palace guide directs subway visitors to Gyeongbokgung Station Exit 5',
+    mapSearchQuery: 'Gyeongbokgung Palace 경복궁',
     icon: 'Crown',
   },
   {
@@ -588,6 +615,7 @@ const MISSION_DRAFTS: MissionDraft[] = [
       'The Pensive Bodhisattva (반가사유상) hall is a 20-minute meditation.',
     ],
     mapHint: 'Ichon Station (이촌역) Exit 2',
+    mapSearchQuery: 'National Museum of Korea 국립중앙박물관',
     icon: 'Building',
   },
   {
@@ -603,6 +631,7 @@ const MISSION_DRAFTS: MissionDraft[] = [
       'Wood is cheap and quick. Stone takes 2–3 days but lasts forever.',
     ],
     mapHint: 'Insadong (인사동), Jongno-gu',
+    mapSearchQuery: 'Insadong 인사동',
     icon: 'Stamp',
   },
   {
@@ -761,8 +790,8 @@ const MISSION_DRAFTS: MissionDraft[] = [
     summary: 'Return key, settle utilities, get your deposit back.',
     tips: [
       'Take photos of every wall and the floor before you hand the key in.',
-      'Final electricity and water bill arrives 1–2 weeks after move-out.',
-      'Deposit refund usually wires to your home country bank in 4–6 weeks.',
+      'Read the current dorm checkout notice for key return, inspection, cleaning, and final-charge steps.',
+      'Ask the dorm office when and how your deposit is paid before you close the account that should receive it.',
     ],
     icon: 'KeyRound',
     appliesTo: 'dormitory',
@@ -776,7 +805,7 @@ const MISSION_DRAFTS: MissionDraft[] = [
     tips: [
       'Take final meter photos for gas, water, electric the morning you leave.',
       'Large furniture disposal needs a paid pickup sticker from the district office.',
-      'Key money (보증금) refunds can take 2–4 weeks; share your home bank wire info early.',
+      'Confirm the refund date, deductions, and receiving account with your landlord or broker before handover.',
     ],
     icon: 'KeyRound',
     appliesTo: 'off-campus',
@@ -868,16 +897,8 @@ const MISSION_METADATA: Record<string, MissionMetadata> = {
     owner: MISSION_OWNER,
   },
   p1_visa: {
-    completeWhen: 'The learner has checked the applicable entry route with a Korean diplomatic mission.',
-    evidence: missionEvidence(
-      'https://www.studyinkorea.go.kr/cmm/plan/visaAndStay.do',
-      'Student Visa and Stay Status',
-      'Study in Korea (Government of the Republic of Korea)',
-      'A',
-      'verified',
-      'the Korean embassy or consulate handling the application',
-      'the learner’s nationality and programme',
-    ),
+    completeWhen: 'An offline note contains the learner’s Korean destination, one directions phrase, and emergency contacts.',
+    evidence: editorialSource('the learner’s university international office'),
     owner: MISSION_OWNER,
   },
   p1_dorm_rules: {
@@ -977,29 +998,13 @@ const MISSION_METADATA: Record<string, MissionMetadata> = {
     owner: MISSION_OWNER,
   },
   p2_arc: {
-    completeWhen: 'The learner has submitted the registration step that Essentials determines applies to their status.',
-    evidence: missionEvidence(
-      'https://www.hikorea.go.kr/Main.pt',
-      'HiKorea immigration services',
-      'Korea Immigration Service, Ministry of Justice',
-      'A',
-      'verified',
-      'HiKorea and the learner’s local immigration office',
-      'registered address in Republic of Korea',
-    ),
+    completeWhen: 'The learner has saved the full Korean road-name address, building details, and a nearby landmark offline.',
+    evidence: editorialSource('the learner’s landlord or dormitory office'),
     owner: MISSION_OWNER,
   },
   p2_bank: {
-    completeWhen: 'The learner has confirmed account-opening requirements with a chosen bank branch.',
-    evidence: missionEvidence(
-      'https://www.bok.or.kr/eng/main/main.do',
-      'Banking and financial system information',
-      'Bank of Korea',
-      'A',
-      'needs_review',
-      'the chosen bank branch',
-      'Republic of Korea; chosen branch',
-    ),
+    completeWhen: 'The learner has completed one kiosk order and checked its quantity, options, and final amount.',
+    evidence: editorialSource('the venue operating the kiosk'),
     owner: MISSION_OWNER,
   },
   p2_dorm_checkin: {
@@ -1402,11 +1407,36 @@ const MISSION_METADATA: Record<string, MissionMetadata> = {
   },
 };
 
+const RESERVATION_MISSIONS = new Set(['p3_ktx', 'p3_festival', 'p3_templestay', 'p3_performance']);
+
 export const MISSIONS: Mission[] = MISSION_DRAFTS.map((mission) => {
   const metadata = MISSION_METADATA[mission.id];
   if (!metadata) throw new Error(`Missing metadata for mission ${mission.id}`);
-  return { ...mission, ...metadata };
+  return { ...mission, ...metadata, actions: missionActions(mission, metadata.evidence) };
 });
+
+function missionActions(
+  mission: MissionDraft,
+  evidence: ContentEvidence,
+): readonly MissionAction[] {
+  const actions: MissionAction[] = [];
+  if (mission.mapSearchQuery) {
+    actions.push({
+      type: 'save_place',
+      label: 'Search this place in Naver Map',
+      href: `https://map.naver.com/p/search/${encodeURIComponent(mission.mapSearchQuery)}`,
+    });
+  }
+  if (evidence.sourceUrl) {
+    const reservation = RESERVATION_MISSIONS.has(mission.id);
+    actions.push({
+      type: reservation ? 'reservation' : 'official_link',
+      label: reservation ? 'Check the official schedule or reservation' : 'Open the official guide',
+      href: evidence.sourceUrl,
+    });
+  }
+  return actions;
+}
 
 // Convenience selectors
 export const missionsByPhase = (phase: 1 | 2 | 3 | 4) => MISSIONS.filter((m) => m.phase === phase);

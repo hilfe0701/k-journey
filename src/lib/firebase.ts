@@ -62,6 +62,8 @@ export interface UserProfile {
   photoUrl: null;
   university: string | null;
   housing: 'dormitory' | 'off-campus' | null;
+  /** Registered Seoul district used only to resolve local administrative authorities. */
+  residenceDistrict: string | null;
   /** Condition axes. `UNKNOWN` is intentionally persisted as a value. */
   universityId: string | UnknownValue;
   programType: ProgramType;
@@ -130,6 +132,7 @@ export const EMPTY_PROFILE: UserProfile = {
   photoUrl: null,
   university: null,
   housing: null,
+  residenceDistrict: null,
   universityId: UNKNOWN,
   programType: UNKNOWN,
   visaTypeOrStatus: UNKNOWN,

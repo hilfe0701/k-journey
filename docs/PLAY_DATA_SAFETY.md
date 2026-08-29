@@ -43,9 +43,10 @@ There is no server account. Users can reset local app data or uninstall the app.
 
 ## Artifact verification checklist
 
-- [ ] Inspect merged Android manifest for `AD_ID`, location, contacts, storage, and notification permissions.
-- [ ] Inspect production environment for PostHog key and host.
-- [ ] Verify session replay remains disabled in the shipped JS bundle.
+- [x] Inspect a clean Expo 57 Android main manifest (2026-08-30): no `AD_ID`, broad media read, location, contacts, camera, microphone, or account permission. `READ_EXTERNAL_STORAGE`, `READ_MEDIA_VISUAL_USER_SELECTED`, `WRITE_EXTERNAL_STORAGE`, and `SYSTEM_ALERT_WINDOW` are explicitly removed through `android.blockedPermissions`; notification, vibration, and Internet remain. Repeat against the exact signed artifact below.
+- [x] Inspect the linked Vercel production environment (2026-08-30): it has no environment variables, so no PostHog key or custom host is embedded.
+- [x] Verify session replay remains disabled in source/default production behavior: `posthog.test.ts` proves no client is constructed without a real key. The SDK implementation remains tree-shaken imperfectly in the bundle, so presence of library text alone is not evidence of collection.
 - [ ] Confirm Crashlytics collection setting and processor retention.
 - [ ] Exercise Save/Share and confirm no K-Journey server request.
 - [ ] Make `docs/PRIVACY_POLICY.md`, Play answers, and App Store labels identical in substance.
+- [ ] Inspect the exact signed Android artifact's merged manifest and SDK data behavior before submitting the Play form.

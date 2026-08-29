@@ -18,7 +18,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, ChevronRight, X, Check, Mail, ExternalLink } from 'lucide-react-native';
 import { Calendar } from 'react-native-calendars';
-import { format } from 'date-fns';
 import Constants from 'expo-constants';
 
 import { Text, Button, IconButton, MIN_TARGET } from '../../src/components/ui';
@@ -57,6 +56,8 @@ import {
   universityProfilePatch,
 } from '../../src/lib/profileCompat';
 import { a11yState } from '../../src/lib/a11y';
+import { SEOUL_DISTRICT_OPTIONS } from '../../src/data/admin';
+import { formatKstDate, kstCalendarDate, kstNow } from '../../src/lib/dates';
 
 type Section =
   | { key: 'notifications'; title: string; data: 'notifications'[] }
@@ -73,6 +74,7 @@ export default function SettingsScreen() {
     | 'name'
     | 'university'
     | 'housing'
+    | 'residenceDistrict'
     | 'contractHolder'
     | 'residenceCard'
     | 'arrival'
@@ -196,6 +198,14 @@ export default function SettingsScreen() {
                     onPress={() => {
                       trackOpen('profile');
                       setOpenSheet('contractHolder');
+                    }}
+                  />
+                  <SettingsRow
+                    label="Registered district"
+                    valueText={profile?.residenceDistrict ?? 'Unknown / not sure'}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('residenceDistrict');
                     }}
                   />
                   <SettingsRow
@@ -367,6 +377,27 @@ export default function SettingsScreen() {
       />
 
       <PickerSheet
+        visible={openSheet === 'residenceDistrict'}
+        title="Registered residence district"
+        options={[
+          { value: UNKNOWN, label: 'Unknown / outside Seoul', hint: 'Confirm the responsible office with 1345' },
+          ...SEOUL_DISTRICT_OPTIONS.map((district) => ({ value: district, label: district })),
+        ]}
+        selected={profile?.residenceDistrict ?? UNKNOWN}
+        onClose={() => setOpenSheet(null)}
+        onSelect={async (value) => {
+          try {
+            await updateUserProfile({ residenceDistrict: value === UNKNOWN ? null : value });
+            track('profile_field_change', { field: 'residenceDistrict' });
+            setOpenSheet(null);
+            surfaceError('profile-updated');
+          } catch (err) {
+            showOperationError('save your registered district', err);
+          }
+        }}
+      />
+
+      <PickerSheet
         visible={openSheet === 'residenceCard'}
         title="Residence card status"
         options={[
@@ -522,7 +553,7 @@ function residenceCardLabel(status: string | null | undefined): string {
 function formatDate(iso: string | null | undefined): string {
   if (!iso || iso === UNKNOWN) return '—';
   try {
-    return format(new Date(iso), 'MMM d, yyyy');
+    return formatKstDate(iso);
   } catch {
     return iso;
   }
@@ -770,33 +801,42 @@ function NameSheet({
   onClose: () => void;
   onSave: (next: string) => Promise<void>;
 }) {
-  const [text, setText] = useState(initial);
-  useEffect(() => {
-    if (visible) setText(initial);
-  }, [visible, initial]);
-  const valid = validateName(text) === null;
   return (
     <SheetFrame visible={visible} title="Edit your name" onClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={{ gap: space[3] }}>
-          <TextInput
-            value={text}
-            onChangeText={setText}
-            placeholder="Your name"
-            placeholderTextColor={palette.stone}
-            autoCapitalize="words"
-            style={styles.input}
-            accessibilityLabel="Your name"
-          />
-          <Button
-            label="Save"
-            fullWidth
-            disabled={!valid}
-            onPress={() => onSave(text.trim())}
-          />
-        </View>
-      </KeyboardAvoidingView>
+      {visible ? <NameEditor key={initial} initial={initial} onSave={onSave} /> : null}
     </SheetFrame>
+  );
+}
+
+function NameEditor({
+  initial,
+  onSave,
+}: {
+  initial: string;
+  onSave: (next: string) => Promise<void>;
+}) {
+  const [text, setText] = useState(initial);
+  const valid = validateName(text) === null;
+  return (
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={{ gap: space[3] }}>
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          placeholder="Your name"
+          placeholderTextColor={palette.stone}
+          autoCapitalize="words"
+          style={styles.input}
+          accessibilityLabel="Your name"
+        />
+        <Button
+          label="Save"
+          fullWidth
+          disabled={!valid}
+          onPress={() => onSave(text.trim())}
+        />
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -873,15 +913,6 @@ function DateSheet({
   const initial = knownProfileDate(
     kind === 'arrival' ? profile?.arrivalDate : profile?.departureDate,
   );
-  const [selected, setSelected] = useState<string | null>(initial);
-  useEffect(() => {
-    if (visible) setSelected(initial);
-  }, [visible, initial]);
-
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const minDate = kind === 'departure'
-    ? knownProfileDate(profile?.arrivalDate) ?? today
-    : today;
 
   return (
     <SheetFrame
@@ -889,47 +920,81 @@ function DateSheet({
       title={kind === 'arrival' ? 'Edit arrival date' : 'Edit departure date'}
       onClose={onClose}
     >
-      <View style={{ gap: space[3] }}>
-        <View style={styles.calendarWrap}>
-          <Calendar
-            current={selected ?? today}
-            minDate={minDate}
-            markedDates={selected ? { [selected]: { selected: true, selectedColor: palette.ink } } : {}}
-            onDayPress={(d: { dateString: string }) => setSelected(d.dateString)}
-            theme={{
-              calendarBackground: palette.hanji,
-              monthTextColor: palette.meok,
-              textMonthFontWeight: '700',
-              dayTextColor: palette.meok,
-              todayTextColor: palette.dancheong,
-              arrowColor: palette.meok,
-              textSectionTitleColor: palette.ash,
-            }}
+      {visible ? (
+        <DateEditor
+          key={`${kind}:${initial ?? 'unknown'}`}
+          kind={kind}
+          profile={profile}
+          initial={initial}
+          onClose={onClose}
+          onSave={onSave}
+        />
+      ) : null}
+    </SheetFrame>
+  );
+}
+
+function DateEditor({
+  kind,
+  profile,
+  initial,
+  onClose,
+  onSave,
+}: {
+  kind: 'arrival' | 'departure';
+  profile: UserProfile | null;
+  initial: string | null;
+  onClose: () => void;
+  onSave: (date: string) => Promise<void> | void;
+}) {
+  const [selected, setSelected] = useState<string | null>(initial);
+
+  const today = kstCalendarDate(kstNow());
+  const minDate = kind === 'departure'
+    ? knownProfileDate(profile?.arrivalDate) ?? today
+    : today;
+
+  return (
+    <View style={{ gap: space[3] }}>
+      <View style={styles.calendarWrap}>
+        <Calendar
+          current={selected ?? today}
+          minDate={minDate}
+          markedDates={selected ? { [selected]: { selected: true, selectedColor: palette.ink } } : {}}
+          onDayPress={(d: { dateString: string }) => setSelected(d.dateString)}
+          theme={{
+            calendarBackground: palette.hanji,
+            monthTextColor: palette.meok,
+            textMonthFontWeight: '700',
+            dayTextColor: palette.meok,
+            todayTextColor: palette.dancheong,
+            arrowColor: palette.meok,
+            textSectionTitleColor: palette.ash,
+          }}
+        />
+      </View>
+      <View style={styles.confirmCard}>
+        <Text role="body" weight="semibold">
+          Update your journey dates?
+        </Text>
+        <Text role="sm" color={palette.ash}>
+          Your phase, missions, and reminders will be recalculated.
+        </Text>
+      </View>
+      <View style={{ flexDirection: 'row', gap: space[3] }}>
+        <View style={{ flex: 1 }}>
+          <Button label="Cancel" variant="secondary" fullWidth onPress={onClose} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button
+            label="Update"
+            fullWidth
+            disabled={!selected || selected === initial}
+            onPress={() => selected && onSave(selected)}
           />
         </View>
-        <View style={styles.confirmCard}>
-          <Text role="body" weight="semibold">
-            Update your journey dates?
-          </Text>
-          <Text role="sm" color={palette.ash}>
-            Your phase, missions, and reminders will be recalculated.
-          </Text>
-        </View>
-        <View style={{ flexDirection: 'row', gap: space[3] }}>
-          <View style={{ flex: 1 }}>
-            <Button label="Cancel" variant="secondary" fullWidth onPress={onClose} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Button
-              label="Update"
-              fullWidth
-              disabled={!selected || selected === initial}
-              onPress={() => selected && onSave(selected)}
-            />
-          </View>
-        </View>
       </View>
-    </SheetFrame>
+    </View>
   );
 }
 
@@ -944,13 +1009,26 @@ function EraSheet({
   onClose: () => void;
   onSelect: (value: 'joseon' | 'silla' | 'goryeo') => void;
 }) {
-  const [pending, setPending] = useState<'joseon' | 'silla' | 'goryeo'>(currentEra);
-  useEffect(() => {
-    if (visible) setPending(currentEra);
-  }, [visible, currentEra]);
-
   return (
     <SheetFrame visible={visible} title="Choose your era" onClose={onClose}>
+      {visible ? (
+        <EraPicker key={currentEra} currentEra={currentEra} onSelect={onSelect} />
+      ) : null}
+    </SheetFrame>
+  );
+}
+
+function EraPicker({
+  currentEra,
+  onSelect,
+}: {
+  currentEra: 'joseon' | 'silla' | 'goryeo';
+  onSelect: (value: 'joseon' | 'silla' | 'goryeo') => void;
+}) {
+  const [pending, setPending] = useState<'joseon' | 'silla' | 'goryeo'>(currentEra);
+
+  return (
+    <>
       <Text role="sm" color={palette.ash}>
         Your byeongpung swaps to the new theme. Your progress stays.
       </Text>
@@ -991,7 +1069,7 @@ function EraSheet({
         })}
         <Button label="Use this era" fullWidth onPress={() => onSelect(pending)} />
       </View>
-    </SheetFrame>
+    </>
   );
 }
 

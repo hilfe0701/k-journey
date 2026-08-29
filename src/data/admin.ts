@@ -248,15 +248,23 @@ const DISTRICT_ALIASES: Readonly<Record<SeoulDistrict, readonly string[]>> = {
   'Geumcheon-gu': ['geumcheon', '금천구'],
 };
 
+export const SEOUL_DISTRICT_OPTIONS: readonly SeoulDistrict[] = Object.keys(
+  DISTRICT_ALIASES,
+) as SeoulDistrict[];
+
 export function canonicalSeoulDistrict(
   district: string | null | undefined,
 ): SeoulDistrict | undefined {
   if (!district) return undefined;
   const normalised = district.trim().toLowerCase().replace(/\s+/g, '');
-  return (Object.keys(DISTRICT_ALIASES) as SeoulDistrict[]).find((candidate) => {
-    const aliases = DISTRICT_ALIASES[candidate];
-    return aliases.some((alias) => normalised.includes(alias.toLowerCase().replace(/\s+/g, '')));
-  });
+  const matches = (Object.keys(DISTRICT_ALIASES) as SeoulDistrict[]).flatMap((candidate) =>
+    DISTRICT_ALIASES[candidate]
+      .map((alias) => alias.toLowerCase().replace(/\s+/g, ''))
+      .filter((alias) => normalised.includes(alias))
+      .map((alias) => ({ candidate, alias })),
+  );
+  // Prefer the most specific alias so `jungnang` cannot be swallowed by `jung`.
+  return matches.sort((a, b) => b.alias.length - a.alias.length)[0]?.candidate;
 }
 
 export interface AdministrativeResolutionInput {
@@ -481,11 +489,11 @@ export function evaluatePartTimeWorkForProfile(
 }
 
 const HEALTH_INSURANCE_SOURCE: TaskSourceMetadata = {
-  sourceUrl: 'https://www.nhis.or.kr/english/wbheaa02900m01.do',
-  sourceLabel: 'National Health Insurance Service — Guidance for foreigners',
-  checkedAt: ADMIN_CONTENT_CHECKED_AT,
+  sourceUrl: 'https://www.nhis.or.kr/english/wbheaa02000m01.do',
+  sourceLabel: 'National Health Insurance Service — foreign-language contact information',
+  checkedAt: '2026-08-30',
   reviewAfter: ADMIN_REVIEW_AFTER,
-  finalAuthority: 'NHIS Foreign Residents Center, 1577-1000 (press 7)',
+  finalAuthority: 'NHIS Foreign Residents Center, 1577-1000 (press 6)',
   conflictNote:
     'The official guide describes mandatory subscription after six months for eligible long-term foreign residents and a student reduction, but NHIS must calculate the effective date and any exemption from the individual record and travel history.',
   volatility: 'high',
@@ -611,14 +619,14 @@ export const NHIS_FOREIGN_RESIDENTS_CENTER: Readonly<{
 }> = {
   label: 'NHIS Seoul Center for Foreign Residents',
   address: '3F Sindorim Techno Mart, 97 Saemal-ro, Guro-gu, Seoul',
-  phone: '1577-1000 (press 7)',
+  phone: '1577-1000 (press 6)',
   foreignLanguagePhone: '033-811-2000',
-  href: 'https://www.nhis.or.kr/english/wbheaa02100m01.do',
+  href: 'https://www.nhis.or.kr/english/wbheaa02000m01.do',
   evidence: {
-    sourceUrl: 'https://www.nhis.or.kr/english/wbheaa02100m01.do',
-    sourceTitle: 'NHIS Center for Foreign Residents',
+    sourceUrl: 'https://www.nhis.or.kr/english/wbheaa02000m01.do',
+    sourceTitle: 'NHIS foreign-language contact information',
     publisher: 'National Health Insurance Service (국민건강보험공단)',
-    checkedAt: ADMIN_CONTENT_CHECKED_AT,
+    checkedAt: '2026-08-30',
     contentClass: 'A',
     verification: 'verified',
     finalAuthority: 'NHIS Foreign Residents Center',

@@ -27,6 +27,8 @@ describe('administrative jurisdiction map', () => {
     ]);
     expect(immigrationOfficeForDistrict('서울 서대문구')?.id).toBe('seoul-south');
     expect(immigrationOfficeForDistrict('Gwanak-gu')?.id).toBe('seoul');
+    expect(immigrationOfficeForDistrict('Jungnang-gu')?.id).toBe('sejongno');
+    expect(resolveAdministrativeAuthorities({ residenceDistrict: '서울 중랑구' }).district).toBe('Jungnang-gu');
   });
 
   it('resolves a dormitory from its campus district and labels the proxy', () => {

@@ -1,6 +1,4 @@
 import { MISSIONS, missionsForHousing, missionsByPhase } from '../missions';
-import { APPOINTMENT_LEAD_TIME_DAYS } from '../../lib/immigrationAppointment';
-import { UNKNOWN } from '../../lib/firebase';
 
 describe('MISSIONS catalog', () => {
   it('has 4 phases distributed across categories', () => {
@@ -14,6 +12,34 @@ describe('MISSIONS catalog', () => {
   it('every mission id is unique', () => {
     const ids = MISSIONS.map((m) => m.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('keeps direct mission actions typed, labelled, and HTTPS-only', () => {
+    const actionMissions = MISSIONS.filter((mission) => mission.actions.length > 0);
+    expect(actionMissions.length).toBeGreaterThan(20);
+    for (const mission of actionMissions) {
+      for (const action of mission.actions) {
+        expect(['official_link', 'save_place', 'reservation']).toContain(action.type);
+        expect(action.label.trim().length).toBeGreaterThan(0);
+        expect(action.href).toMatch(/^https:\/\//);
+      }
+    }
+    expect(MISSIONS.find((mission) => mission.id === 'p3_templestay')?.actions)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ type: 'reservation' })]));
+    for (const id of ['p2_tmoney', 'p3_hangang', 'p3_hike', 'p4_gifts']) {
+      expect(MISSIONS.find((mission) => mission.id === id)?.actions)
+        .not.toEqual(expect.arrayContaining([expect.objectContaining({ type: 'save_place' })]));
+    }
+    expect(MISSIONS.find((mission) => mission.id === 'p3_hanbok')?.actions)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ type: 'save_place' })]));
+  });
+
+  it('marks weather- and festival-dependent missions for annual review', () => {
+    for (const id of ['p3_hangang', 'p3_hike', 'p3_festival']) {
+      const seasonal = MISSIONS.find((mission) => mission.id === id)?.seasonal;
+      expect(seasonal?.reviewEachYear).toBe(true);
+      expect(seasonal?.note).toMatch(/current|each year|season/i);
+    }
   });
 
   it('every appliesTo value is dormitory or off-campus when set', () => {
@@ -67,34 +93,21 @@ describe('MISSIONS catalog', () => {
 });
 
 /**
- * The three administrative missions state facts that the Essentials track also
- * states, from sourced data and against the user's conditions. When the two
- * disagree the app contradicts itself, so these lock the reconciliation.
+ * These legacy IDs once duplicated Essentials tasks and therefore let
+ * administrative work unlock cultural artwork. They now carry distinct
+ * everyday-language and life-experience completion standards.
  */
-describe('administrative missions defer to the Essentials track', () => {
+describe('Culture missions do not duplicate Essentials administration', () => {
   function mission(id: string) {
     const found = MISSIONS.find((candidate) => candidate.id === id);
     if (!found) throw new Error(`No mission ${id}`);
     return `${found.summary} ${found.tips.join(' ')}`;
   }
 
-  it('p2_arc does not restate the 90-day registration rule', () => {
-    // `evaluateResidenceRegistration` decides this from stay length *and* visa
-    // status, and excuses a visa-free stay of any length. A flat "required over
-    // 90 days" on the mission card tells those users the opposite.
+  it('p2_arc is an address note, not residence registration', () => {
     const text = mission('p2_arc');
-
-    expect(text).not.toMatch(/90 days/);
-    expect(text).toMatch(/Essentials/);
-  });
-
-  it('p2_arc does not estimate an appointment lead time', () => {
-    // The appointment module refuses to generate a waiting period because a
-    // wrong number gets acted on as guidance. The mission may not supply one.
-    expect(APPOINTMENT_LEAD_TIME_DAYS).toBe(UNKNOWN);
-
-    const text = mission('p2_arc');
-    expect(text).not.toMatch(/weeks in advance|days in advance|fill up/);
+    expect(text).toMatch(/address note|road-name address/i);
+    expect(text).not.toMatch(/registration|appointment|visa|90 days/i);
   });
 
   it('p2_arc does not pin one immigration office for every reader', () => {
@@ -104,22 +117,16 @@ describe('administrative missions defer to the Essentials track', () => {
     expect(arc?.mapHint).toBeUndefined();
   });
 
-  it('p1_visa does not assert a visa type the app refuses to infer', () => {
-    // K-Journey asks for `visaTypeOrStatus` rather than deriving it, and
-    // supports visa-free stays. CLAUDE.md MUST 7.
+  it('p1_visa is an arrival phrase card, not visa preparation', () => {
     const text = mission('p1_visa');
-
-    expect(text).not.toMatch(/D-2/);
-    expect(text).toMatch(/embassy or consulate/);
+    expect(text).toMatch(/Korean|phrase|어떻게/);
+    expect(text).not.toMatch(/visa|embassy|consulate|D-2/i);
   });
 
-  it('p2_bank states no universal document list and no same-day guarantee', () => {
+  it('p2_bank is a kiosk experience, not account opening', () => {
     const text = mission('p2_bank');
-
-    expect(text).not.toMatch(/You need:/);
-    expect(text).not.toMatch(/issued same day/);
-    // It must still say who actually decides.
-    expect(text).toMatch(/differs by bank/);
+    expect(text).toMatch(/kiosk|everyday order/i);
+    expect(text).not.toMatch(/bank|account|passport|residence card/i);
   });
 
   it('p1_airport drops the AREX fare that two increases have overtaken', () => {

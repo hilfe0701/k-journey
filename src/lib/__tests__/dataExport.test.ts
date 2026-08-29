@@ -81,6 +81,19 @@ describe('REQ-SFR-012 data export', () => {
     expect(payload.text).toContain('completed · completed at Not confirmed (미확인)');
   });
 
+  it('includes the registered residence district when the profile has one', () => {
+    const payload = buildExportPayload(
+      { ...FILLED_PROFILE, residenceDistrict: 'Mapo-gu' },
+      progressWith({}),
+    );
+    expect(payload.conditions).toContainEqual({
+      key: 'residenceDistrict',
+      label: 'Registered residence district',
+      value: 'Mapo-gu',
+    });
+    expect(payload.text).toContain('Registered residence district: Mapo-gu');
+  });
+
   it('TC-058 / AC3: a delivered export states that the user, not the app, holds it', () => {
     const payload = buildExportPayload(FILLED_PROFILE, progressWith({}));
     const result = resolveExportResult(payload, true);

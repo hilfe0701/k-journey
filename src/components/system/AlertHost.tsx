@@ -108,7 +108,7 @@ export function AlertHost() {
 
 const styles = StyleSheet.create({
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: palette.meok + 'A6',
   },
   centre: {
