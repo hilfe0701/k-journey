@@ -19,18 +19,19 @@ Do not promote the existing `dist/` again. It was generated before the current i
 
 ## Release candidate
 
-- Application source: `2859ac6166ac06b50e8217764ce8af824869b94f`
-- Evidence commit deployed: `3d43566b618048849b71b4222cf580f35bd01742`
-- Pre-candidate code rollback: `e9add7dfd63ffd245a15192c24013318eb34c44d`
-- Preview URL: `https://k-journey-c6xithud6-wodbs990701-3298s-projects.vercel.app`
-- Preview deployment: `dpl_4JQEFMTvu7D6q9i3HFxMaMa6JbMT` (`READY`)
-- Verified: 2026-08-30 01:20 KST
+- Application source and deployed evidence: `dd7c63d41e998f0c55aa0d22f9b55cd9369dae8c`
+- Pre-candidate code rollback: `29bdced736bf36b8b9c274b05547c6a54b10c2e5`
+- Preview URL: `https://k-journey-6ozpe5y4f-wodbs990701-3298s-projects.vercel.app`
+- Preview deployment: `dpl_HfcpA2j1tqiUiJB3mNPjUU7zuA5E` (`READY`)
+- Verified: 2026-08-30 02:14 KST
 - Remote build: clean `npm ci` + `npm run build:web`, pass
 - Protected-route smoke: authenticated Vercel requests returned HTTP 200 for
   `/`, `/mission/p1_pack`, `/task/residence-registration`, `/bucket/new`,
-  `/byeongpung`, `/gallery`, favicon, and the 5,735,307-byte JS bundle.
-- Browser interaction/a11y evidence: the identical emitted bundle filename and
-  byte size passed local stateful E2E and 14-route × two-viewport checks. The
+  `/byeongpung`, `/gallery`, favicon, and the 5,747,403-byte JS bundle.
+- Browser interaction/a11y evidence: the identical emitted bundle
+  `entry-14b8e4c26c9378b09687ec776d5b9573.js` and byte size passed local stateful
+  E2E and 14-route × two-viewport checks. GitHub Quality run `33264883881`
+  independently passed the same source through all remote gates. The
   preview is team-login protected, so anonymous curl correctly redirects to
   Vercel SSO.
 - Production promotion: requires explicit approval after preview verification
@@ -44,15 +45,16 @@ Measured 2026-08-30 from the release-candidate `npm run build:web` described in
 |---|---|
 | `dist/` total | 25 MB (65 files) |
 | Artwork and fonts (`dist/assets`) | 19 MB |
-| JavaScript, one bundle | 5,735,307 bytes raw / 1,126,811 bytes gzipped |
+| JavaScript, one bundle | 5,747,403 bytes raw / 1,129,378 bytes gzipped |
 
 Build verification: `npm run build:web` completed with Expo 57.0.18 from the
 release-candidate working tree. The build includes the 24 sliced byeongpung
-runtime assets, source/freshness UI, typed actions, Want-to suggestions, and
-current administrative guidance.
+runtime assets, source/freshness UI, typed actions, Want-to suggestions,
+editable guidance conditions, permission-aware reminders, and current
+administrative guidance.
 
 Artwork still dominates the payload. The SDK 57 migration increased the web
-bundle, but its 1,126,811-byte gzip size remains below the 1.25MB release block.
+bundle, but its 1,129,378-byte gzip size remains below the 1.25MB release block.
 
 ## Release procedure
 
