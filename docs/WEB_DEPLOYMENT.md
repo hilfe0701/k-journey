@@ -17,6 +17,13 @@ Last verified: 2026-08-29 (Asia/Seoul)
 
 Do not promote the existing `dist/` again. It was generated before the current image optimization and UI fixes.
 
+## Release candidate
+
+- Application source: `2859ac6166ac06b50e8217764ce8af824869b94f`
+- Pre-candidate code rollback: `e9add7dfd63ffd245a15192c24013318eb34c44d`
+- Preview deployment: pending
+- Production promotion: requires explicit approval after preview verification
+
 ## Current build measurement
 
 Measured 2026-08-30 from the release-candidate `npm run build:web` described in

@@ -3,8 +3,8 @@
 ## Source and decision gate
 
 - [x] PRD v2.0, `DEC-040`, ADR-0036, and current code agree.
-- [ ] Working tree reviewed; release source committed.
-- [ ] Source commit SHA and rollback SHA recorded.
+- [x] Working tree reviewed; release source committed (`2859ac6166ac06b50e8217764ce8af824869b94f`).
+- [x] Source commit SHA and rollback SHA (`e9add7dfd63ffd245a15192c24013318eb34c44d`) recorded.
 - [x] No historical Auth/Firestore instructions are being executed.
 
 ## Quality gate

@@ -3,7 +3,8 @@
 - Updated: 2026-08-30
 - Branch: `v2-conditional-orchestration`
 - Base HEAD before this release-candidate work: `e9add7dfd63ffd245a15192c24013318eb34c44d`
-- Release-candidate source SHA: pending the final verified commit
+- Release-candidate source SHA: `2859ac6166ac06b50e8217764ce8af824869b94f`
+- Pre-candidate rollback SHA: `e9add7dfd63ffd245a15192c24013318eb34c44d`
 - Product SSOT: `reference/K-Journey_PRD_v2_0_KR.md` + `DEC-040`
 - Current model: unified local-first product; no account or per-user server data
 

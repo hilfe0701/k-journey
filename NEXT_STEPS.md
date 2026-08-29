@@ -11,7 +11,7 @@ regression; items 5 and 6 stay manual.
 
 ## P0 — reproducible release
 
-1. Commit the integrated product and documentation with a clean source SHA.
+1. ~~Commit the integrated product and documentation with a clean source SHA.~~ Done: `2859ac6166ac06b50e8217764ce8af824869b94f`.
 2. Rebuild `dist/` from that SHA and deploy only that output.
 3. Record source SHA, deployment ID/URL, build command, verification date, and rollback target in `docs/WEB_DEPLOYMENT.md`.
 4. Run the same browser smoke test against production.
