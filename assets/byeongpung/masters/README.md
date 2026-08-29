@@ -10,7 +10,7 @@
 - References: existing project-owned Joseon chaekgeori, mountain, and wave panels, used only as style and motif references
 - Rights note: AI-generated derivative concept for this project; do not describe it as an authenticated traditional artifact
 - Modifications: resized to 2640×1086 and sliced into eight 330×1086 runtime panels
-- Approval: runtime smoke still required; this is AI-generated concept art, not an authenticated traditional artifact
+- Approval: web runtime smoke passed 2026-08-29; cultural/visual approval remains; this is AI-generated concept art, not an authenticated traditional artifact
 
 ### Prompt
 
@@ -33,8 +33,7 @@ No frame, hinges, panel dividers, captions, letters, labels, watermarks, logos, 
 - Slice into eight equal crops and inspect every crop independently.
 - Check that the tiger and cranes are readable in their assigned crops.
 - Check that no architectural detail resembles accidental lettering.
-- Upscale or redraw to the 2640×1080 working-master target before final export.
-- Export optimized 330×1080 panel assets and verify the assembled view at phone and desktop widths.
+- Export optimized 330×1086 panel assets and verify the assembled view at phone and desktop widths.
 
 ## `byeongpung_silla_master_v2.png`
 
@@ -45,8 +44,8 @@ No frame, hinges, panel dividers, captions, letters, labels, watermarks, logos, 
 - Editor: Codex, directed for K-Journey
 - References: the new Joseon master for composition only, plus existing project-owned Silla mountain and sun panels for palette and motif vocabulary
 - Rights note: AI-generated derivative concept for this project; do not describe it as an authenticated traditional artifact
-- Modifications: none after generation
-- Approval: runtime smoke still required; this is AI-generated concept art, not an authenticated traditional artifact
+- Modifications: resized to 2640×1086 and sliced into eight 330×1086 runtime panels
+- Approval: web runtime smoke passed 2026-08-29; cultural/visual approval remains; this is AI-generated concept art, not an authenticated traditional artifact
 
 ### Prompt summary
 
@@ -61,8 +60,8 @@ Create a seamless 2.45:1 Silla-inspired panorama in the runtime motif order. Use
 - Editor: Codex, directed for K-Journey
 - References: the new Joseon master for composition only, plus existing project-owned Goryeo lotus and wave panels for palette and motif vocabulary
 - Rights note: AI-generated derivative concept for this project; do not describe it as an authenticated traditional artifact
-- Modifications: none after generation
-- Approval: runtime smoke still required; this is AI-generated concept art, not an authenticated traditional artifact
+- Modifications: resized to 2640×1086 and sliced into eight 330×1086 runtime panels
+- Approval: web runtime smoke passed 2026-08-29; cultural/visual approval remains; this is AI-generated concept art, not an authenticated traditional artifact
 
 ### Prompt summary
 
@@ -76,4 +75,4 @@ Create a seamless 2.45:1 Goryeo-inspired panorama in the runtime motif order. Us
 | Motifs survive equal eight-slice crop | Pass | Pass | Pass |
 | No visible text or watermark | Pass | Pass | Pass |
 | Era distinguishable without label | Pass | Pass | Pass |
-| Ready to replace runtime assets | Sliced and wired; runtime smoke pending | Sliced and wired; runtime smoke pending | Sliced and wired; runtime smoke pending |
+| Ready to replace runtime assets | Sliced and wired; web smoke passed | Sliced and wired; web smoke passed | Sliced and wired; web smoke passed |
