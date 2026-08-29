@@ -11,7 +11,7 @@ Last verified: 2026-08-29 (Asia/Seoul)
 - Build command: `npm run build:web`
 - Output directory: `dist`
 - Routing mode: Expo Router single-page export with a Vercel catch-all rewrite
-- Source commit: `739c444efb0403e2d8c8d41610de480c3894c7cd` (integrated local release source)
+- Source commit: `3d61e32` (integrated local release source; documentation-only record follows this commit)
 - Reproducibility: **proven locally** — clean commit, `npm run build:web`, and asset/a11y checks passed
 - Product parity: **stale** — it predates the 2026-08-02 full audit and reinforcement work
 
