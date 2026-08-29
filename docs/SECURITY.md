@@ -17,9 +17,9 @@ MMKV currently has no application-supplied encryption key. The product must ther
 | Sensitive conditions leaked in analytics | typed event allowlist, forbidden-property policy, no replay | call sites can still attach unsafe props; review and tests needed |
 | User-authored text in crash reports | generic error wrapping | third-party/native errors may contain unexpected strings |
 | Secrets committed or exposed | `.env` and native service files ignored; public keys treated as public | build configuration must be audited before release |
-| Stale administrative guidance causes harm | content evidence and review policy | source ledger is not complete yet |
+| Stale administrative guidance causes harm | source ledger, review dates, volatility labels, and final-authority links | named owners and future review execution remain operational requirements |
 | Oversized/malformed local input | validation and bounded UI fields | add explicit length limits where missing |
-| Generated artwork licensing/provenance gap | art provenance requirement | current provenance sheet still needs completion |
+| Generated artwork licensing/provenance gap | per-master prompt/tool/reference/modification provenance is recorded | formal cultural and rights approval remains external |
 
 ## Data classification
 

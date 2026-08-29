@@ -1,171 +1,75 @@
-# Edge Cases & Failure Modes
+# Edge cases and failure modes
 
-> **Current-use note:** auth, Firestore, and remote-sync rows are historical. Apply the remaining
-> matrix through the local verified-write flows in `docs/architecture/DATA_FLOW.md`; add current
-> route, tab, export/reset, and integrated-completion cases from `docs/TESTING.md`.
+> Current local-first behavior. Historical Auth, Firestore, account-sync, and
+> remote-deletion designs live only in superseded ADRs.
 
-> Per-feature matrix of how K-Journey behaves under failure or unusual input. Mirrors PRD v1.1 §17 with code pointers and ADR back-references. If you're implementing a new feature, add a row.
+## Profile, dates, and administrative guidance
 
-## How to read this matrix
+| Failure mode | Current behavior | Code |
+|---|---|---|
+| Required condition is missing or `unknown` | Keep the task visible as blocked/review-required; never infer visa, housing, insurance, nationality, or jurisdiction facts. | `src/lib/conditionRules.ts`, `src/data/taskState.ts` |
+| Invalid or conflicting dates | Reject with specific validation copy; do not partially save. | `src/lib/validation.ts` |
+| Date change moves phase backward | Preserve completed work and explain the new phase. | `app/settings/index.tsx` |
+| Reminder cancellation or scheduling fails after a date save | Keep the saved dates, record the native failure, and state that the reminder schedule was not fully refreshed. | `src/lib/notifications.ts`, `app/settings/index.tsx` |
+| Holiday year is not loaded | Treat government offices as unknown/closed and require current-source review. | `src/lib/holidays.ts` |
+| Official source link fails to open | Preserve local content and show a recoverable error; the app never claims the external page opened. | `src/lib/linking.ts`, route call sites |
+| System clock changes during one continuous foreground interval | Sample wall and monotonic elapsed time once per minute; warn only when they diverge by more than two days. Discard the baseline on inactive/background so suspend or relaunch gaps do not trigger. | `src/lib/clockGuard.ts`, `app/_layout.tsx` |
 
-Each row is one **(feature × failure-mode)** pair. The cell answers: *what does the user see, what does the code do, where is the code?*
+## Local writes and reset
 
-Cells reference:
-* **ADR-NNNN** — design decision.
-* **`file:line`** — implementation.
-* **PRD §X.Y** — product spec.
+| Failure mode | Current behavior | Code |
+|---|---|---|
+| MMKV write/read-back fails | Throw from the mutator; caller shows failure and must not claim completion. | `src/lib/firebase.ts`, `src/lib/storage.ts` |
+| Stored JSON is malformed | Defensive readers return the safe default; migrations preserve known backup material where defined. | `src/lib/storage.ts`, `src/lib/storageMigrations.ts` |
+| Mission or Want-to item is toggled repeatedly | Completion aggregation remains idempotent; panel celebration is claimed once per threshold. | `src/lib/completion.ts`, `src/lib/notifications.ts` |
+| User confirms delete-all | Delete only enumerated K-Journey keys, reset tour state, and return to onboarding. No account or server deletion is implied. | `src/lib/localDataLifecycle.ts`, Settings data routes |
+| User requests export | Produce a readable local snapshot and open the OS share destination. It is not an importable backup. | `src/lib/portableExport.ts`, `app/settings/export.tsx` |
 
-## 1. Mission completion
+## Notifications
 
-| Failure mode | Behaviour | Code pointer | ADR |
-|---|---|---|---|
-| Network offline | MMKV optimistic + Firestore offline queue; UI shows "complete" immediately. | `firebase.ts:markMissionComplete`, RN-Firebase offline persistence default-on | ADR-0022 |
-| Firestore quota exceeded | `set` throws; `showOperationError('save mission', e)` → Alert + Crashlytics; UI reverts. | `app/mission/[id].tsx:85` | ADR-0012 |
-| Same mission already completed | `merge: true` idempotent; total stays correct. | `firebase.ts:markMissionComplete` | — |
-| Mission marked complete then unmarked then re-marked | `claimPanelUnlock(n)` returns false on re-mark; no duplicate overlay/event/push. | `notifications.ts:claimPanelUnlock` | ADR-0009 |
-| Clock manipulation | `serverTimestamp()` used for completion time → fake clock can't manipulate D-Day. | `firebase.ts:markMissionComplete` | ADR-0022 |
-| MMKV `devMockMissions` corrupted (dev-mock) | `getJson` returns null → empty array fallback. Silent. | `storage.ts:getJson` | ADR-0023 |
-| Two devices complete same mission simultaneously | Both call `set(..., merge:true)`; last write wins on `completedAtIso`. Counter stays at +1. | `firebase.ts` | PRD §11.2 |
+| Failure mode | Current behavior | Code |
+|---|---|---|
+| Permission denied | Do not schedule; keep the app usable and offer the Settings route when relevant. | `src/lib/notifications.ts`, `src/lib/permissions.ts` |
+| Permission granted later | Recheck on foreground and attempt to rebuild the enabled schedule. | `src/lib/permissions.ts` |
+| Trigger date is already past | Skip that notification. | `src/lib/notifications.ts` |
+| Reminder preference changes | Persist the preference, then cancel and rebuild known-date D-Day/phase reminders; panel unlocks remain immediate-only. | Settings, `src/lib/notifications.ts` |
+| Existing-schedule cancellation fails | Stop before adding new reminders so a partial refresh cannot create duplicates. | `src/lib/notifications.ts` |
+| OS scheduling limit or native error | Record best-effort diagnostics and return a partial result; never report full success. | `src/lib/notifications.ts` |
+| Panel-unlock notification fails | Preserve the completion and on-screen reward; notification delivery is optional. | `src/lib/notifications.ts` |
 
-## 2. D-Day calculation
+## Byeongpung save and share
 
-| Failure mode | Behaviour | Code pointer | ADR |
-|---|---|---|---|
-| `arrival` or `departure` missing | `usePhase` returns phase 1; DDayBanner shows "—". | `usePhase.ts` | — |
-| `arrival > departure` (invalid input) | `validateDates` rejects at onboarding boundary; user cannot proceed. | `validation.ts:validateDates` | PRD §4.2.1 |
-| Negative D-Day (post-departure) | DDayBanner shows "Departed N days ago"; gallery prompt eligible. | `DDayBanner.tsx`, `JourneyCompletePrompt.tsx` | PRD §10.2, NEVER #14 |
-| Arrival == Departure | `validateDates` accepts; `calcPhase` → phase 2 (first-week window). | `usePhase.ts:calcPhase` | PRD §5.6 |
-| Cross-timezone user (Sydney) | KST helpers ignore local time → phase boundary same as Seoul user. | `dates.ts:toKstStartOfDay` | ADR-0022 |
-| System clock manipulated | `clockGuard` records to Crashlytics; UI not blocked. Server-timestamp protects writes. | `clockGuard.ts` | ADR-0022 |
-| MMKV `phase:override` corrupted | `getNumber` returns undefined → falls through to date-based calc. | `usePhase.ts:calcPhase` | — |
+| Failure mode | Current behavior | Code |
+|---|---|---|
+| Nothing is complete | Disable Save and Share. | `app/(tabs)/byeongpung.tsx` |
+| Locked panel selected on iOS | Explain how many completions remain; do not capture it. Android lists only unlocked panels. | `app/(tabs)/byeongpung.tsx` |
+| Capture ref is unavailable or capture fails | Return false and show the catalog error; no success event. | `src/lib/share.ts` |
+| OS share is unavailable | Explain that sharing is unavailable; keep the local artwork intact. | `src/lib/share.ts` |
+| Photo-library add permission is denied | Offer the platform Settings path; do not request unrelated read access. | `src/lib/share.ts` |
+| Artwork asset fails | Render the era fallback instead of crashing the route. | `src/components/byeongpung/PanelImage.tsx` |
 
-## 3. Panel unlock
+## Accessibility and web routing
 
-| Failure mode | Behaviour | Code pointer | ADR |
-|---|---|---|---|
-| Network offline at unlock moment | Overlay fires immediately (local); `panel_unlock` event queued in PostHog SDK; notification scheduled. | `notifications.ts:firePanelUnlock` | ADR-0009 |
-| Notification permission denied | `firePanelUnlock` catches; no notification scheduled. Overlay still fires. | `notifications.ts:firePanelUnlock` | ADR-0015 |
-| Mission unmarked then re-marked | `claimPanelUnlock` returns false; **no re-fire**. | `notifications.ts:claimPanelUnlock` | ADR-0009 |
-| MMKV `firedPanelUnlocks` corrupted | Treated as empty array → unlock fires once more (acceptable). Migration runner backs up corruption. | `storage.ts:getJson` | ADR-0023 |
-| Same panel unlocked across two devices | Each device fires once (per-device experience by design). | `notifications.ts:claimPanelUnlock` | ADR-0009 |
-| 8 panels all unlocked already | `claimPanelUnlock(8)` returns false; total ≥ 48 doesn't fire anything. | `notifications.ts` | — |
+| Failure mode | Current behavior | Evidence |
+|---|---|---|
+| Reduced Motion enabled | Remove/downgrade nonessential motion and haptics; destructive warning haptic remains a safety signal. | `src/lib/a11y.ts`, `src/lib/haptics.ts` |
+| Inactive tab remains mounted | Hide it from assistive technology and prevent focus leaks. | `src/lib/inactiveScreen.ts` |
+| Browser refreshes a direct route | Serve the static Expo Router route without forcing native splash navigation. | `app/_layout.tsx`, web E2E |
+| Render error escapes a route | Record configured native diagnostics and show a retry boundary without exposing stack details in production. | `app/_layout.tsx` |
 
-## 4. Push notification scheduling
+## Telemetry and external processors
 
-| Failure mode | Behaviour | Code pointer | ADR |
-|---|---|---|---|
-| Permission denied at scheduling time | `rescheduleAllNotifications` returns silently; no notification. | `notifications.ts` | ADR-0015 |
-| Permission granted later (via Settings) | `usePushPermissionWatcher` (Part E.7) detects on foreground → calls reschedule. | `permissions.ts` (Part E.7) | ADR-0015 |
-| User changes arrival/departure dates | `rescheduleAllNotifications` cancels existing and re-schedules. | `(onboarding)/dates.tsx:onSubmit` | — |
-| Schedule date already in the past | `if (fireDate > today)` filter skips. | `notifications.ts:rescheduleAllNotifications` | — |
-| OS notification limit hit (64 pending on iOS) | `scheduleNotificationAsync` may silently fail; Crashlytics records. | `notifications.ts` (Part E follow-up) | — |
-| Cross-timezone user | Fires at KST 09:00 — translates to local time of user wherever they are. | `dates.ts:scheduleAtKstMidnight` | ADR-0022 |
+| Failure mode | Current behavior | Code |
+|---|---|---|
+| No usable PostHog key | Construct no client and send no analytics request. | `src/lib/posthog.ts` |
+| Analytics is offline | App behavior does not depend on delivery; events are optional. | `src/lib/posthog.ts` |
+| User-authored/profile data could enter an event | Event names and coarse properties are allowlisted; raw profile answers, dates, names, email, coordinates, and Want-to text are forbidden. | `src/lib/posthog.ts`, `docs/SECURITY.md` |
+| Crashlytics is unavailable | Diagnostic calls are swallowed after the user-facing/local correctness path is handled. | error and notification helpers |
 
-## 5. Apple Sign-In
+## Release-only checks
 
-| Failure mode | Behaviour | Code pointer | ADR |
-|---|---|---|---|
-| User cancels Apple sheet | `e.code === 'ERR_CANCELLED'` swallowed; no error UI. | `sign-in.tsx:18-34` | — |
-| No `identityToken` returned | `showOperationError('sign in', new Error('No identity token'))`. | `sign-in.tsx` | ADR-0012 |
-| Nonce mismatch | Firebase rejects credential; `showOperationError`. | `sign-in.tsx` | — |
-| Apple ID locked / disabled | Apple SDK throws → `showOperationError`. Retry from same screen. | `sign-in.tsx` | — |
-| Network offline | `signInWithCredential` throws → `showOperationError`. User retries. | `sign-in.tsx` | — |
-| `ensureUserDocument` Firestore write fails | (Part E.4) try/catch wrap; Crashlytics records; user remains signed-in (UI can retry). | `useAuth.ts` (Part E.4) | ADR-0012 |
-| (Future) Google sign-in cancelled | `SIGN_IN_CANCELLED` swallowed. | `sign-in.tsx` (Part H) | ADR-0013 |
-| (Future) Play Services unavailable | Alert + Settings deep-link. | `sign-in.tsx` (Part H) | ADR-0013 |
-
-## 6. Byeongpung share / save
-
-| Failure mode | Behaviour | Code pointer | ADR |
-|---|---|---|---|
-| `viewRef.current` is null at capture | `captureViewToFile` returns null → Alert "Could not capture image". | `share.ts:captureViewToFile` | — |
-| `captureRef` throws | Same as above; Crashlytics records. | `share.ts` | — |
-| `Sharing.isAvailableAsync` false | Alert "Sharing not available". | `share.ts:shareByeongpungImage` | — |
-| `Sharing.shareAsync` throws | Returns false; (Part E follow-up) user-visible feedback. | `share.ts` | — |
-| MediaLibrary permission denied | First attempt `saveToLibraryAsync` fails → second attempt `createAssetAsync` with explicit permission request → if both fail, Alert. | `share.ts:saveByeongpungImage` | — |
-| PNG asset load fails | `<PanelImage>` `onError` → ink-color fallback rendered in capture. | `PanelImage.tsx` (Part E.6) | ADR-0008 |
-
-## 7. Era switch
-
-| Failure mode | Behaviour | Code pointer | ADR |
-|---|---|---|---|
-| Network offline | MMKV immediate; Firestore queue. UI shows new era. | `firebase.ts:updateUserProfile` | — |
-| Firestore update fails (caught) | `showOperationError('switch era', e)`; UI reverts to previous era. | `app/(tabs)/more.tsx` (era switch logic) | ADR-0012 |
-| PNG load fails after era swap | `<PanelImage>` `onError` → ink-color solid. | `PanelImage.tsx` (Part E.6) | ADR-0008 |
-| Snapshot lag between Firestore and UI | UI may briefly show old era's panels until snapshot arrives. Acceptable. | `useProfile.ts` | — |
-| Completed mission count preserved | `completedMissions` unaffected by era swap. | `useCompletedMissions.ts` | CLAUDE.md MUST #9 |
-
-## 8. Onboarding
-
-| Failure mode | Behaviour | Code pointer | ADR |
-|---|---|---|---|
-| User force-quits mid-flow | Next launch resumes from where profile last persisted. | `useProfile.ts` snapshot + redirect logic in `app/_layout.tsx` | — |
-| Firestore unavailable | MMKV cache holds last-known profile; user can still navigate; mutators queue. | `firebase.ts` offline | — |
-| Invalid date input | `validateDates` rejects → Alert with specific error code. | `validation.ts` | PRD §4.2.1 |
-| User skips Era picker | Phase 1 enters; first home screen prompts Era selection. | `app/(tabs)/index.tsx` (era check) | — |
-
-## 9. Housing change mid-journey
-
-| Failure mode | Behaviour | Code pointer | ADR |
-|---|---|---|---|
-| Mid-journey housing change (dorm → off-campus) | New mission list applied; already-completed dorm-specific missions remain counted in `total`. Denominator shifts. | `missions.ts:missionsForHousing` + `index.tsx` | ADR-0010, PRD §8.3 |
-| Threshold for panel unlock unaffected | Always absolute (6, 12, 18...). Denominator change doesn't shift threshold. | `aggregateCompletions` | ADR-0011 |
-
-## 10. Bucket items
-
-| Failure mode | Behaviour | Code pointer | ADR |
-|---|---|---|---|
-| Add item offline | MMKV optimistic; Firestore queue. | `bucket/[id].tsx`, `firebase.ts:addBucketItem` | — |
-| Toggle item to complete | `serverTimestamp()` for `completedAtIso`. Idempotent. | `firebase.ts:toggleBucketItem` | — |
-| Delete bucket with items | Cascade delete (subcollection items). Rules permit (owner). | `firebase.ts:deleteBucket` + Rules | ADR-0021 |
-| Item text contains PII | **Stays in Firestore (owner-readable). Never in PostHog event.** | `posthog.ts:KJEvent` payload restrictions | docs/SECURITY.md §3 |
-
-## 11. Emergency guide
-
-| Failure mode | Behaviour | Code pointer | ADR |
-|---|---|---|---|
-| Anonymous user (not signed in) opens emergency | Allowed by Firestore Rules (`emergency/{id}` is `allow read: if true`). | `firestore.rules:emergency` | ADR-0021 |
-| Offline | Static `src/data/emergency.ts` data always available. | `emergency.tsx` | — |
-
-## 12. Telemetry
-
-| Failure mode | Behaviour | Code pointer | ADR |
-|---|---|---|---|
-| PostHog SDK offline | Events queued in PostHog SDK; flush on reconnect. | `posthog.ts` | — |
-| `track()` called with wrong event name | TypeScript catches at compile via `KJEvent` union. | `posthog.ts` | ADR-0004 |
-| `trackOnce` called twice with same key | Second call no-op. | `telemetry/index.ts` (Part F) | — |
-| Crashlytics offline | Errors queued by SDK; flush on reconnect. | `errorAlert.ts` | — |
-
-## 13. Theme / fonts
-
-| Failure mode | Behaviour | Code pointer | ADR |
-|---|---|---|---|
-| Pretendard font asset missing | RN falls back to system font; layout may shift slightly. | `app/_layout.tsx:useFonts` | — |
-| Noto Serif KR weight missing | Display headings fall back to system serif. | `app/_layout.tsx` | — |
-| Era theme tokens read after era change | `ThemeProvider` re-renders downstream. | `theme/ThemeProvider.tsx` | — |
-
-## 14. Reanimated worklets
-
-| Failure mode | Behaviour | Code pointer | ADR |
-|---|---|---|---|
-| `useAnimatedStyle` callback wrapped in factory closure | **Worklet crash on UI thread.** Forbidden by ADR-0019. | n/a (rule, not code) | ADR-0019 |
-| `useReduceMotion()` true | `MissionCompleteOverlay` cross-fade variant. | `a11y.ts:useReduceMotion` + overlay component | ADR-0025 |
-
-## 15. Adding a new feature
-
-When a new feature lands:
-
-1. Add a section here covering its failure modes.
-2. Add `accessibilityLabel` + `role` (ADR-0025).
-3. Add `track()` event if user behaviour is interesting (PRD §16).
-4. Add try/catch + `showOperationError` if it has an async mutator (ADR-0012).
-5. Add migration if it introduces new MMKV keys (ADR-0023).
-6. Add a row to `docs/architecture/MODULE_OWNERSHIP.md` if it introduces a new module.
-
-## 16. Links
-
-* PRD v1.1 §17
-* `docs/architecture/ARCHITECTURE.md` §8 threat model
-* `docs/SECURITY.md`
-* `docs/ACCESSIBILITY.md`
-* `docs/I18N_TIMEZONE.md`
+Unit and web automation do not close real-device, signed-artifact, store-form,
+screen-reader, notification-delivery, or native Save/Share crop gates. Those
+items remain in `docs/RELEASE.md`, `docs/TESTING.md`,
+`docs/PLAY_DATA_SAFETY.md`, and `docs/BYEONGPUNG_ART_DIRECTION.md` until a named
+human records the actual evidence.

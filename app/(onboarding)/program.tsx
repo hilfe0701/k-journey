@@ -6,7 +6,6 @@ import { useRouter } from 'expo-router';
 import {
   ChoiceCard,
   OnboardingStepShell,
-  UNKNOWN_LABEL,
   useOnboardingStepGuard,
 } from '../../src/components/onboarding/ConditionStep';
 import { UNKNOWN, type ProgramType, type VisaTypeOrStatus } from '../../src/lib/firebase';
@@ -16,20 +15,7 @@ import { showOperationError } from '../../src/lib/errorAlert';
 import { track } from '../../src/lib/posthog';
 import { space } from '../../design-tokens';
 import { Text } from '../../src/components/ui';
-
-const PROGRAM_OPTIONS = [
-  { value: 'exchange', label: 'Exchange student' },
-  { value: 'visiting', label: 'Visiting student' },
-  { value: UNKNOWN, label: UNKNOWN_LABEL },
-] satisfies readonly { value: ProgramType; label: string }[];
-
-const VISA_OPTIONS = [
-  { value: 'D-2-6', label: 'D-2-6 — Exchange Student' },
-  { value: 'D-2-8', label: 'D-2-8 — Visiting Student' },
-  { value: 'visa_free', label: 'Visa-free stay' },
-  { value: 'other', label: 'Another visa or status' },
-  { value: UNKNOWN, label: UNKNOWN_LABEL },
-] satisfies readonly { value: VisaTypeOrStatus; label: string }[];
+import { PROGRAM_TYPE_OPTIONS, VISA_STATUS_OPTIONS } from '../../src/lib/settingsProfile';
 
 export default function ProgramScreen() {
   const profile = useOnboardingStepGuard('program');
@@ -82,7 +68,7 @@ function ProgramForm({
     >
       <View style={{ gap: space[2], marginTop: space[5] }}>
         <ChoiceGroupLabel label="Program" />
-        {PROGRAM_OPTIONS.map((option) => (
+        {PROGRAM_TYPE_OPTIONS.map((option) => (
           <ChoiceCard
             key={option.value}
             option={option}
@@ -91,7 +77,7 @@ function ProgramForm({
           />
         ))}
         <ChoiceGroupLabel label="Visa or status" />
-        {VISA_OPTIONS.map((option) => (
+        {VISA_STATUS_OPTIONS.map((option) => (
           <ChoiceCard
             key={option.value}
             option={option}

@@ -13,7 +13,7 @@
  * the default build (no key) is asserted directly.
  */
 
-import { isUsableProjectKey, posthog, reset, track } from '../posthog';
+import { isUsableProjectKey, posthog, track } from '../posthog';
 
 describe('isUsableProjectKey', () => {
   it('rejects an absent key', () => {
@@ -36,6 +36,5 @@ describe('the default build', () => {
 
   it('keeps the event helpers safe no-ops', () => {
     expect(() => track('emergency_open')).not.toThrow();
-    expect(() => reset()).not.toThrow();
   });
 });

@@ -41,7 +41,7 @@ export const BUCKET_TEMPLATES: BucketTemplate[] = [
     key: 'peony',
     nameEn: 'Peony (모란)',
     nameKo: '모란',
-    symbolism: 'Wealth, abundance, blooming youth.',
+    symbolism: 'A traditional symbol of wealth and abundance.',
     hintFor: 'Cafés, fashion, beauty hauls.',
     suggestedItems: [
       'Try a café in a new neighborhood',
@@ -57,7 +57,7 @@ export const BUCKET_TEMPLATES: BucketTemplate[] = [
     key: 'tiger',
     nameEn: 'Tiger (호랑이)',
     nameKo: '호랑이',
-    symbolism: 'Courage, daring, protection.',
+    symbolism: 'A traditional symbol of bravery and protection.',
     hintFor: 'Adventure trips, extreme food, hikes.',
     suggestedItems: [
       'Hike a marked mountain trail',
@@ -73,7 +73,7 @@ export const BUCKET_TEMPLATES: BucketTemplate[] = [
     key: 'crane',
     nameEn: 'Crane (학)',
     nameKo: '학',
-    symbolism: 'Longevity, peace, slow grace.',
+    symbolism: 'A traditional symbol of longevity.',
     hintFor: 'Slow travel, temple stays, day trips.',
     suggestedItems: [
       'Book a temple stay',
@@ -89,7 +89,7 @@ export const BUCKET_TEMPLATES: BucketTemplate[] = [
     key: 'lotus',
     nameEn: 'Lotus (연꽃)',
     nameKo: '연꽃',
-    symbolism: 'Purity rising from mud, rebirth, calm.',
+    symbolism: 'Purity and rebirth, rising clean from mud.',
     hintFor: 'Self-care, journaling, learning.',
     suggestedItems: [
       'Write a Korean-language journal entry',
@@ -105,7 +105,7 @@ export const BUCKET_TEMPLATES: BucketTemplate[] = [
     key: 'chaekgeori',
     nameEn: 'Chaekgeori (책가도)',
     nameKo: '책가도',
-    symbolism: 'Scholarly bookshelf, curiosity, study.',
+    symbolism: 'Love of books, learning, and scholarly cultivation.',
     hintFor: 'Books, classes, language goals.',
     suggestedItems: [
       'Finish a book by a Korean author',
@@ -121,7 +121,7 @@ export const BUCKET_TEMPLATES: BucketTemplate[] = [
     key: 'sansuhwa',
     nameEn: 'Sansuhwa (산수화)',
     nameKo: '산수화',
-    symbolism: 'Mountains and rivers — the wandering soul.',
+    symbolism: 'Love of nature, contemplation, and ideal landscapes.',
     hintFor: 'Travel, hiking, nature lists.',
     suggestedItems: [
       'Visit a national park',

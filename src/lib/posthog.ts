@@ -57,8 +57,6 @@ export type KJEvent =
   | 'byeongpung_save_image'
   | 'onboarding_step_complete'
   | 'onboarding_complete'
-  | 'sign_in'
-  | 'sign_out'
   // UX KPI events (Wave 2 — ANALYTICS_SCHEMA.md §10.1)
   | 'screen_empty_view'
   | 'error_toast_dismissed'
@@ -68,7 +66,6 @@ export type KJEvent =
   | 'settings_open'
   | 'notification_pref_change'
   | 'profile_field_change'
-  | 'account_delete_initiated'
   | 'tour_aha_moment_shown'
   | 'tour_aha_moment_dismissed'
   | 'task_open'
@@ -78,8 +75,6 @@ export type KJEvent =
   | 'task_order_choice'
   | 'task_housing_address_check'
   | 'task_residence_district'
-  // Event names only. DEC-027 is confirmed but its rules have never run in
-  // code, so no condition, task, or cohort payload is attached to these.
   | 'task_departure_type'
   | 'data_export_delivered'
   | 'data_export_failed';
@@ -90,14 +85,6 @@ export function track(event: KJEvent, properties?: Props) {
   posthog?.capture(event, (properties ?? {}) as any);
 }
 
-export function identify(uid: string, properties?: Props) {
-  posthog?.identify(uid, (properties ?? {}) as any);
-}
-
 export function trackScreen(name: string, properties?: Props) {
   posthog?.screen(name, (properties ?? {}) as any);
-}
-
-export function reset() {
-  posthog?.reset();
 }

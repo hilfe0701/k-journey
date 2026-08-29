@@ -66,10 +66,18 @@ export interface ScheduleInput {
   departureDate: string;
 }
 
+export interface NotificationScheduleResult {
+  complete: boolean;
+  permissionGranted: boolean;
+  cancelledExisting: boolean;
+  scheduledCount: number;
+  failureCount: number;
+}
+
 /**
- * Records a notification-scheduling failure to Crashlytics without surfacing
- * to the user. Per PRD §7.6, schedule failures (OS limits, > 64 pending) stay
- * silent — a missed reminder must never interrupt the user with an alert.
+ * Records a notification-scheduling failure to Crashlytics. The scheduler also
+ * returns a partial result so an owning save flow cannot claim full success.
+ * A missed reminder never blocks the underlying profile write.
  */
 function recordScheduleError(e: unknown) {
   try {
@@ -79,11 +87,42 @@ function recordScheduleError(e: unknown) {
   }
 }
 
-export async function rescheduleAllNotifications({ arrivalDate, departureDate }: ScheduleInput) {
+/** Clears journey reminders when a date becomes unknown. Failures remain best-effort but observable. */
+export async function cancelScheduledJourneyNotifications(): Promise<boolean> {
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
+    return true;
   } catch (e) {
     recordScheduleError(e);
+    return false;
+  }
+}
+
+export async function rescheduleAllNotifications({
+  arrivalDate,
+  departureDate,
+}: ScheduleInput): Promise<NotificationScheduleResult> {
+  const cancelledExisting = await cancelScheduledJourneyNotifications();
+  let scheduledCount = 0;
+  let failureCount = cancelledExisting ? 0 : 1;
+
+  let permissionGranted = false;
+  try {
+    permissionGranted = (await getPermissionState()) === 'granted';
+  } catch (e) {
+    failureCount += 1;
+    recordScheduleError(e);
+  }
+  // If cancellation failed, adding a new set can leave duplicate reminders.
+  // Stop here even when permission is granted; the caller surfaces the partial refresh.
+  if (!cancelledExisting || !permissionGranted) {
+    return {
+      complete: false,
+      permissionGranted,
+      cancelledExisting,
+      scheduledCount,
+      failureCount,
+    };
   }
 
   const today = kstNow();
@@ -103,7 +142,9 @@ export async function rescheduleAllNotifications({ arrivalDate, departureDate }:
           content: { title: slot.copy.title, body: slot.copy.body },
           trigger: { type: 'date', date: fireDate } as Notifications.DateTriggerInput,
         });
+        scheduledCount += 1;
       } catch (e) {
+        failureCount += 1;
         recordScheduleError(e);
       }
     }
@@ -124,12 +165,22 @@ export async function rescheduleAllNotifications({ arrivalDate, departureDate }:
             content: { title: phase.copy.title, body: phase.copy.body },
             trigger: { type: 'date', date: phase.fire } as Notifications.DateTriggerInput,
           });
+          scheduledCount += 1;
         } catch (e) {
+          failureCount += 1;
           recordScheduleError(e);
         }
       }
     }
   }
+
+  return {
+    complete: permissionGranted && cancelledExisting && failureCount === 0,
+    permissionGranted,
+    cancelledExisting,
+    scheduledCount,
+    failureCount,
+  };
 }
 
 export async function fireImmediate(title: string, body: string) {

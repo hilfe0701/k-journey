@@ -16,13 +16,7 @@ import { updateUserProfile } from '../../src/lib/firebase';
 import { setOnboardingProgress } from '../../src/lib/storage';
 import { showOperationError } from '../../src/lib/errorAlert';
 import { track } from '../../src/lib/posthog';
-
-// REQ-DAR-004 · POL-003 · POL-005: collect the minimum NHIS exclusion inputs.
-const INSURANCE_OPTIONS = [
-  { value: 'yes', label: 'Yes' },
-  { value: 'no', label: 'No' },
-  { value: UNKNOWN, label: UNKNOWN_LABEL },
-] satisfies readonly { value: HomeCountryInsurance; label: string }[];
+import { HOME_INSURANCE_OPTIONS } from '../../src/lib/settingsProfile';
 
 export default function NationalityScreen() {
   const profile = useOnboardingStepGuard('nationality');
@@ -106,7 +100,7 @@ function NationalityForm({
         />
         <View style={{ gap: space[2], marginTop: space[3] }}>
           <InputLabel label="Home-country insurance" />
-          {INSURANCE_OPTIONS.map((option) => (
+          {HOME_INSURANCE_OPTIONS.map((option) => (
             <ChoiceCard
               key={option.value}
               option={option}

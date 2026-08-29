@@ -1,5 +1,6 @@
 import {
   KOREAN_PUBLIC_HOLIDAYS_2026,
+  KOREAN_PUBLIC_HOLIDAYS_2027,
   addGovernmentBusinessDays,
   adjustDueDateToPreviousGovernmentBusinessDay,
   governmentDayStatus,
@@ -12,9 +13,18 @@ import {
 
 describe('Korean government holiday calendar', () => {
   it('contains the official 2026 substitute holidays and election day', () => {
-    expect(KOREAN_PUBLIC_HOLIDAYS_2026).toHaveLength(20);
+    expect(KOREAN_PUBLIC_HOLIDAYS_2026).toHaveLength(22);
     expect(koreanPublicHolidayFor('2026-03-02')?.substitute).toBe(true);
     expect(koreanPublicHolidayFor('2026-06-03')?.nameKo).toContain('선거');
+    expect(koreanPublicHolidayFor('2026-05-01')?.nameKo).toBe('노동절');
+    expect(koreanPublicHolidayFor('2026-07-17')?.nameKo).toBe('제헌절');
+  });
+
+  it('contains the official 2027 calendar and substitute holidays', () => {
+    expect(KOREAN_PUBLIC_HOLIDAYS_2027).toHaveLength(24);
+    expect(koreanPublicHolidayFor('2027-05-03')?.substitute).toBe(true);
+    expect(koreanPublicHolidayFor('2027-07-19')?.nameKo).toContain('제헌절');
+    expect(governmentDayStatus('2027-01-04')).toBe('working_day');
   });
 
   it('distinguishes public holidays, weekends, and open weekdays', () => {
@@ -26,9 +36,9 @@ describe('Korean government holiday calendar', () => {
   });
 
   it('returns unknown for an unlisted future year instead of calling it open', () => {
-    expect(governmentDayStatus('2027-01-04')).toBe('unknown');
-    expect(isGovernmentWorkingDay('2027-01-04')).toBe(false);
-    expect(nextGovernmentBusinessDay('2027-01-04').status).toBe('needs_review');
+    expect(governmentDayStatus('2028-01-04')).toBe('unknown');
+    expect(isGovernmentWorkingDay('2028-01-04')).toBe(false);
+    expect(nextGovernmentBusinessDay('2028-01-04').status).toBe('needs_review');
   });
 
   it('moves a holiday deadline to the previous open government day', () => {
@@ -53,6 +63,6 @@ describe('Korean government holiday calendar', () => {
 
   it('resolves an arrival-plus-days due rule through the closure calendar', () => {
     expect(resolveArrivalPlusDaysDueDate('2026-02-17', 97).date).toBe('2026-05-22');
-    expect(resolveArrivalPlusDaysDueDate('2027-02-17', 90).status).toBe('needs_review');
+    expect(resolveArrivalPlusDaysDueDate('2027-02-02', 90).date).toBe('2027-04-30');
   });
 });

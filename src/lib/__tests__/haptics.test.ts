@@ -2,27 +2,23 @@ import * as Haptics from 'expo-haptics';
 import {
   hapticMissionComplete,
   hapticPanelUnlock,
-  hapticSelection,
   hapticDestructive,
 } from '../haptics';
 
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(async () => {}),
   notificationAsync: jest.fn(async () => {}),
-  selectionAsync: jest.fn(async () => {}),
   ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
   NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
 }));
 
 const impactAsync = Haptics.impactAsync as jest.Mock;
 const notificationAsync = Haptics.notificationAsync as jest.Mock;
-const selectionAsync = Haptics.selectionAsync as jest.Mock;
 
 describe('haptics', () => {
   beforeEach(() => {
     impactAsync.mockClear();
     notificationAsync.mockClear();
-    selectionAsync.mockClear();
   });
 
   it('hapticMissionComplete fires a Light impact', () => {
@@ -33,11 +29,6 @@ describe('haptics', () => {
   it('hapticPanelUnlock fires a Success notification', () => {
     hapticPanelUnlock();
     expect(notificationAsync).toHaveBeenCalledWith('success');
-  });
-
-  it('hapticSelection fires a selection tick', () => {
-    hapticSelection();
-    expect(selectionAsync).toHaveBeenCalled();
   });
 
   it('hapticDestructive fires a Warning notification', () => {

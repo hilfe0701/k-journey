@@ -4,21 +4,31 @@
  * be designated or amended, so an unlisted year is `unknown`, not silently a
  * working calendar.
  *
- * The 2026 rows are transcribed from the Korea Astronomy and Space Science
- * Institute (KASI) 2026 calendar and the Public Holidays Regulation. Sundays
- * and Saturdays are handled separately as weekends; rows that fall on a
- * weekend remain in the table so callers can explain the holiday by name.
+ * The rows are transcribed from the official annual calendar standards and
+ * the Public Holidays Regulation. Sundays and Saturdays are handled separately
+ * as weekends; rows that fall on a weekend remain in the table so callers can
+ * explain the holiday by name.
  */
 
 import { formatInTimeZone } from 'date-fns-tz';
 import { kstDatePlusDays, KST } from './dates';
 
-export const KOREAN_HOLIDAY_SOURCE = {
-  sourceUrl: 'https://astro.kasi.re.kr/life/post/almanac?year=2026',
-  sourceTitle: '2026년 월력요항 (2026 Korean calendar standards)',
-  publisher: 'Korea Astronomy and Space Science Institute (한국천문연구원)',
-  checkedAt: '2026-08-29',
-  finalAuthority: 'the office you are visiting and the latest KASI / government notice',
+export const KOREAN_HOLIDAY_SOURCES = {
+  2026: {
+    sourceUrl: 'https://astro.kasi.re.kr/life/post/almanac?year=2026',
+    sourceTitle: '2026년 월력요항 (2026 Korean calendar standards)',
+    publisher: 'Korea Astronomy and Space Science Institute (한국천문연구원)',
+    amendmentUrl:
+      'https://www.law.go.kr/LSW/lsInfoP.do?ancYnChk=0&chrClsCd=010202&efYd=20260501&lsiSeq=285779&urlMode=lsInfoP',
+    amendmentNote: '2026-05-01 public-holiday amendment adding Labor Day and Constitution Day',
+  },
+  2027: {
+    sourceUrl: 'https://www.kasa.go.kr/bbs/BBSMSTR_000000000018/B000000003234Li6nD2.do?mno=sub01_03_03',
+    sourceTitle: '우주항공청 공고 제2026-0078호: 2027년도 월력요항',
+    publisher: 'Korea AeroSpace Administration (우주항공청)',
+  },
+  checkedAt: '2026-08-30',
+  finalAuthority: 'the office you are visiting and the latest government notice',
 } as const;
 
 export interface KoreanPublicHoliday {
@@ -42,6 +52,7 @@ export const KOREAN_PUBLIC_HOLIDAYS_2026: readonly KoreanPublicHoliday[] = [
     nameKo: '3·1절 대체공휴일',
     substitute: true,
   },
+  { date: '2026-05-01', nameEn: 'Labor Day', nameKo: '노동절' },
   { date: '2026-05-05', nameEn: "Children's Day", nameKo: '어린이날' },
   { date: '2026-05-24', nameEn: "Buddha's Birthday", nameKo: '부처님오신날' },
   {
@@ -52,6 +63,7 @@ export const KOREAN_PUBLIC_HOLIDAYS_2026: readonly KoreanPublicHoliday[] = [
   },
   { date: '2026-06-03', nameEn: 'National local election day', nameKo: '전국동시지방선거일' },
   { date: '2026-06-06', nameEn: 'Memorial Day', nameKo: '현충일' },
+  { date: '2026-07-17', nameEn: 'Constitution Day', nameKo: '제헌절' },
   { date: '2026-08-15', nameEn: 'Liberation Day', nameKo: '광복절' },
   {
     date: '2026-08-17',
@@ -73,8 +85,72 @@ export const KOREAN_PUBLIC_HOLIDAYS_2026: readonly KoreanPublicHoliday[] = [
   { date: '2026-12-25', nameEn: 'Christmas Day', nameKo: '기독탄신일' },
 ] as const;
 
+/** Official 2027 nationwide public-holiday dates. */
+export const KOREAN_PUBLIC_HOLIDAYS_2027: readonly KoreanPublicHoliday[] = [
+  { date: '2027-01-01', nameEn: "New Year's Day", nameKo: '1월 1일' },
+  { date: '2027-02-06', nameEn: 'Lunar New Year holiday', nameKo: '설날 전날' },
+  { date: '2027-02-07', nameEn: 'Lunar New Year', nameKo: '설날' },
+  { date: '2027-02-08', nameEn: 'Lunar New Year holiday', nameKo: '설날 다음 날' },
+  {
+    date: '2027-02-09',
+    nameEn: 'Substitute holiday for Lunar New Year',
+    nameKo: '설날 대체공휴일',
+    substitute: true,
+  },
+  { date: '2027-03-01', nameEn: 'March 1st Movement Day', nameKo: '3·1절' },
+  { date: '2027-05-01', nameEn: 'Labor Day', nameKo: '노동절' },
+  {
+    date: '2027-05-03',
+    nameEn: 'Substitute holiday for Labor Day',
+    nameKo: '노동절 대체공휴일',
+    substitute: true,
+  },
+  { date: '2027-05-05', nameEn: "Children's Day", nameKo: '어린이날' },
+  { date: '2027-05-13', nameEn: "Buddha's Birthday", nameKo: '부처님오신날' },
+  { date: '2027-06-06', nameEn: 'Memorial Day', nameKo: '현충일' },
+  { date: '2027-07-17', nameEn: 'Constitution Day', nameKo: '제헌절' },
+  {
+    date: '2027-07-19',
+    nameEn: 'Substitute holiday for Constitution Day',
+    nameKo: '제헌절 대체공휴일',
+    substitute: true,
+  },
+  { date: '2027-08-15', nameEn: 'Liberation Day', nameKo: '광복절' },
+  {
+    date: '2027-08-16',
+    nameEn: 'Substitute holiday for Liberation Day',
+    nameKo: '광복절 대체공휴일',
+    substitute: true,
+  },
+  { date: '2027-09-14', nameEn: 'Chuseok holiday', nameKo: '추석 전날' },
+  { date: '2027-09-15', nameEn: 'Chuseok', nameKo: '추석' },
+  { date: '2027-09-16', nameEn: 'Chuseok holiday', nameKo: '추석 다음 날' },
+  { date: '2027-10-03', nameEn: 'National Foundation Day', nameKo: '개천절' },
+  {
+    date: '2027-10-04',
+    nameEn: 'Substitute holiday for National Foundation Day',
+    nameKo: '개천절 대체공휴일',
+    substitute: true,
+  },
+  { date: '2027-10-09', nameEn: 'Hangul Day', nameKo: '한글날' },
+  {
+    date: '2027-10-11',
+    nameEn: 'Substitute holiday for Hangul Day',
+    nameKo: '한글날 대체공휴일',
+    substitute: true,
+  },
+  { date: '2027-12-25', nameEn: 'Christmas Day', nameKo: '기독탄신일' },
+  {
+    date: '2027-12-27',
+    nameEn: 'Substitute holiday for Christmas Day',
+    nameKo: '기독탄신일 대체공휴일',
+    substitute: true,
+  },
+] as const;
+
 const HOLIDAYS_BY_YEAR: Readonly<Record<number, readonly KoreanPublicHoliday[]>> = {
   2026: KOREAN_PUBLIC_HOLIDAYS_2026,
+  2027: KOREAN_PUBLIC_HOLIDAYS_2027,
 };
 
 export type GovernmentDayStatus = 'working_day' | 'public_holiday' | 'weekend' | 'unknown';

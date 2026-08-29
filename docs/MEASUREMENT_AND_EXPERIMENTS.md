@@ -19,13 +19,14 @@ This measures whether the two product axes reinforce each other. It does not tre
 | Event | Meaning | Allowed properties |
 |---|---|---|
 | `journey_view_change` | switched Essentials/Culture | `from`, `to` |
-| `task_status_change` | changed an administrative task | task ID, from/to status, phase; no profile answers |
+| `task_start` / `task_complete` / `task_uncomplete` | changed an administrative task | task ID and coarse state only; no profile answers |
 | `mission_complete` / `mission_uncomplete` | changed cultural mission state | mission ID, phase, category |
 | `bucket_create` | created a Want-to list | template ID, initial item count |
 | `bucket_item_complete` | checked an item | bucket/item opaque IDs; no text |
 | `panel_unlock` | crossed a six-completion threshold | panel number, source |
 | `byeongpung_share` / `byeongpung_save_image` | exported artwork | completed panel count, surface |
-| `dates_setup_open` | followed missing-dates prompt | source screen |
+| `profile_field_change` | changed a profile field in Settings | allowlisted field name only, never the value |
+| `onboarding_step_complete` / `onboarding_complete` | advanced through setup | step name or completion flag; no answer values |
 
 ## Funnels
 

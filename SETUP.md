@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Node.js compatible with Expo SDK 52
+- Node.js compatible with Expo SDK 57 (Node 20+ recommended)
 - npm
 - For native iOS: Xcode and CocoaPods
 - For native Android: Android Studio/SDK
@@ -12,7 +12,7 @@ No Firebase Auth or Firestore project is required for the core local journey. Na
 ## Install and run
 
 ```bash
-npm install
+npm ci
 npm run web
 npm run ios
 npm run android
@@ -22,7 +22,9 @@ The web app uses Expo Router. Do not force browser deep links through the native
 
 ## Environment
 
-Copy `.env.example` only for optional public analytics configuration. `EXPO_PUBLIC_*` values are embedded in clients and are not secrets.
+Copy `.env.example` only when configuring optional public analytics, support,
+or privacy-policy destinations. Blank contact values intentionally render as
+non-links. `EXPO_PUBLIC_*` values are embedded in clients and are not secrets.
 
 - No usable PostHog key: analytics client is disabled.
 - Usable PostHog key: allowlisted events may be sent; session replay remains disabled.

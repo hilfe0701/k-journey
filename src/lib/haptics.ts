@@ -11,8 +11,6 @@ import * as Haptics from 'expo-haptics';
  * steps down Success → Light. Destructive confirm is a safety signal and is
  * never downgraded.
  *
- * `hapticSelection` is retained only for legacy call sites pending removal
- * per ADR-0030 (selection ticks are not a sanctioned haptic moment).
  */
 
 export function hapticMissionComplete(reduceMotion = false): void {
@@ -31,14 +29,6 @@ export function hapticPanelUnlock(reduceMotion = false): void {
     void (reduceMotion
       ? Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
       : Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
-  } catch {
-    // intentional swallow: haptics are cosmetic, never required for correctness.
-  }
-}
-
-export function hapticSelection(): void {
-  try {
-    void Haptics.selectionAsync();
   } catch {
     // intentional swallow: haptics are cosmetic, never required for correctness.
   }

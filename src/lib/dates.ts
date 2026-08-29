@@ -6,9 +6,9 @@
  * of where the user's device is. See ADR-0022 (docs/adr/0022-kst-timezone-single-source.md)
  * and PRD v1.1 §11.7.
  *
- * Server-side write timestamps use Firestore `serverTimestamp()` so clock
- * manipulation on the device cannot game D-Day or completion times. See `clockGuard.ts`
- * for clock-skew diagnostic recording.
+ * Completion timestamps are local informational records. Phase and D-Day
+ * calculations use the current instant plus KST calendar helpers. See
+ * `clockGuard.ts` for best-effort clock-skew diagnostics.
  *
  * Migration record: replaces direct `startOfDay()` / `differenceInCalendarDays()`
  * usages that previously read device-local time. See Round 2 plan Part E.1.

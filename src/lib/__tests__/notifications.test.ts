@@ -1,5 +1,6 @@
 import {
   claimPanelUnlock,
+  cancelScheduledJourneyNotifications,
   hasFiredPanelUnlock,
   firePanelUnlock,
   rescheduleAllNotifications,
@@ -21,6 +22,7 @@ jest.mock('expo-notifications', () => ({
 
 const scheduleMock = Notifications.scheduleNotificationAsync as jest.Mock;
 const permsMock = Notifications.getPermissionsAsync as jest.Mock;
+const cancelMock = Notifications.cancelAllScheduledNotificationsAsync as jest.Mock;
 
 describe('claimPanelUnlock', () => {
   beforeEach(() => {
@@ -58,7 +60,8 @@ describe('claimPanelUnlock', () => {
 describe('firePanelUnlock — sources copy from PUSH_COPY', () => {
   beforeEach(() => {
     storage.clearAll();
-    scheduleMock.mockClear();
+    scheduleMock.mockReset();
+    scheduleMock.mockResolvedValue('id');
     permsMock.mockResolvedValue({ granted: true });
   });
 
@@ -87,15 +90,23 @@ describe('rescheduleAllNotifications — sources copy from PUSH_COPY', () => {
 
   beforeEach(() => {
     storage.clearAll();
-    scheduleMock.mockClear();
+    scheduleMock.mockReset();
+    scheduleMock.mockResolvedValue('id');
+    permsMock.mockReset();
+    permsMock.mockResolvedValue({ granted: true, ios: { status: 2 }, canAskAgain: true });
+    cancelMock.mockReset();
+    cancelMock.mockResolvedValue(undefined);
   });
 
   it('schedules the D-30/14/7 milestones from the catalog, never inline strings', async () => {
-    await rescheduleAllNotifications({ arrivalDate: iso(10), departureDate: iso(90) });
+    const result = await rescheduleAllNotifications({ arrivalDate: iso(10), departureDate: iso(90) });
     const titles = scheduleMock.mock.calls.map((c) => c[0].content.title);
     expect(titles).toContain(PUSH_COPY.dDay30.title);
     expect(titles).toContain(PUSH_COPY.dDay14.title);
     expect(titles).toContain(PUSH_COPY.dDay7.title);
+    expect(result.complete).toBe(true);
+    expect(result.permissionGranted).toBe(true);
+    expect(result.scheduledCount).toBe(scheduleMock.mock.calls.length);
   });
 
   it('schedules the phase-boundary notifications from the catalog', async () => {
@@ -104,5 +115,54 @@ describe('rescheduleAllNotifications — sources copy from PUSH_COPY', () => {
     expect(titles).toContain(PUSH_COPY.phase2Start.title);
     expect(titles).toContain(PUSH_COPY.phase3Start.title);
     expect(titles).toContain(PUSH_COPY.phase4Start.title);
+  });
+
+  it('reports a partial refresh when scheduling fails', async () => {
+    scheduleMock.mockRejectedValueOnce(new Error('schedule failed'));
+    const result = await rescheduleAllNotifications({ arrivalDate: iso(10), departureDate: iso(90) });
+    expect(result.complete).toBe(false);
+    expect(result.cancelledExisting).toBe(true);
+    expect(result.failureCount).toBe(1);
+    expect(result.scheduledCount).toBe(scheduleMock.mock.calls.length - 1);
+  });
+
+  it('does not add a new schedule when cancellation fails, preventing duplicates', async () => {
+    cancelMock.mockRejectedValueOnce(new Error('cancel failed'));
+    const result = await rescheduleAllNotifications({ arrivalDate: iso(10), departureDate: iso(90) });
+    expect(scheduleMock).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      complete: false,
+      permissionGranted: true,
+      cancelledExisting: false,
+      scheduledCount: 0,
+      failureCount: 1,
+    });
+  });
+
+  it('clears old reminders but does not schedule without OS permission', async () => {
+    permsMock.mockResolvedValue({ granted: false, canAskAgain: false });
+    const result = await rescheduleAllNotifications({ arrivalDate: iso(10), departureDate: iso(90) });
+    expect(cancelMock).toHaveBeenCalledTimes(1);
+    expect(scheduleMock).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      complete: false,
+      permissionGranted: false,
+      cancelledExisting: true,
+      scheduledCount: 0,
+      failureCount: 0,
+    });
+  });
+});
+
+describe('cancelScheduledJourneyNotifications', () => {
+  beforeEach(() => {
+    cancelMock.mockReset();
+    cancelMock.mockResolvedValue(undefined);
+  });
+
+  it('reports whether reminders were actually cleared', async () => {
+    await expect(cancelScheduledJourneyNotifications()).resolves.toBe(true);
+    cancelMock.mockRejectedValueOnce(new Error('cancel failed'));
+    await expect(cancelScheduledJourneyNotifications()).resolves.toBe(false);
   });
 });

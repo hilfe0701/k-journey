@@ -1,23 +1,23 @@
 /**
- * Clock skew detector.
+ * Clock-skew detector for a single JavaScript runtime.
  *
- * Records (does NOT block) when the device clock jumps by ±2 days between boots.
- * Server `serverTimestamp()` writes already neutralise the worst outcomes of clock
- * manipulation; this diagnostic exists so we can spot patterns in Crashlytics /
- * PostHog without UI false-positives interrupting legitimate travel.
- *
- * See ADR-0022 §4.3 and docs/I18N_TIMEZONE.md §4.3.
- *
- * Boot path: call `checkClockSkew()` once from `app/_layout.tsx` after
- * `runMigrations()` but before any phase/D-Day calc.
+ * A wall-clock gap between separate launches is normal and cannot prove clock
+ * manipulation. Instead, compare wall-clock elapsed time with monotonic elapsed
+ * time while this runtime is continuously in the foreground. React Native's
+ * monotonic source is not guaranteed to include device suspend time, so callers
+ * must discard the baseline whenever AppState leaves `active`.
  */
 
-import { kstNow } from './dates';
-import { storage } from './storage';
 import { track } from './posthog';
 
-const SKEW_THRESHOLD_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
-const LAST_BOOT_KEY = 'clock:lastBootIso';
+const SKEW_THRESHOLD_MS = 2 * 24 * 60 * 60 * 1000;
+
+interface ClockSample {
+  wallNowMs: number;
+  monotonicNowMs: number;
+}
+
+let lastSample: ClockSample | null = null;
 
 export interface SkewDetection {
   detected: boolean;
@@ -26,44 +26,56 @@ export interface SkewDetection {
   actualBootIso: string;
 }
 
-export function checkClockSkew(): SkewDetection {
-  const actualNow = kstNow();
-  const actualBootIso = actualNow.toISOString();
-  const lastSeen = storage.getString(LAST_BOOT_KEY);
+function currentMonotonicMs(): number | null {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : null;
+}
 
-  if (!lastSeen) {
-    // First boot — nothing to compare against.
-    storage.set(LAST_BOOT_KEY, actualBootIso);
+export function checkClockSkew(overrides: Partial<ClockSample> = {}): SkewDetection {
+  const wallNowMs = overrides.wallNowMs ?? Date.now();
+  const monotonicNowMs = overrides.monotonicNowMs ?? currentMonotonicMs();
+  const actualBootIso = new Date(wallNowMs).toISOString();
+  if (monotonicNowMs === null) {
+    lastSample = null;
+    return { detected: false, deltaMs: 0, expectedBootIso: null, actualBootIso };
+  }
+  const sample: ClockSample = {
+    wallNowMs,
+    monotonicNowMs,
+  };
+
+  if (!lastSample || sample.monotonicNowMs < lastSample.monotonicNowMs) {
+    lastSample = sample;
     return { detected: false, deltaMs: 0, expectedBootIso: null, actualBootIso };
   }
 
-  const last = new Date(lastSeen);
-  const deltaMs = actualNow.getTime() - last.getTime();
+  const expectedWallMs =
+    lastSample.wallNowMs + (sample.monotonicNowMs - lastSample.monotonicNowMs);
+  const deltaMs = sample.wallNowMs - expectedWallMs;
+  const expectedBootIso = new Date(expectedWallMs).toISOString();
+  lastSample = sample;
 
-  // Negative delta = device clock moved backward. Either direction past threshold counts.
   if (Math.abs(deltaMs) > SKEW_THRESHOLD_MS) {
-    // Diagnostic event — not in canonical KJEvent union.
-    // Cast through unknown to bypass strict typing; see docs/SECURITY.md and docs/ANALYTICS_SCHEMA.md.
     try {
-      (track as unknown as (e: string, p: object) => void)('clock_skew_detected', {
+      (track as unknown as (event: string, properties: object) => void)('clock_skew_detected', {
         deltaDays: Math.round(deltaMs / (24 * 60 * 60 * 1000)),
       });
     } catch {
-      // intentional swallow: telemetry must never crash the boot path.
+      // Telemetry is optional and must never break foreground recovery.
     }
-    storage.set(LAST_BOOT_KEY, actualBootIso);
-    return { detected: true, deltaMs, expectedBootIso: lastSeen, actualBootIso };
+    return { detected: true, deltaMs, expectedBootIso, actualBootIso };
   }
 
-  storage.set(LAST_BOOT_KEY, actualBootIso);
-  return { detected: false, deltaMs, expectedBootIso: lastSeen, actualBootIso };
+  return { detected: false, deltaMs, expectedBootIso, actualBootIso };
 }
 
-/** Test helper — reset the recorded last boot. Not for production code. */
-export function _resetClockGuardForTesting() {
-  storage.delete(LAST_BOOT_KEY);
+/** Discard comparisons across background, inactive, suspend, or runtime boundaries. */
+export function resetClockSkewBaseline(): void {
+  lastSample = null;
 }
 
-// LAST_BOOT_KEY is intentionally not in KEYS (storage.ts) — it's an internal
-// diagnostic, not a feature-bearing key. Migration framework (ADR-0023) does
-// not need to version it; corruption simply resets the baseline.
+/** Test helper — reset the in-memory baseline. */
+export function _resetClockGuardForTesting(): void {
+  resetClockSkewBaseline();
+}

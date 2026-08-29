@@ -7,7 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { View, StyleSheet, Pressable, Platform } from 'react-native';
+import { View, StyleSheet, Pressable, Platform, AppState } from 'react-native';
 import { PostHogProvider } from 'posthog-react-native';
 import { getCrashlytics, recordError } from '@react-native-firebase/crashlytics';
 import { AlertTriangle } from 'lucide-react-native';
@@ -24,7 +24,7 @@ import {
 } from '../src/components/onboarding/AhaMomentTour';
 import { palette, space, radius } from '../design-tokens';
 import { runMigrations } from '../src/lib/storageMigrations';
-import { checkClockSkew } from '../src/lib/clockGuard';
+import { checkClockSkew, resetClockSkewBaseline } from '../src/lib/clockGuard';
 import { usePushPermissionWatcher } from '../src/lib/permissions';
 import { surfaceError } from '../src/lib/errorAlert';
 import { getOnboardingProgress, onboardingRoutePath } from '../src/lib/storage';
@@ -37,23 +37,13 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 // ships without any keyboard focus indicator unless this runs. No-op on native.
 installWebFocusRing();
 
-// Boot path: MMKV migrations + clock-skew diagnostic. Both are synchronous and
-// must precede any hook that reads MMKV (for example, useProfile). See
-// ADR-0023 (migrations) and ADR-0022 (clock guard). Side-effect on module load
-// is intentional — RN guarantees this module is the entry point.
+// MMKV migrations must precede hooks that read MMKV.
 try {
   runMigrations();
 } catch {
   // intentional swallow: migration runner already records partial failures
   // internally. Boot must continue regardless.
 }
-let clockSkewDetectedAtBoot = false;
-try {
-  clockSkewDetectedAtBoot = checkClockSkew().detected;
-} catch {
-  // intentional swallow: diagnostic only; no behaviour gated on it.
-}
-
 /**
  * Expo Router calls this when a render-time error escapes a route. We forward
  * to Crashlytics (in release) and show a recoverable retry UI.
@@ -146,13 +136,41 @@ function RouteGate() {
     (segments as string[])[0] === '(tabs)' &&
     !hasShownAhaMoment();
 
-  // Surface a one-time clock-jump banner if boot detected device-clock skew
-  // (ADR-0022, ADR-0028 T4). Deferred to an effect so the ToastHost is mounted.
+  // Compare clocks only during one continuous foreground interval. Native
+  // monotonic clocks may pause during device suspend, so background samples
+  // must never share a baseline with later foreground samples.
   useEffect(() => {
-    if (clockSkewDetectedAtBoot) {
-      clockSkewDetectedAtBoot = false;
-      surfaceError('clock-jump');
-    }
+    let sampleTimer: ReturnType<typeof setInterval> | null = null;
+
+    const sample = () => {
+      try {
+        if (checkClockSkew().detected) surfaceError('clock-jump');
+      } catch {
+        // Diagnostic only; foreground recovery must continue.
+      }
+    };
+
+    const stopSampling = () => {
+      if (sampleTimer) clearInterval(sampleTimer);
+      sampleTimer = null;
+      resetClockSkewBaseline();
+    };
+
+    const startSampling = () => {
+      stopSampling();
+      sample(); // establish a fresh foreground-only baseline
+      sampleTimer = setInterval(sample, 60_000);
+    };
+
+    if (AppState.currentState === 'active') startSampling();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') startSampling();
+      else stopSampling();
+    });
+    return () => {
+      stopSampling();
+      subscription.remove();
+    };
   }, []);
 
   // Permission watcher: re-check push permission on every foreground transition

@@ -22,6 +22,14 @@ The byeongpung is the emotional payoff of K-Journey, not a decorative gallery. I
 
 Historical labels describe an art-direction interpretation, not authenticated period artifacts. Marketing and UI copy must not call generated images “traditional originals.”
 
+Chaekgeori emerged and became established in late Joseon, certainly by the
+late eighteenth century; it is not period-authentic Silla or Goryeo imagery.
+The Silla panel deliberately substitutes Buddhist sutra scrolls and ritual
+objects, while the Goryeo panel substitutes Tripitaka woodblocks and Buddhist
+scrolls. Those two panels are contemporary thematic adaptations of “books and
+learning,” not reconstructions of chaekgeori from those periods. The detailed
+mapping is preserved in `AI_IMAGE_PROMPTS.md` §§5.10 and 7.5.
+
 ## Reveal states
 
 - Locked: artwork remains legible at roughly 30–40% visual presence with a translucent hanji wash.
