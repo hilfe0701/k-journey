@@ -88,8 +88,13 @@ on the current device through MMKV.
 The public alias is [k-journey-three.vercel.app](https://k-journey-three.vercel.app),
 currently deployment `dpl_CAW2wJRHYnzUxjyXmuRkD3JBaDcv` (created 2026-08-04).
 It predates this release candidate and must not be described as current parity.
-The verified preview, source SHA, and rollback record belong in
-`docs/WEB_DEPLOYMENT.md` after the source is committed.
+
+The protected release-candidate preview is
+[k-journey-c6xithud6-wodbs990701-3298s-projects.vercel.app](https://k-journey-c6xithud6-wodbs990701-3298s-projects.vercel.app),
+deployment `dpl_4JQEFMTvu7D6q9i3HFxMaMa6JbMT`. Vercel's clean `npm ci` and
+Expo export passed; authenticated direct requests to `/`, mission, task,
+bucket, byeongpung, and gallery routes plus the exact JS bundle all returned
+HTTP 200. Production has not been promoted.
 
 ## External release blockers
 

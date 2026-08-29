@@ -17,6 +17,11 @@
 
 ## Web release
 
+Protected preview `dpl_4JQEFMTvu7D6q9i3HFxMaMa6JbMT` is ready and its
+direct routes/assets return HTTP 200 through Vercel's authenticated verifier.
+Production promotion and the public-alias smoke below remain pending explicit
+approval.
+
 1. Build fresh static output from the pinned commit.
 2. Deploy with SPA route rewrite configuration.
 3. Record URL, provider deployment ID, source SHA, build command, environment, timestamp, and rollback target in `docs/WEB_DEPLOYMENT.md`.
