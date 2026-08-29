@@ -55,5 +55,5 @@ If the app fails to boot, a direct route stops returning HTTP 200, or a release 
 - `EXPO_PUBLIC_*` values are embedded in the browser bundle. Only public client configuration belongs there.
 - PostHog remains disabled until a real public project key is provided as `EXPO_PUBLIC_POSTHOG_API_KEY`.
 - CLI deployments work. Git-triggered automatic deployments require connecting the GitHub login in the Vercel account and then linking `hilfe0701/k-journey`.
-- `npm audit` reports 38 transitive findings in the Expo 52 toolchain. Its proposed remediation upgrades Expo to 57 and React Native to 0.86, so it must be handled as a tested framework migration rather than an unattended production patch.
+- `npm audit --omit=dev` reports 44 transitive findings (including high/critical issues) in the Expo 52 toolchain. Its proposed remediation upgrades Expo to 57 and React Native to 0.86, so it must be handled as a tested framework migration rather than an unattended production patch.
 - iOS packaging, signing, TestFlight, and App Store release are intentionally deferred to the iOS release phase.
