@@ -58,6 +58,16 @@ describe('emergency content ledger', () => {
       expect(item.evidence.verification).toBe('editorial');
     }
   });
+
+  it('keeps 112 language support confirmed and 119 voice interpretation unresolved', () => {
+    const phones = itemsById('phones');
+    const police = phones.find((item) => item.label.includes('112'));
+    const fire = phones.find((item) => item.label.includes('119'));
+    expect(police?.languageSupport?.verification).toBe('verified');
+    expect(police?.languageSupport?.evidence.publisher).toContain('Police');
+    expect(fire?.languageSupport?.verification).toBe('needs_review');
+    expect(fire?.languageSupport?.detail).toMatch(/does not state|not confirmed/i);
+  });
 });
 
 describe('emergency claims that were previously wrong', () => {
@@ -97,13 +107,29 @@ describe('emergency claims that were previously wrong', () => {
   });
 
   it('does not publish an unreachable embassy number as confirmed', () => {
-    const unconfirmed = itemsById('embassies').filter(
-      (item) => item.evidence.verification === 'needs_review',
-    );
-    expect(unconfirmed.length).toBeGreaterThan(0);
-    for (const item of unconfirmed) {
-      expect(evidenceNeedsReview(item.evidence)).toBe(true);
+    // The rule, not the tally: whatever is still unconfirmed must read as
+    // unconfirmed. All six were reachable on 2026-08-06, so this filter is
+    // expected to be empty until a source rots.
+    for (const item of itemsById('embassies')) {
+      if (item.evidence.verification === 'needs_review') {
+        expect(evidenceNeedsReview(item.evidence)).toBe(true);
+      }
     }
+  });
+
+  it('drops the UK number gov.uk does not publish, keeping the contact form', () => {
+    const uk = itemsById('embassies').find((item) => item.label === 'United Kingdom');
+    expect(uk?.detail).not.toContain('02-3210-5500');
+    expect(uk?.href).toContain('gov.uk');
+  });
+
+  it('points Canada and France at the URLs that did not move', () => {
+    const embassies = itemsById('embassies');
+    const canada = embassies.find((item) => item.label === 'Canada');
+    const france = embassies.find((item) => item.label === 'France');
+    // `korea-coree` 404s and `kr.ambafrance.org` 301s away; both were replaced.
+    expect(canada?.evidence.sourceUrl).not.toContain('country-pays/korea-coree');
+    expect(france?.evidence.sourceUrl).not.toContain('ambafrance');
   });
 
   it('drops the US after-hours number that no source publishes', () => {

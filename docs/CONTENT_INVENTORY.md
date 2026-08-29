@@ -1,6 +1,6 @@
 # Content inventory — K-Journey에 들어가야 할 실제 정보 목록
 
-> 작성일 2026-08-04 · **P0 반영 2026-08-04** · 대상 브랜치 `v2-conditional-orchestration`
+> 작성일 2026-08-04 · **P0 반영 2026-08-04 · P1/P2 반영 2026-08-29** · 대상 브랜치 `v2-conditional-orchestration`
 > 이 문서는 **무엇이 앱에 들어가야 하는가**의 전수 목록이고, 각 항목이 지금 실제 정보인지 미검증인지를 기록한다.
 > 규범(어떻게 검증할 것인가)은 `docs/CONTENT_GOVERNANCE.md`가 소유한다. 이 문서는 그 규범의 **원장(ledger)** 이다.
 > 제품 범위의 최종 권위는 `reference/K-Journey_PRD_v2_0_KR.md`와 `DEC-040`.
@@ -11,23 +11,23 @@
 
 | 콘텐츠 표면 | 항목 수 | 출처 메타데이터 스키마 | 실제 검증됨 | 등급 |
 |---|---:|---|---|---|
-| 행정 태스크 (Essentials) | 15 | 있음 (`TaskSourceMetadata`) | 12/15 | A |
-| 문화 미션 (Culture) | 55 | **없음** | 0/55 | B·C (일부 A 혼입) |
-| 대학 레코드 | 9 | 있음 (`UniversityVerification`) | 5/9, 단 비자 항목만 | B |
-| 긴급 정보 | 5 섹션 / 25 항목 | 있음 (`ContentEvidence`) | 25/25 (5건 `needs_review` 명시) | **A** |
+| 행정 태스크 (Essentials) | 18 | 있음 (`TaskSourceMetadata`) | 15/18 | A |
+| 문화 미션 (Culture) | 55 | 있음 (`ContentEvidence`) | 5/55 fully verified; remaining states explicit | B·C (일부 A 혼입) |
+| 대학 레코드 | 9 | 있음 (`UniversityVerification` + 블록별 `contentEvidence`) | 9/9 주소·교통 확인, 기숙사·상권 불확실성 명시 | B |
+| 긴급 정보 | 5 섹션 / 25 항목 | 있음 (`ContentEvidence`) | 25/25 verified | **A** |
 | 온보딩 조건 축 | 12축 / 선택지 26개 | 해당 없음 (사용자 입력) | — | — |
 | Want-to 템플릿 | 6 | 해당 없음 (문화 해설) | — | C |
 | 병풍 아트 | 3 시대 × 8 패널 = 24 | 해당 없음 (자체 제작) | 자산 존재 | — |
 
 **핵심 결론 3가지**
 
-1. **행정 트랙만 원장을 갖고 있다.** `taskState.ts` / `departureTasks.ts` / `immigrationAppointment.ts` / `dormitoryApplication.ts`는 `sourceUrl`·`checkedAt`·`finalAuthority`·`volatility`·`conflictValues`를 실제로 들고 다닌다. 이 구조가 나머지 표면에 적용되어야 할 표준이다.
-2. ~~**문화 미션 55개와 긴급 정보 25개 항목은 출처 필드 자체가 없다.**~~ → **긴급 정보는 해소됨(P0-1).** 25개 항목 전부가 `ContentEvidence`를 들고 다니고, 화면이 출처·확인일·최종 권위를 항목마다 렌더한다. **문화 미션 55개는 여전히 출처 필드가 없다** (P2 항목 8). 그 안의 원화 금액 25건은 §2.3 그대로 미해결이다.
-3. **대학 레코드의 검증은 비자 안내 URL 하나에만 걸려 있다.** `nearbyEats`, `transitRoutes`, `dorm.curfew`, `dorm.laundry` 요금은 `verification` 블록이 커버하지 않는다. 실제로 가장 "더미로 의심되는" 구간이 여기다 (§3.3).
+1. **모든 주요 콘텐츠 표면이 출처 메타데이터를 갖는다.** 행정 트랙은 `sourceUrl`·`checkedAt`·`finalAuthority`·`volatility`·`conflictValues`를, 문화 미션·긴급 정보는 `ContentEvidence`를, 대학 레코드는 블록별 `contentEvidence`를 실제로 들고 다닌다.
+2. ~~**문화 미션 55개와 긴급 정보 25개 항목은 출처 필드 자체가 없다.**~~ → **긴급 정보와 문화 미션 모두 해소됨(P0-1/P2-8).** 미션 55개와 긴급 정보 25개 전부가 `ContentEvidence`를 들고 다니고, 화면이 출처·확인일·최종 권위를 항목마다 렌더한다. 미확인 값은 `needs_review` 또는 `unknown`으로 표시한다.
+3. **대학 레코드는 비자 안내와 캠퍼스 블록 증거를 분리한다.** `contentEvidence`가 주소·기숙사·교통·상권에 각각 붙고, 공식 확인이 안 된 기숙사 세부사항과 상권 라벨은 `needs_review`로 표시한다 (§3.3).
 
 ---
 
-## 1. 행정 태스크 — Essentials (15개)
+## 1. 행정 태스크 — Essentials (18개)
 
 조건부 체크리스트. `usePhase` + `conditionRules.ts`가 프로필 12개 축을 보고 노출을 결정한다.
 **문화 완료 총합에 절대 기여하지 않는다** (CLAUDE.md MUST 8).
@@ -51,6 +51,9 @@
 | 13 | `G7` | Stop transit-card auto-charge | `departureTasks.ts` | ⚠️ |
 | 14 | `G8` | Cancel internet and utilities | `departureTasks.ts` | ⚠️ |
 | 15 | `G9` | Get an entry and exit record certificate | `departureTasks.ts` | ⚠️ |
+| 16 | `immigration-jurisdiction` | Find your responsible immigration office | `admin.ts` | 출입국 관할표 + 주소 미확정 시 `review_required` |
+| 17 | `part-time-work-permission` | Check part-time work permission | `admin.ts` | 허가 필요성 확인, 세부요건 `needs_review` |
+| 18 | `health-insurance-enrollment` | Check health-insurance enrollment | `admin.ts` | NHIS 가입·감면·면제 심사 경로 |
 
 ### 1.2 이 트랙에 실제로 들어가야 하는 정보
 
@@ -76,7 +79,7 @@
 - [ ] **체류지 변경신고 기한** — 현재 코드에 일수가 하드코딩되어 있는지 `conditionRules.ts`의 `DueRule` 전수 확인 후, 출입국관리법 시행령 원문 대조.
 - [ ] **HiKorea 방문예약 오픈 시점·슬롯 주기** — 앱이 "예약이 희소 자원"이라는 전제로 순서를 잡고 있으므로(REQ-SFR-007), 이 전제의 근거를 문서화.
 - [x] **`departure-order` 태스크의 1차 출처** (2026-08-04) — 1차 출처는 **존재하지 않는 것으로 확정**했다. 이 태스크는 사실 주장이 아니라 서로 다른 두 기관에 걸린 선후 결정이므로, `conflictValues`에 양측(은행 측 = Fulbright 기관 안내, 기숙사 측 = 각 사 내규)을 병기하고 `sourceLabel`에 "not a primary authority"를 명시했다. 빈 URL 상태는 제거됐다.
-- [x] **기숙사 보증금 환급(G3) 대학별 실제 절차** (2026-08-04) — **전국 단위 규정이 없음**을 확인했다(각 대학 생활관 내규가 지배). 따라서 출처는 의도적으로 비워 두되 `conflictNote`에 그 이유를 적었고, **시점을 단정하던 summary를 제거**했다. 대학별 기숙사 페이지 9건 수집은 여전히 P1(§3.4).
+- [x] **기숙사 보증금 환급(G3) 대학별 실제 절차** (2026-08-04) — **전국 단위 규정이 없음**을 확인했다(각 대학 생활관 내규가 지배). 따라서 출처는 의도적으로 비워 두되 `conflictNote`에 그 이유를 적었고, **시점을 단정하던 summary를 제거**했다. 대학별 기숙사 페이지 9건은 §3.4의 블록별 evidence로 연결했다.
 - [x] **성적증명서(G6) 발급 경로** (2026-08-04) — 정부24의 교육부 「대학교 성적 증명」 서비스로 1차 출처 확보. 해외 발송·전자증명 가능 여부는 대학별이므로 `conflictNote`에 남기고 최종 권위를 각 대학 학적팀으로 지정.
 - [ ] **NHIS 1577-1000** 및 외국어 서비스 내선(현재 "press 7") 현행 확인.
 - [ ] **통신 3사 해지 절차** — 현재 생활법령 일반론. SKT/KT/LGU+ 각사 외국인 해지 페이지 3건 필요.
@@ -102,36 +105,32 @@
 
 ### 2.2 구조적 갭 — 가장 큰 문제
 
-`Mission` 인터페이스에는 **출처 필드가 하나도 없다.**
+`Mission` 인터페이스에는 이제 `completeWhen`, `evidence`, `owner`가 필수다. 55개 원장은 [`MISSION_SOURCE_LEDGER.md`](./MISSION_SOURCE_LEDGER.md)가 소유한다.
 
-```ts
-export interface Mission {
-  id; phase; category; titleEn; titleKo?; summary;
-  tips: string[];   // ← 여기에 금액·소요시간·규정이 전부 들어 있는데 출처가 없다
-  mapHint?; icon; appliesTo?;
-}
-```
+화면은 각 카드에 확인일·검증 상태·최종 권위·담당 역할·출처 링크를 표시하고, `needs_review`·`unknown`은 확인 전 사용하지 말 것을 명시한다.
 
-`CONTENT_GOVERNANCE.md`도 이 사실을 인정한다 — *"현재 정적 문화 카탈로그는 이 스키마 이전에 작성되었다."*
-그런데 **미션 tips 안에 Class A 정보가 섞여 있다**: `p1_visa`(D-2 비자, 영사관 절차), `p2_arc`(외국인등록증), `p2_bank`(은행 계좌 개설). 이 세 개는 문화 미션이 아니라 행정 정보다.
+행정성 내용은 여전히 문화 미션과 Essentials가 중복되지 않도록 검토한다. `p1_visa`, `p2_arc`, `p2_bank`는 행정 태스크로 연결되는 안내이며, 미션 카드에는 출처 상태와 최종 권위를 함께 표시한다.
 
 ### 2.3 검증 없이 박혀 있는 구체 수치 — 전수 목록 (원화 25건)
 
 | 위치 | 값 | 무엇에 대한 | 클래스 |
 |---|---|---|---|
+> **2026-08-06 갱신.** 아래 표는 원장 작성 시점의 목록이다. B 등급 8건 중 4건이 이 날 처리됐고, 그 결과는 §2.6에 있다.
+> 표의 `:553`은 「고궁 입장 추정」이 아니라 **한복 헤어 스타일링 가격**(사설 대여점, C 등급)이었다. 원장 작성 시의 오분류이므로 정정한다. 고궁 입장료는 애초에 앱에 없었다.
+
 | `missions.ts:78` | ₩30,000–50,000 | 다이소 침구 세트 | C |
 | `:79` | ₩60,000 | 기본 주방용품 | C |
 | `:92` | ₩9,500 | AREX 직통열차 | **B — 운임은 공시값** |
 | `:93` | ₩17,000 | KAL 리무진 | **B** |
 | `:94` | ₩60,000–80,000 | 인천공항 택시 | C |
-| `:162` | ₩4,000 | T-money 카드 | **B** |
+| `:162` | 미정 | T-money 카드 | **B — 판매처·상품별 가격, needs_review** |
 | `:174` | ₩30,000–55,000 | SIM/eSIM | B |
 | `:232` | ₩25,000–35,000 | (기숙사/주거 관련) | C |
 | `:245` | ₩2,000 / ₩4,000–6,000 | 코인 세탁 | C |
 | `:301` | ₩12,000 / ₩2,000–5,000 | 배달 | C |
 | `:310` | ₩7,000–12,000 | 캠퍼스 식당 | C |
 | `:368` | ₩4,000 | 길거리 음식 | C |
-| `:466` | ₩60,000 | KTX 당일치기 | **B — 공시 운임** |
+| `:466` | 미정 | KTX 당일치기 | **B — 열차·좌석·날짜별 조회, needs_review** |
 | `:508` | ₩1,000 | 노래방 | C |
 | `:519` | ₩1,500 | PC방 | C |
 | `:551` | ₩15,000–25,000 | 한복 대여 | C |
@@ -140,19 +139,19 @@ export interface Mission {
 | `:580` | ₩20,000–80,000 | 도장 각인 | C |
 | `:661` | ₩3,000–5,000 | 스터디카페 | C |
 | `:663` | ₩6,000 | 스터디카페 | C |
-| `:675` | ₩4,000–10,000 | 약국·의원 | **B — 진료비는 규정값** |
+| `:675` | 미정 | 약국·의원 | **B — 고시·보험 유형별 확인, needs_review** |
 | `:717` | ₩8,000–15,000 | 선물 | C |
-| `universities.ts:66,129,160,221,251,312` | ₩500–1,500 | 각 대학 코인세탁 요금 | B |
+| `universities.ts` | 미정 | 각 대학 세탁요금 | B — 기숙사별 현장 공지 확인 |
 
-→ **B 등급 8건(AREX, KAL 리무진, T-money, KTX, 고궁, 박물관, 진료비, 세탁요금)은 운영자 공시 페이지에서 즉시 확인 가능**하고 확인해야 한다.
+→ **B 등급 8건(AREX, KAL 리무진, T-money, KTX, 고궁, 박물관, 진료비, 세탁요금)은 운영자 공시·조회 페이지로 대조했다.** 조회 조건에 따라 확정할 수 없는 T-money·KTX·진료비·대학 세탁요금은 앱에서 금액을 제거하고 `needs_review`로 남겼다.
 → C 등급은 "가격은 변동될 수 있음" 고지와 함께 편집 가이드로 명시 라벨링하면 유지 가능하다.
 
 ### 2.4 미션 트랙에 확보해야 할 실제 정보
 
-- [ ] **55개 전부에 대한 source ledger 생성** — `CONTENT_GOVERNANCE.md`의 비인터뷰 검증 백로그 1번 항목. 이게 미완료 상태다.
-- [ ] **`Mission` 인터페이스에 `evidence?: ContentEvidence` 추가** — 거버넌스 문서가 이미 타입을 정의해 뒀다. 코드에는 없다.
+- [x] **55개 전부에 대한 source ledger 생성** (2026-08-29) — [`docs/MISSION_SOURCE_LEDGER.md`](./MISSION_SOURCE_LEDGER.md)에 55개 ID, 확인일, 등급, 검증 상태, 최종 권위를 기록했다. `needs_review`·`unknown`은 의도적으로 남겼다.
+- [x] **`Mission` 인터페이스에 `evidence: ContentEvidence` 추가** (2026-08-29) — `src/lib/contentEvidence.ts`의 타입을 재사용하고, 출처 미확인은 `unknown` + 빈 URL로 표현한다.
 - [x] **행정성 미션 3건 재분류** (2026-08-04) — 재분류가 아니라 **주장 철회**로 처리했다. 실제로 발견된 모순 3건은 §2.5에 기록. 미션은 문화 카탈로그에 남되 행정 사실을 더 이상 주장하지 않고 Essentials로 넘긴다. 회귀 테스트는 `src/data/__tests__/missions.test.ts`.
-- [ ] **운영자 공시 요금 8건** 링크 + `checkedAt` 확보 (§2.3의 B 등급).
+- [x] **운영자 공시 요금 8건** 링크 + `checkedAt` 확보 (§2.3의 B 등급) (2026-08-29) — 확정할 수 없는 금액은 제거하고 `needs_review`로 남겼다.
 - [ ] **`mapHint` 12건** — PRD상 라이브 내비게이션이나 영업시간 보장이 아님을 이미 규정. 각 hint가 실존 장소를 정확히 지시하는지만 확인.
 - [ ] **공휴일·계절 의존 미션** — 축제(`Attend a Korean festival`), 한강 치맥, 등산은 시기 의존적. 연 단위 갱신 대상으로 표시.
 
@@ -169,13 +168,32 @@ export interface Mission {
 추가로 출처 없는 Class A 주장 3건을 제거했다 — `p2_bank`의 준비물 목록(`You need: ARC, passport, ...`)과 당일 발급 보증, `p1_visa`의 "두 부씩 복사" 요구.
 `p2_arc`의 `mapHint`(목동 서울출입국)도 제거했다. 관할은 주소지를 따르는데 전체 사용자에게 한 곳을 지정하고 있었다(§11.1③).
 
-**남은 것:** 이 3건은 여전히 `evidence` 필드가 없다. 주장을 걷어냈을 뿐 출처 원장에 편입된 것은 아니다 → P2 항목 8.
+**남은 것:** 이 3건의 행정 주장은 철회된 상태다. 이제 모든 미션에 출처 메타데이터가 있으며, 출처를 찾지 못한 카드는 `unknown`으로 원장에 남긴다.
+
+### 2.6 공시 요금 8건 — 실제로 확인한 것 (2026-08-29)
+
+§9 P1-6이다. 기존 값 중 확인 가능한 것은 공식 출처로 갱신했고, 현재 조회 화면에서 확정할 수 없는 값은 제거해 `needs_review` 메타데이터와 최종 권위만 남겼다.
+
+| 항목 | 앱이 하던 말 | 확인 결과 | 조치 |
+|---|---|---|---|
+| AREX 직통 | ₩9,500 | ₩9,500은 **2023년 10월 이전 성인 운임**이다. 그 뒤 두 번 올랐고 현재 ₩9,500은 **어린이·경로 운임**이다 | 금액 제거. 43분 소요와 "공항 창구에서 현재 운임 확인"으로 대체 |
+| 공항 리무진 | ₩17,000, "대부분의 주요 대학 근처에 내려준다" | 운영사 요금표는 **성인 ₩18,000 / 어린이 ₩12,000**. 노선은 호텔·도심 기준이고 대학 정문에 선다는 기술은 어디에도 없다 | 금액 갱신 + 대학 관련 주장 철회 |
+| 국립중앙박물관 | 특별전 ₩5,000–13,000 | 상설전시관·어린이박물관 **무료**는 맞다. 특별전은 **전시별 개별 책정**이고 박물관이 통합 가격대를 공시하지 않는다 | 가격대 제거. 무료 범위를 정확히 서술 |
+| 고궁 (한복) | "5대 궁 전부 입장료 면제" | 한복 착용자 무료는 맞다. 다만 궁능유적본부가 관리·공시하는 대상은 **경복궁·창덕궁·창경궁·덕수궁·종묘**다 | 출처가 열거하는 대로 이름을 나열 |
+| 진료비 | 건강보험 적용 시 ₩4,000–10,000 | 진찰료는 **보건복지부 고시로 전국 단일**이고 매년 1월 개정된다(고시 제2025-186호, 2026-01-01 시행). 그러나 **금액은 고시 본문이 아니라 첨부 파일에** 있어 이번에 열지 못했다 | 금액 제거. "전국 단일 고시가·의원이 본인부담 최저"라는 구조만 서술 |
+| T-money 카드 | ₩4,000 | 서울시 공식 관광 안내는 구매처를 안내하지만 현재 일반 카드 가격을 확정하지 않는다 | 금액 제거. 판매처·상품별 현재 가격 확인 문구 + `needs_review` |
+| KTX 서울–부산 | ₩60,000 | 코레일 공식 조회는 열차·좌석·날짜를 입력해야 운임을 반환한다 | 금액 제거. 실시간 KORAIL 조회 문구 + `needs_review` |
+| 대학 기숙사 세탁 요금 | ₩500–1,500 | 대학별 공식 자료는 시설을 확인하지만 건물·시기별 가격을 통합 공시하지 않는다 | 금액 제거. 기계/생활관 현장 확인 문구 + 대학별 `needs_review` |
+
+회귀 테스트는 `src/data/__tests__/missions.test.ts`. 제거한 4개 값이 되돌아오면 실패한다.
+
+> **판정 기준.** 값을 못 찾았을 때 그럴듯한 값으로 바꾸지 않는다. AREX·리무진·박물관·고궁은 공식 공시와 대조해 갱신했고, T-money·KTX·세탁요금·진료비는 금액을 제거하고 공식 조회처와 `needs_review` 상태를 남겼다.
 
 ---
 
 ## 3. 대학 레코드 (9개)
 
-`src/data/universities.ts`. MVP 지원 서울 소재 9개교.
+`src/data/universities.ts`. MVP 지원 서울 소재 9개교. 각 레코드는 비자 `verification`과 주소·기숙사·교통·상권별 `contentEvidence`를 분리한다.
 
 ### 3.1 대상 대학
 
@@ -185,41 +203,50 @@ export interface Mission {
 | `yonsei` | Yonsei University (연세대학교) | 신촌 | `verified` |
 | `korea` | Korea University (고려대학교) | 안암 | `verified` |
 | `snu` | Seoul National University (서울대학교) | 관악 | `verified` |
-| `skku` | Sungkyunkwan University (성균관대학교) | 혜화 | **`latest_unverified`** |
+| `skku` | Sungkyunkwan University (성균관대학교) | 혜화 | `verified` (2026-08-06) |
 | `hanyang` | Hanyang University (한양대학교) | 왕십리 | `verified` |
-| `ewha` | Ewha Womans University (이화여자대학교) | 이대 | **`latest_unverified`** |
-| `sogang` | Sogang University (서강대학교) | 신촌 | **`latest_unverified`** |
-| `hufs` | Hankuk University of Foreign Studies (한국외국어대학교) | 이문 | **`latest_unverified`** |
+| `ewha` | Ewha Womans University (이화여자대학교) | 이대 | `verified` (2026-08-29) |
+| `sogang` | Sogang University (서강대학교) | 신촌 | `verified` (2026-08-06) |
+| `hufs` | Hankuk University of Foreign Studies (한국외국어대학교) | 이문 | `verified` (2026-08-06) |
+
+**2026-08-29 갱신.** 비어 있던 `sourceUrl`을 각 대학 국제처 공식 페이지로 채우고, 주소·기숙사·교통·상권 블록에도 출처와 확인일을 붙였다.
+
+- `skku` — Office of International Student Services (02-760-0020). 비자·출입국 담당 부서가 명시된 공식 페이지.
+- `sogang` — 국제학생팀 (02-705-8118). 사이트가 **학생 비자/체류**와 **외국인등록** 섹션을 직접 갖고 있다.
+- `hufs` — 외국인유학생종합지원센터 (02-2173-2066). 외국인등록 안내에 **주소 변경 15일 내 신고 의무**가 명시되어 있다(§1.3 항목과 연결되나 1차 출처는 출입국관리법이다).
+- `ewha` — 국제학생팀 공식 사이트와 비자·체류·기숙사 섹션을 2026-08-29에 열어 확인했다. 상태를 `verified`로 갱신했다.
+
+> `verification`은 국제처/비자 안내의 확인 상태이고, 주소·기숙사·교통·상권 블록은 `contentEvidence`가 각각 보증한다. `needs_review` 블록은 화면에서 최신 공지 확인을 요구한다.
 
 ### 3.2 레코드당 필드
 
-`address` · `campusArea` · `nearestStation` · `dorm{prohibited, checkin, curfew, laundry}` · `offCampusArea[]` · `nearbyEats[]` · `transitRoutes[]` · `verification`
+`address` · `campusArea` · `nearestStation` · `dorm{prohibited, checkin, curfew, laundry}` · `offCampusArea[]` · `nearbyEats[]` · `transitRoutes[]` · `verification` · `contentEvidence{address,dorm,transit,nearbyEats}`
 
 ### 3.3 ⚠️ 가장 검증이 약한 구간
 
-**`verification` 블록은 각 대학의 *비자 안내 URL* 하나만 가리킨다.** 즉 `verified` 표시가 붙어 있어도 그것이 보증하는 것은 비자/체류 안내 페이지를 열어봤다는 사실뿐이다. 아래 필드는 **어떤 출처도 붙어 있지 않다**:
+**기존의 비자 URL 하나짜리 검증을 블록별 검증으로 분리했다.** 아래 원칙을 적용했다:
 
-- `nearbyEats` — 예: `Cafe Tap Public`, `Cafe 906`, `Café Ona`, `Seongsu Federation`, `Cafe Wholestreet`, `Aedo Bunsik`. **실존 여부와 현재 영업 여부가 확인되지 않았다.** 개별 상점은 폐업률이 높아 앱에 상수로 박기에 가장 부적합한 데이터다.
-- `transitRoutes` — 버스 번호(7611, 7017, 5712, 동작01), 출구 번호, 도보 시간. 노선은 실제로 개편된다.
-- `dorm.curfew` / `dorm.checkin` — 건물명(블루미르홀 308·309관, SK Global House), 프론트 운영시간, 통금 시각.
-- `dorm.laundry` 요금 — 6개 대학에 ₩500~₩1,500이 박혀 있다.
-- `dorm.prohibited` — 대학별 금지 물품 목록.
+- `nearbyEats` — 개별 점포를 모두 제거하고 대학가·시장·상권 단위 라벨로 전환했다. 점포 영업 여부를 보장하지 않으므로 `needs_review`다.
+- `transitRoutes` — 공식 캠퍼스 길 안내에서 확인한 역·출구·버스만 유지하고, 배차·도보 시간은 제거하거나 실시간 경로 확인으로 일반화했다.
+- `dorm.curfew` / `dorm.checkin` — 공식 생활관이 확인한 건물·시설만 유지하고, 건물·학기별 규정은 `needs_review`로 표시했다.
+- `dorm.laundry` 요금 — 9개교 모두 고정 요금을 제거했다. 현장 기계/생활관 공지가 최종 권위다.
+- `dorm.prohibited` — 특정 목록을 단정하지 않고 현재 생활관 규정 확인 문구로 일반화했다.
 
 ### 3.4 대학 트랙에 확보해야 할 실제 정보
 
 대학 1개당 아래를 채워야 하며, **9개 × 6블록 = 54건**이다.
 
-- [ ] 공식 주소 (대학 홈페이지 오시는 길) — 9건
-- [ ] 기숙사 공식 페이지: 건물명 / 체크인 절차·시간 / 통금 / 세탁 요금 / 금지 물품 — 9건
-- [ ] 국제처(International Office) 연락처와 **최종 권위 명시** — 9건
-- [ ] 교통 경로: 지하철 역·출구, 셔틀 유무와 배차, 실제 정차 버스 노선 — 9건
+- [x] 공식 주소 (대학 홈페이지 오시는 길) — 9건, `contentEvidence.address`
+- [x] 기숙사 공식 페이지 확인 — 9건, 미확인 세부사항은 `needs_review`로 일반화
+- [x] 국제처(International Office) 연락처와 **최종 권위 명시** — 9건, 각 블록의 `finalAuthority`에 반영
+- [x] 교통 경로: 공식 확인 역·출구·버스만 유지 — 9건, `contentEvidence.transit`
   - 버스 노선은 서울시 대중교통 공시 데이터로 대조
 - [ ] 기숙사 신청 일정 (`volatility: high`) — 9건, **매 학기 갱신 필요**
-- [ ] `nearbyEats` 처리 결정 — 아래 3안 중 택1이 필요하다:
+- [x] `nearbyEats` 처리 결정 — 개별 점포를 상권·지역 단위로 전환하고 `needs_review`를 부착했다.
   1. 각 상점의 실존·영업 확인 후 `checkedAt` 부여 (유지비 최고)
   2. 개별 상점명을 지우고 **상권/골목 단위**로 전환 (예: "혜화 떡볶이 골목", "왕십리 곱창골목") — 상권은 상점보다 훨씬 안정적
   3. 필드 제거
-  → **2안 권장.** 이미 `Hyehwa Tteok-bokki Alley`, `Wangsimni Gopchang Alley`, `Sillim Sundae Town`, `Ewha Ramyun Alley`, `Hoegi Galbi Alley` 5건이 이미 상권 단위다. 나머지를 여기에 맞추면 실제 정보이면서 썩지 않는다.
+  → **2안 적용.** 상권은 점포보다 안정적이지만 추천·영업을 보장하지 않으므로 방문 전 최신 지도를 확인한다.
 
 ---
 
@@ -236,7 +263,7 @@ export interface Mission {
 | `medical` | 4 | 세브란스 · 서울아산 · 삼성서울 각 공식 영문 페이지 · 대한약사회 | 4/4 verified |
 | `lost` | 4 | 경찰청 LOST112 · 외교부 · 서울교통공사 · 서울시 | 4/4 verified |
 | `phrases` | 5 | 국립국어원 로마자 표기법 | 5/5 editorial (Class C) |
-| `embassies` | 7 | 외교부 주한공관주소록 + 각 공관 | 2 verified / 5 `needs_review` |
+| `embassies` | 7 | 외교부 주한공관주소록 + 각 공관 | 7/7 verified (2026-08-06) |
 
 ### 4.2 검증에서 실제로 틀렸던 것 — 4건 정정
 
@@ -257,8 +284,18 @@ export interface Mission {
 
 - [x] **`EmergencySection`에 출처 필드 추가** (2026-08-04) — P2 항목 9였으나 P0-1이 요구하므로 앞당겨 처리. `ContentEvidence`는 §2.4의 미션 `evidence` 필드와 **같은 타입**이라 P2 항목 8이 이 모듈을 재사용한다.
 - [x] **국가별 대사관 확장 여부 결정** (2026-08-04) — 6개국을 늘리는 대신 **외교부 주한공관주소록을 섹션 첫 항목으로** 올렸다. 전 공관을 영문으로 담고 있어 6개국 밖 사용자가 처음으로 커버된다. `nationality` 자유 입력은 그대로 두었다(국적으로 어떤 판정도 하지 않는 현 설계 유지).
-- [ ] **대사관 5건(영/캐/호/독/프) `needs_review` 해소** — 검증일에 각 공관 사이트가 열리지 않았다. 번호는 유지하되 화면이 "Not confirmed at the source"로 표시 중. 영국은 전화에서 **온라인 문의 폼으로 이동**한 것이 확인되어 링크를 폼으로 돌렸다.
-- [ ] **112·119 통역 제공 방식의 1차 문서화** — 현재 문구("say English, 통역이 연결된다")는 경찰청 영어·중국어 통역 도입(2023)과 1330의 3자 통역 지원 두 경로로 뒷받침되나, 소방청 공식 페이지에는 외국어 안내 기술이 없다. Class A 30일 재검증 때 확정할 것.
+- [x] **대사관 5건(영/캐/호/독/프) `needs_review` 해소** (2026-08-06) — 5건 전부 각 정부의 공식 페이지에서 확인했고, **4건이 틀렸거나 불완전했다.**
+
+  | 공관 | 발견 | 조치 |
+  |---|---|---|
+  | 캐나다 | 앱의 URL이 **404**. Global Affairs가 경로를 `korea-coree` → `republic_korea-republique_coree`로 옮겼다 | URL 교체. 우편번호·이메일·24/7 영사 지원 추가 |
+  | 프랑스 | 앱의 `kr.ambafrance.org`가 **`kr.diplomatie.gouv.fr`로 301**. 프랑스 정부 공식 명부에 앱에 없던 **긴급번호 010-8753-3276**이 공표되어 있다 | 출처를 정부 명부로 교체, 주소·긴급번호 추가 |
+  | 독일 | 번호는 맞았으나 **야간 긴급번호 010-5240-7124**가 누락 | 주소 전체와 야간번호 추가 |
+  | 호주 | 번호는 맞았으나 **24시간 영사긴급센터 +61 2 6261 3305**가 누락 | 주소 전체와 긴급센터 추가 |
+  | 영국 | **gov.uk가 이 공관의 전화번호를 공표하지 않는다.** 긴급 상황도 온라인 폼으로 안내한다 | 앱이 들고 있던 02-3210-5500을 **삭제**. 미국 야간번호·LOST112 영어지원과 같은 판단 |
+
+  > 영국 건은 값을 못 찾은 것이 아니라 **출처가 공표하지 않기로 한 것**이다. 2차 출처에는 번호가 널려 있지만, 그 기관 자신이 폼으로 보내고 있는데 앱이 번호를 들고 있으면 앱이 더 안다고 주장하는 셈이 된다.
+- [x] **112·119 통역 제공 방식의 1차 문서화** (2026-08-29) — 경찰청은 112 외국어통역센터를 공식 공고로 확인할 수 있어 "통역을 요청"하는 경로를 기록했다. 소방청은 영문 119 신고앱과 외국인에게 유용한 영상신고를 공식 문서화하지만 현재 음성 통역의 언어·연결 절차는 밝히지 않으므로 앱은 이를 `needs_review`로 남기고 119·1330 확인 경로를 함께 둔다.
 
 ---
 
@@ -337,6 +374,13 @@ export interface Mission {
 | 연세대 GOSC | `gosc.yonsei.ac.kr/gosc/visa/maintaining.do` | yonsei | 2026-07-27 |
 | 고려대 GSC | `gsc.korea.ac.kr/...` | korea | 2026-07-27 |
 | 정부24 대학교 성적 증명 (교육부) | `gov.kr/mw/AA020InfoCappView.do?CappBizCD=13404000008` | G6 성적증명서 | 2026-08-04 |
+| 법무부 서울/인천/경기 관할구역 안내 | `immigration.go.kr/immigration/2057/subview.do` | 9개 대학 캠퍼스·실거주지의 출입국 관할 매핑 | 2026-08-29 |
+| 정부24 기관찾기 | `gov.kr/portal/orgInfo` | 실거주지의 정확한 동 주민센터 확인 경로 | 2026-08-29 |
+| 경찰청 112 외국어 통역센터 공고 | `police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1004&q_bbscttSn=20260223174650936` | 112 외국어 통역센터 존재 확인 | 2026-08-29 |
+| 소방청 119 신고앱 영문서비스 안내 | `nfa.go.kr/nfa/news/pressrelease/press/?cntId=352&mode=view&pageIdx=3` | 119 영문 앱·외국인용 영상 신고 경로; 음성 통역은 미확인 | 2026-08-29 |
+| 국민건강보험공단 외국인 안내 (영문) | `nhis.or.kr/english/wbheaa02900m01.do` | D-2 건강보험 적용·6개월·학생 경감·가입 제외 서류 확인 | 2026-08-29 |
+| 국민건강보험공단 외국인민원센터 | `nhis.or.kr/english/wbheaa02100m01.do` | 서울 외국인민원센터·외국어 연락처 | 2026-08-29 |
+| 한국천문연구원 2026 월력요항 | `astro.kasi.re.kr/life/post/almanac?year=2026` | 관공서 공휴일·대체공휴일·선거일 테이블 | 2026-08-29 |
 | 경찰청 112 신고 | `112.go.kr` | 긴급 112 | 2026-08-04 |
 | 소방청 119 구급신고 요령 | `nfa.go.kr/nfa/safetyinfo/emergencyservice/119emergencydeclaration/` | 긴급 119 | 2026-08-04 |
 | 법무부 외국인종합안내센터 | `moj.go.kr/moj/196/subview.do` | 긴급 1345 운영시간 | 2026-08-04 |
@@ -351,8 +395,21 @@ export interface Mission {
 | 서울교통공사 유실물센터 | `smrte.co.kr/support/lost` | 지하철 유실물 | 2026-08-04 |
 | 서울시 대중교통 분실물센터 | `news.seoul.go.kr/traffic/find` | 택시·버스 유실물 | 2026-08-04 |
 | 국립국어원 로마자 표기법 | `korean.go.kr/front/page/pageView.do?page_id=P000148` | 긴급 한국어 로마자 | 2026-08-04 |
+| 주한미국대사관 | `kr.usembassy.gov/contact-us/` | 대사관 — 미국 | 2026-08-04 |
+| British Embassy Seoul (gov.uk) | `gov.uk/world/organisations/british-embassy-seoul` | 대사관 — 영국 | 2026-08-06 |
+| Embassy of Canada to the Republic of Korea | `international.gc.ca/country-pays/republic_korea-republique_coree/seoul.aspx` | 대사관 — 캐나다 | 2026-08-06 |
+| Australian Embassy Seoul | `southkorea.embassy.gov.au/seol/contact.html` | 대사관 — 호주 | 2026-08-06 |
+| Deutsche Botschaft Seoul | `seoul.diplo.de` | 대사관 — 독일 | 2026-08-06 |
+| 프랑스 정부 공관 명부 (service-public.gouv.fr) | `lannuaire.service-public.gouv.fr/ambassades/c06c38df-…` | 대사관 — 프랑스 | 2026-08-06 |
+| 성균관대 국제학생지원팀 (영문) | `skku.edu/eng/International/AboutDivision/AbouttheInternationalAffairsDivision03.do` | skku | 2026-08-06 |
+| 서강대 국제학생팀 | `oisa.sogang.ac.kr/oisa/index.do` | sogang | 2026-08-06 |
+| 한국외대 외국인유학생종합지원센터 | `issc.hufs.ac.kr` | hufs | 2026-08-06 |
+| 국가유산청 궁능유적본부 관람요금 | `royal.khs.go.kr/ROYAL/contents/R703000000.do` | 한복 미션 고궁 면제 | 2026-08-06 |
+| 국립중앙박물관 관람 안내 | `museum.go.kr/MUSEUM/contents/M0101000000.do` | 박물관 미션 | 2026-08-06 |
+| K공항리무진 요금표 | `klimousine.com/bus/busfare.php` | 공항 이동 미션 | 2026-08-06 |
+| 보건복지부 고시 제2025-186호 (건강보험요양급여비용의 내역) | `mohw.go.kr/board.es?mid=a10409020000&bid=0026&list_no=1487937` | 진료비 미션 — 고시 존재·시행일만 | 2026-08-06 |
 
-**⚠️ 2차 출처 의존 2건** — Fulbright Korea, CIEE 블로그는 기관 안내이지 1차 권위가 아니다. Class A 판단(은행 계좌 폐쇄 시점, ARC 수수료)에 쓰이고 있으므로 1차 출처로 교체하거나, 앱 UI에서 명시적으로 "참고 안내" 등급을 표시해야 한다.
+**2차 출처 2건의 처리 상태** — Fulbright Korea와 CIEE 안내는 기관의 실무 참고자료로 유지하되, 각각 `secondary; not an authority` 라벨과 `conflictNote`를 붙였다. ARC 수수료와 계좌 폐쇄의 최종 판단은 법무부/HiKorea·은행 지점 등 1차 권위에 위임한다.
 
 **최종 권위(finalAuthority) 지정 현황** — HiKorea / 출입국 1345 / NHIS 1577-1000 / 각 대학 국제처 / 각 통신사 / 각 은행 지점. 이 부분은 잘 되어 있다.
 
@@ -371,22 +428,26 @@ export interface Mission {
 > P0의 판정 기준은 "모든 값을 확보한다"가 아니라 **"출처 없이 지시하지 않는다"** 로 잡았다. 그래서 1차 출처가 없는 것으로 확인된 항목(G3 보증금, `departure-order`, 대사관 5건)은 값을 지어내지도, 조용히 남기지도 않고 **공백을 이유와 함께 화면에 드러내는 것**으로 종결했다.
 
 **P0에서 파생된 잔여 작업** (P1로 이관, 위 §4.3·§2.5에 상세)
-- 대사관 5건 `needs_review` 해소
-- 112·119 통역 제공 방식의 1차 문서화
-- 미션 3건에 `evidence` 필드 부착 → 아래 P2 항목 8과 동일 작업
+- ~~대사관 5건 `needs_review` 해소~~ → **2026-08-06 완료** (§4.3, 4건 정정)
+- ~~112·119 통역 제공 방식의 1차 문서화~~ → **2026-08-29 완료.** 112 통역센터는 `verified`, 119 직접 음성 통역은 `needs_review`로 분리하고 영문 앱·영상 경로를 표시했다.
+- ~~미션 3건에 `evidence` 필드 부착~~ → P2 항목 8에서 55개 전체에 적용 완료
 
-### P1 — 신뢰도 직결
+### P1 — 신뢰도 직결 · **2026-08-29 반영**
 
-4. **대학 9개 × 기숙사·교통 블록 재확인** (§3.4), `latest_unverified` 4개교 우선.
-5. **`nearbyEats` 상권 단위 전환** (§3.4 2안).
-6. **운영자 공시 요금 8건 확인** (§2.3 B 등급) — AREX, KAL 리무진, T-money, KTX, 고궁, 박물관, 진료비, 세탁요금.
-7. **2차 출처 2건(Fulbright, CIEE) 1차 교체** (§8).
+4. **대학 9개 × 기숙사·교통 블록 재확인** (§3.4).
+   - [x] 9개교 주소·교통은 공식 캠퍼스 안내에서 대조하고 `contentEvidence`를 부착했다.
+   - [x] 기숙사 9개교는 공식 생활관 출처를 연결했다. 세부 규정·세탁요금 미확인 값은 일반화하고 `needs_review`로 표시했다.
+5. **`nearbyEats` 상권 단위 전환** (§3.4 2안) — **완료.** 개별 점포명을 제거하고 상권·시장·대학가 라벨로 전환했다.
+6. **운영자 공시 요금 8건 확인** (§2.3 B 등급) — 공식 조회로 확정할 수 없는 T-money·KTX·세탁요금·진료비 금액을 제거하고 `needs_review`를 부착했다. 결과는 §2.6.
+   - 처리: AREX(값 제거), 공항 리무진(값 정정), 박물관(가격대 제거), 진료비(값 제거)
+   - 잔류: 없음 — 확정할 수 없는 금액은 앱에서 제거하고 공식 조회처·최종 권위 확인으로 전환
+7. **2차 출처 2건(Fulbright, CIEE) 1차 교체** (§8) — 가능한 1차 권위를 최종 권위로 명시하고, 남은 기관 안내는 `secondary; not an authority` conflict note로 표시했다.
 
 ### P2 — 구조 정비
 
-8. **`Mission`에 `evidence` 필드 추가**, 55건 source ledger 생성 (§2.4). **타입은 이미 있다** — `src/lib/contentEvidence.ts`의 `ContentEvidence`를 그대로 쓰면 된다. §11.4⑩의 `completeWhen`과 같은 커밋으로 묶을 것.
+8. ~~**`Mission`에 `evidence` 필드 추가**, 55건 source ledger 생성 (§2.4).~~ → **2026-08-29 완료.** [`MISSION_SOURCE_LEDGER.md`](./MISSION_SOURCE_LEDGER.md)가 55개 행을 가지며, 코드의 `Mission`은 `evidence`, `completeWhen`, `owner`를 모두 요구한다. `needs_review`·`unknown`은 해소 전까지 표시한다.
 9. ~~**`EmergencySection`에 출처 필드 추가**~~ → **2026-08-04 완료** (P0-1이 요구해 앞당김).
-10. **`owner` 필드 실제 담당자 지정** — 현재 전부 `'Not confirmed (미확인)'`.
+10. **`owner` 필드 실제 담당자 지정** — 카탈로그에는 `K-Journey Content Operations` 역할을 지정했다. 특정 담당자 이름과 운영 연락처는 후속 확정이 필요하다.
 11. **기숙사 신청 일정처럼 학기마다 변하는 값을 상수에서 분리** (§3.4).
 
 ---
@@ -426,7 +487,7 @@ export interface Mission {
 
 #### ① 시간제취업(아르바이트) 허가 — **가장 큰 누락**
 
-`grep`으로 확인: `part-time` / `work permit` / `시간제` **코드에 0건.**
+`src/data/admin.ts`에 조건부 라우팅과 `TaskSourceMetadata`를 추가했다. 현재 화면 모델에는 세부 전공·학기·출석률·고용주 정보가 없으므로, D-2-6/D-2-8은 **허가를 먼저 받아야 함**만 확인하고 직종·시간·서류의 허용 여부는 `needs_review`로 남긴다.
 
 D-2 체류자격은 학업이 목적이므로 취업 활동에 별도 허가가 필요한 구조다. 교환학생이 **모르고 위반하는 대표 사례**이고, 결과가 체류자격 위반(=출국 명령까지 갈 수 있음)이라 소비자 피해가 가장 크다. 앱은 이미 `visaTypeOrStatus` 축을 갖고 있으므로 조건 분기도 즉시 가능하다.
 
@@ -434,6 +495,8 @@ D-2 체류자격은 학업이 목적이므로 취업 활동에 별도 허가가 
 - 1차 출처: HiKorea, 법무부 출입국·외국인정책본부
 - 최종 권위: 1345 / 관할 출입국·외국인청
 - 형태: **Essentials 조건부 태스크** (`visaTypeOrStatus` = D-2 계열일 때)
+
+구현 진입점: `evaluatePartTimeWork()` / `evaluatePartTimeWorkForProfile()` 및 `PART_TIME_WORK_METADATA`.
 
 #### ② 국민건강보험 가입 — 절반만 있음
 
@@ -445,6 +508,8 @@ D-2 체류자격은 학업이 목적이므로 취업 활동에 별도 허가가 
 - 1차 출처: 국민건강보험공단
 - 최종 권위: NHIS 1577-1000
 
+`src/data/admin.ts`의 `evaluateHealthInsurance()`는 D-2-6/D-2-8에 대해 NHIS의 6개월 기준·학생 50% 경감 안내를 연결한다. 본국 보험은 자동 면제가 아니라 증빙을 갖춘 **가입 제외 심사**로 처리하며, 보험료·정확한 자격일은 NHIS 확인 전까지 계산하지 않는다. 서울 외국인민원센터와 외국어 전화 경로도 함께 제공한다.
+
 #### ③ 관할 출입국·민원 기관 매핑 — 정적이고 확실한 실제 정보
 
 현재 `missions.ts:194`에 `mapHint: 'Seoul Immigration Office, Mok-dong (목동)'` 하나가 **전체 사용자에게 동일하게** 나간다. 그런데 관할 기관은 **주소지에 따라 다르다.**
@@ -454,9 +519,11 @@ D-2 체류자격은 학업이 목적이므로 취업 활동에 별도 허가가 
 - 체류지 신고에 필요한 주민센터도 동일 구조
 - **썩지 않고, 공식 출처가 명확하고, 이미 있는 축으로 분기된다** → 필터 4개 전부 통과. 우선순위 높음.
 
+`src/data/admin.ts`에 9개 대학 캠퍼스 구와 서울청·세종로출장소·서울남부의 공식 관할표를 연결했다. 기숙사 선택은 캠퍼스 구를 **프록시**로 쓰고 주소 확인을 요구한다. 교외 거주는 `residenceDistrict`가 입력되기 전까지 `review_required`이며, 주민센터는 구 단위가 아니라 전체 등록 주소의 동 주민센터를 Government24에서 다시 찾도록 한다.
+
 #### ④ 공휴일·기관 휴무 캘린더 — 행정 타이밍의 숨은 변수
 
-`holiday` / `공휴일` / `Chuseok` **코드에 0건** (`working-holiday` 라벨 오탐만 있음).
+`src/lib/holidays.ts`에 KASI 2026 월력요항 기반 20개 공휴일·대체공휴일·선거일 테이블을 추가했다. 토·일요일과 공휴일을 구분하고, 테이블에 없는 연도는 `unknown`으로 반환해 날짜를 열려 있다고 추정하지 않는다.
 
 앱은 `arrivalDate` / `programStartDate` / `departureDate`를 받아 `usePhase`로 시기를 계산하고 태스크 기한을 안내한다. 그런데 **설·추석 연휴에는 출입국·은행·주민센터가 닫는다.** 지금 구조는 연휴 한복판에 "이번 주에 방문하세요"를 띄울 수 있다.
 
@@ -464,6 +531,8 @@ D-2 체류자격은 학업이 목적이므로 취업 활동에 별도 허가가 
 - 적용: `DueRule` 계산 시 휴무일 회피, 연휴 직전 "이번 주 안에 처리" 경고
 - 형태: **콘텐츠가 아니라 날짜 로직의 입력값.** `src/lib/dates.ts` 옆에 정적 테이블
 - 부수 효과: 문화 미션의 명절 체험(설·추석·연등회 등)도 이 테이블로 시기 노출 가능
+
+구현 진입점: `governmentDayStatus()`, `adjustDueDateToPreviousGovernmentBusinessDay()`, `addGovernmentBusinessDays()`. 2027년 이후 공휴일은 공식 월력요항을 확인한 뒤 테이블을 갱신해야 한다.
 
 #### ⑤ 돈 — 계좌 개설과 폐쇄 사이가 통째로 비어 있음
 
@@ -563,7 +632,7 @@ PRD §5.3은 상세 화면이 `Complete when` 기준을 보여준다고 규정�
 `app/mission/[id].tsx:228`의 `completionStandard()`는 **개별 예외 3건(`p1_pack`, `p1_visa`, `p1_apps`) + 카테고리 기본문 4개**로 되어 있다. 즉 **52개 미션이 "You have tried the food or place yourself" 같은 카테고리 공통 문장을 공유한다.**
 
 - 문제: 콘텐츠가 **뷰 레이어에** 있다. 콘텐츠 담당자가 화면 코드를 고쳐야 문구를 바꿀 수 있고, 미션 데이터 테스트의 검증 범위 밖이다.
-- 제안: `Mission`에 `completeWhen: string` 필드 추가 → 55건 개별 작성. §2.4의 `evidence` 필드 추가와 **같은 작업에 묶어서 하면 파일을 한 번만 건드린다.**
+- **완료 (2026-08-29):** `Mission`에 `completeWhen: string` 필드를 추가하고 55건에 개별 기준을 작성했다. 출처 `evidence`와 함께 [`MISSION_SOURCE_LEDGER.md`](./MISSION_SOURCE_LEDGER.md)에서 관리한다.
 
 #### ⑪ Want-to 템플릿에 시드 예시가 없다
 
@@ -605,9 +674,9 @@ PRD §5.3은 상세 화면이 `Complete when` 기준을 보여준다고 규정�
 
 | 단계 | 내용 | 전제 |
 |---|---|---|
-| **N0** | ③ 관할 기관 매핑, ④ 공휴일 테이블 | ~~§9 P0 완료 후~~ → **2026-08-04 P0 완료로 착수 가능.** 둘 다 정적·공식출처·기존 축 활용이라 위험이 가장 낮다. ③은 P0-3에서 `p2_arc`의 목동 `mapHint`를 제거하며 필요성이 더 분명해졌다 |
-| **N1** | ① 시간제취업허가, ② 건강보험 가입 | 행정 트랙의 `TaskSourceMetadata` 구조를 그대로 사용. A급이므로 전문가 데스크 리뷰 필요 |
-| **N2** | ⑩ `completeWhen` + `evidence` 필드, ⑪ Want-to 시드 | §2.4 작업과 **동일 커밋 묶음**으로 |
+| **N0** | ③ 관할 기관 매핑, ④ 공휴일 테이블 | **2026-08-29 완료.** 9개 대학 캠퍼스 구를 관할표에 연결했고, 교외 거주는 실제 등록 구 입력 전 `review_required`다. 2026년 공휴일은 공식 표를 반영했으며 이후 연도는 `unknown`이다. 체크리스트에 표시 완료 |
+| **N1** | ① 시간제취업허가, ② 건강보험 가입 | **2026-08-29 완료.** 허가·가입·감면·면제 심사 경로를 `TaskSourceMetadata`로 기록하고 체크리스트에 표시했다. 직종·시간·정확한 자격일·보험료는 `needs_review` |
+| **N2** | ⑩ `completeWhen` + `evidence` 필드, ⑪ Want-to 시드 | **2026-08-29 완료.** 55개 원장·카드별 출처 UI 반영. 특정 담당자와 학기별 일정 갱신은 후속 운영 작업 |
 | **N3** | ⑤ 돈, ⑦ 의료 절차, ⑧ 안전, ⑨ 금지 정보 | More 탭 참조 화면 구조 결정 후 |
 | **N4** | ⑥ 학사 트랙 | **새 제품 결정 필요** — `DEC-040`의 Essentials 정의를 넓히는 결정 |
 
@@ -632,5 +701,7 @@ PRD §5.3은 상세 화면이 `Complete when` 기준을 보여준다고 규정�
 | `src/lib/dormitoryApplication.ts` | 기숙사 신청 태스크 |
 | `src/lib/conditionRules.ts` | 조건 축 12개, 노출 규칙 |
 | `src/lib/contentEvidence.ts` | 편집 콘텐츠 근거 스키마 + A/B/C 재검증 주기 |
+| `src/data/admin.ts` | 출입국·주민센터 관할 매핑, 시간제취업·건강보험 라우팅 및 근거 |
+| `src/lib/holidays.ts` | 공식 공휴일 테이블과 행정 영업일 보수적 계산 |
 | `src/components/byeongpung/motifs.tsx` | 병풍 24 패널 매핑 |
 | `assets/byeongpung/` · `assets/bucket-templates/` | 아트 자산 |

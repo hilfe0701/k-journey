@@ -18,9 +18,9 @@ regression; items 5 and 6 stay manual.
 
 ## P1 — content and art
 
-1. Add evidence metadata to 55 missions and volatile university/emergency facts.
-2. Remove or qualify exact costs, processing times, “mandatory,” and “universal” claims lacking a current primary source.
-3. Create one connected 8-panel master per era, keep provenance/licensing records, then slice and optimize it.
+1. ~~Add evidence metadata to 55 missions and volatile university/emergency facts.~~ Done 2026-08-29: 55-row ledger, university block evidence, emergency language-access provenance, and source UI.
+2. ~~Remove or qualify exact costs, processing times, “mandatory,” and “universal” claims lacking a current primary source.~~ Done 2026-08-29: uncertain amounts are removed or routed to official live lookups with `needs_review`.
+3. ~~Create one connected 8-panel master per era, keep provenance/licensing records, then slice and optimize it.~~ Done 2026-08-29: generated masters are recorded in `assets/byeongpung/masters/README.md` and sliced into 24 runtime assets. Cultural/visual approval remains a release review.
 4. Review Culture items that duplicate administrative tasks; move them, rename the axis, or define the distinct completion behavior.
 
 ## P1 — product depth

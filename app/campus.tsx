@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { Linking, View, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
@@ -20,6 +20,9 @@ import { palette, space, radius } from '../design-tokens';
 import { useProfile } from '../src/hooks/useProfile';
 import { universityById, University } from '../src/data/universities';
 import { selectMissionHousing, selectUniversityId } from '../src/lib/profileCompat';
+import { evidenceNeedsReview, isEvidenceReviewDue } from '../src/lib/contentEvidence';
+import { formatKstDate } from '../src/lib/dates';
+import { surfaceError } from '../src/lib/errorAlert';
 
 export default function Campus() {
   const router = useRouter();
@@ -60,6 +63,7 @@ export default function Campus() {
             ) : null}
             <NearbyEatsBlock uni={uni} />
             <TransitBlock uni={uni} />
+            <CampusEvidenceBlock uni={uni} />
           </>
         )}
       </ScrollView>
@@ -230,6 +234,56 @@ function TransitBlock({ uni }: { uni: University }) {
   );
 }
 
+function CampusEvidenceBlock({ uni }: { uni: University }) {
+  const blocks: [keyof University['contentEvidence'], string][] = [
+    ['address', 'Address'],
+    ['dorm', 'Dormitory'],
+    ['transit', 'Transit'],
+    ['nearbyEats', 'Nearby eats'],
+  ];
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHead}>
+        <Building2 size={18} color={palette.ash} strokeWidth={1.6} />
+        <Text role="h4">Sources and freshness</Text>
+      </View>
+      <Text role="xs" color={palette.ash}>
+        Campus details are checked separately; a source for one block does not confirm another.
+      </Text>
+      <View style={{ gap: space[3], marginTop: space[2] }}>
+        {blocks.map(([key, label]) => {
+          const evidence = uni.contentEvidence[key];
+          const review = evidenceNeedsReview(evidence);
+          return (
+            <View key={key} style={styles.evidenceRow}>
+              <Text role="xs" weight="semibold" color={palette.meok}>
+                {label} · {evidence.verification === 'verified' ? 'Verified' : 'Check before relying'}
+              </Text>
+              <Text role="xs" color={palette.ash}>
+                {evidence.note} Checked {formatKstDate(evidence.checkedAt)}.
+                {review || isEvidenceReviewDue(evidence)
+                  ? ` Confirm with ${evidence.finalAuthority}.`
+                  : ''}
+              </Text>
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel={`Open ${label} source: ${evidence.sourceTitle}`}
+                onPress={() => Linking.openURL(evidence.sourceUrl).catch(() => surfaceError('unknown'))}
+                style={({ pressed }) => [styles.evidenceLink, pressed ? styles.itemPressed : null]}
+              >
+                <Text role="xs" color={palette.cheong}>
+                  {evidence.publisher} · Open source
+                </Text>
+              </Pressable>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.hanji },
   header: {
@@ -301,5 +355,18 @@ const styles = StyleSheet.create({
     borderRadius: 2.5,
     backgroundColor: palette.cheong,
     marginTop: 8,
+  },
+  evidenceRow: {
+    gap: 2,
+    paddingLeft: space[3],
+    borderLeftWidth: 2,
+    borderLeftColor: palette.hairline,
+  },
+  evidenceLink: {
+    minHeight: MIN_TARGET,
+    justifyContent: 'center',
+  },
+  itemPressed: {
+    opacity: 0.72,
   },
 });

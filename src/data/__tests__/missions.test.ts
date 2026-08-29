@@ -4,7 +4,7 @@ import { UNKNOWN } from '../../lib/firebase';
 
 describe('MISSIONS catalog', () => {
   it('has 4 phases distributed across categories', () => {
-    expect(MISSIONS.length).toBeGreaterThan(0);
+    expect(MISSIONS).toHaveLength(55);
     for (const m of MISSIONS) {
       expect([1, 2, 3, 4]).toContain(m.phase);
       expect(['settle', 'food', 'activity', 'culture']).toContain(m.category);
@@ -29,6 +29,40 @@ describe('MISSIONS catalog', () => {
     const off = MISSIONS.filter((m) => m.appliesTo === 'off-campus');
     expect(dorm.length).toBeGreaterThan(0);
     expect(off.length).toBeGreaterThan(0);
+  });
+
+  it('has completion criteria, provenance, and an owner for every mission', () => {
+    for (const mission of MISSIONS) {
+      expect(mission.completeWhen.trim().length).toBeGreaterThan(0);
+      expect(mission.evidence.sourceTitle.trim()).not.toHaveLength(0);
+      expect(mission.evidence.publisher.trim()).not.toHaveLength(0);
+      expect(mission.evidence.checkedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(mission.evidence.finalAuthority.trim()).not.toHaveLength(0);
+      expect(mission.owner.trim()).not.toHaveLength(0);
+    }
+  });
+
+  it('keeps unresolved mission provenance explicit', () => {
+    const unresolved = MISSIONS.filter((mission) => mission.evidence.verification === 'unknown');
+    expect(unresolved.length).toBeGreaterThan(0);
+    for (const mission of unresolved) {
+      expect(mission.evidence.sourceUrl).toBe('');
+    }
+  });
+
+  it('keeps fee-sensitive cards tied to official live lookups', () => {
+    const expectedSources: Record<string, string> = {
+      p2_tmoney: 'https://english.visitseoul.net/transportation/Transportation-in-Seoul_/6398',
+      p3_ktx: 'https://smart.letskorail.com/ebizbf/EbizBfTicketSearchM.do?hidJobDv=NRM',
+      p3_clinic: 'https://www.mohw.go.kr/board.es?mid=a10409020000&bid=0026&list_no=1487937',
+    };
+
+    for (const [id, sourceUrl] of Object.entries(expectedSources)) {
+      const mission = MISSIONS.find((candidate) => candidate.id === id);
+      expect(mission?.evidence.sourceUrl).toBe(sourceUrl);
+      expect(mission?.evidence.verification).toBe('needs_review');
+      expect(mission?.evidence.checkedAt).toBe('2026-08-29');
+    }
   });
 });
 
@@ -86,6 +120,56 @@ describe('administrative missions defer to the Essentials track', () => {
     expect(text).not.toMatch(/issued same day/);
     // It must still say who actually decides.
     expect(text).toMatch(/differs by bank/);
+  });
+
+  it('p1_airport drops the AREX fare that two increases have overtaken', () => {
+    // ₩9,500 was the adult express fare until October 2023. It is now the
+    // child and senior fare, so leaving it in quoted the wrong ticket.
+    const text = mission('p1_airport');
+
+    expect(text).not.toMatch(/₩9,500/);
+    expect(text).toMatch(/₩18,000/);
+  });
+
+  it('p1_airport no longer promises the limousine stops at universities', () => {
+    // The operator publishes fares by route into central Seoul; nothing it
+    // publishes says a route serves a university gate.
+    expect(mission('p1_airport')).not.toMatch(/most major universities/);
+  });
+
+  it('p3_museum does not price special exhibitions the museum prices per show', () => {
+    const text = mission('p3_museum');
+
+    expect(text).not.toMatch(/₩5,000–13,000/);
+    expect(text).toMatch(/free/i);
+  });
+
+  it('p3_clinic states no consultation fee without the notice that sets it', () => {
+    const text = mission('p3_clinic');
+
+    expect(text).not.toMatch(/₩4,000–10,000/);
+    expect(text).toMatch(/No fixed amount/);
+  });
+
+  it('p2_tmoney does not ship an unverified card price', () => {
+    const text = mission('p2_tmoney');
+
+    expect(text).not.toMatch(/₩4,000/);
+    expect(text).toMatch(/confirm the current price/i);
+  });
+
+  it('p3_ktx defers the fare to the live KORAIL search', () => {
+    const text = mission('p3_ktx');
+
+    expect(text).not.toMatch(/₩60,000/);
+    expect(text).toMatch(/current KORAIL schedule and fare/i);
+  });
+
+  it('p3_hanbok names the sites its source names', () => {
+    const text = mission('p3_hanbok');
+
+    expect(text).not.toMatch(/all five royal palaces/);
+    expect(text).toMatch(/Jongmyo/);
   });
 });
 

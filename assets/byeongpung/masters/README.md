@@ -2,15 +2,15 @@
 
 ## `byeongpung_joseon_master_v2.png`
 
-- Status: concept master; not yet wired into runtime assets
-- Generated: 2026-08-02
+- Status: generated master; sliced and wired into runtime assets
+- Generated: 2026-08-29
 - Tool: Codex built-in image generation
 - Model/version: not exposed by the built-in tool
 - Editor: Codex, directed for K-Journey
 - References: existing project-owned Joseon chaekgeori, mountain, and wave panels, used only as style and motif references
 - Rights note: AI-generated derivative concept for this project; do not describe it as an authenticated traditional artifact
-- Modifications: none after generation
-- Approval: pending visual QA and product-owner approval
+- Modifications: resized to 2640×1086 and sliced into eight 330×1086 runtime panels
+- Approval: runtime smoke still required; this is AI-generated concept art, not an authenticated traditional artifact
 
 ### Prompt
 
@@ -38,15 +38,15 @@ No frame, hinges, panel dividers, captions, letters, labels, watermarks, logos, 
 
 ## `byeongpung_silla_master_v2.png`
 
-- Status: concept master; not yet wired into runtime assets
-- Generated: 2026-08-02
+- Status: generated master; sliced and wired into runtime assets
+- Generated: 2026-08-29
 - Tool: Codex built-in image generation
 - Model/version: not exposed by the built-in tool
 - Editor: Codex, directed for K-Journey
 - References: the new Joseon master for composition only, plus existing project-owned Silla mountain and sun panels for palette and motif vocabulary
 - Rights note: AI-generated derivative concept for this project; do not describe it as an authenticated traditional artifact
 - Modifications: none after generation
-- Approval: passed initial eight-slice composition review; pending product-owner approval
+- Approval: runtime smoke still required; this is AI-generated concept art, not an authenticated traditional artifact
 
 ### Prompt summary
 
@@ -54,15 +54,15 @@ Create a seamless 2.45:1 Silla-inspired panorama in the runtime motif order. Use
 
 ## `byeongpung_goryeo_master_v2.png`
 
-- Status: concept master; not yet wired into runtime assets
-- Generated: 2026-08-02
+- Status: generated master; sliced and wired into runtime assets
+- Generated: 2026-08-29
 - Tool: Codex built-in image generation
 - Model/version: not exposed by the built-in tool
 - Editor: Codex, directed for K-Journey
 - References: the new Joseon master for composition only, plus existing project-owned Goryeo lotus and wave panels for palette and motif vocabulary
 - Rights note: AI-generated derivative concept for this project; do not describe it as an authenticated traditional artifact
 - Modifications: none after generation
-- Approval: passed initial eight-slice composition review; pending product-owner approval
+- Approval: runtime smoke still required; this is AI-generated concept art, not an authenticated traditional artifact
 
 ### Prompt summary
 
@@ -76,4 +76,4 @@ Create a seamless 2.45:1 Goryeo-inspired panorama in the runtime motif order. Us
 | Motifs survive equal eight-slice crop | Pass | Pass | Pass |
 | No visible text or watermark | Pass | Pass | Pass |
 | Era distinguishable without label | Pass | Pass | Pass |
-| Ready to replace runtime assets | Pending resize/export QA | Pending resize/export QA | Pending resize/export QA |
+| Ready to replace runtime assets | Sliced and wired; runtime smoke pending | Sliced and wired; runtime smoke pending | Sliced and wired; runtime smoke pending |

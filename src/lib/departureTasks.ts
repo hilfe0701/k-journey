@@ -85,11 +85,12 @@ const NHIS_ELECTRONIC_BILL: TaskSourceMetadata = {
 
 const LEAVING_KOREA_HANDBOOK: TaskSourceMetadata = {
   sourceUrl: 'https://www.fulbright.or.kr/en/handbook/leaving-korea/',
-  sourceLabel: 'Fulbright Korea — leaving Korea handbook',
+  sourceLabel: 'Fulbright Korea — leaving Korea handbook (secondary institutional guidance)',
   checkedAt: '2026-07-25',
   reviewAfter: null,
   finalAuthority: 'your bank, carrier, or service provider',
-  conflictNote: null,
+  conflictNote:
+    'This handbook is practical institutional guidance, not a bank, carrier, or government rule. Confirm the final procedure with the named service provider.',
   volatility: 'medium',
   owner: UNKNOWN_VALUE_LABEL,
   conflictValues: [],
@@ -97,10 +98,10 @@ const LEAVING_KOREA_HANDBOOK: TaskSourceMetadata = {
 
 const BANK_ACCOUNT_CLOSURE: TaskSourceMetadata = {
   ...LEAVING_KOREA_HANDBOOK,
-  sourceLabel: 'Fulbright Korea and SUNY Korea departure guidance',
+  sourceLabel: 'Fulbright Korea and SUNY Korea departure guidance (secondary; not a bank authority)',
   finalAuthority: 'your bank branch',
   conflictNote:
-    'An account cannot be closed after you leave Korea, but a dormitory deposit may arrive after departure. Both outcomes are shown instead of one recommendation.',
+    'Fulbright/SUNY Korea guidance is secondary institutional advice, not a bank rule. An account may have branch-specific closure requirements, while a dormitory deposit may arrive after departure. Ask your bank branch and dormitory office; both outcomes are shown instead of one recommendation.',
 };
 
 /**

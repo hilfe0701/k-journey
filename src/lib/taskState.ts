@@ -9,6 +9,11 @@ import { kstDifferenceInDays, kstNow, toKstStartOfDay } from './dates';
 import { DEPARTURE_TASK_METADATA } from './departureTasks';
 import { DORMITORY_APPLICATION_METADATA } from './dormitoryApplication';
 import {
+  HEALTH_INSURANCE_METADATA,
+  IMMIGRATION_JURISDICTION_METADATA,
+  PART_TIME_WORK_METADATA,
+} from '../data/admin';
+import {
   IMMIGRATION_APPOINTMENT_METADATA,
   IMMIGRATION_APPOINTMENT_TASK_ID,
 } from './immigrationAppointment';
@@ -127,7 +132,7 @@ const RESIDENCE_REGISTRATION_SOURCE: TaskSourceMetadata = {
   reviewAfter: null,
   finalAuthority: 'the Ministry of Justice and HiKorea',
   conflictNote:
-    'Registration fees differ by source and route. Check the final authority before paying.',
+    'University and third-party guides quote different amounts, but neither is the fee authority. The CIEE figure is secondary application guidance; check the Ministry of Justice or HiKorea route before paying.',
   volatility: 'high',
   owner: UNKNOWN_OWNER,
   conflictValues: [
@@ -140,7 +145,7 @@ const RESIDENCE_REGISTRATION_SOURCE: TaskSourceMetadata = {
     },
     {
       value: '34,000 won',
-      sourceLabel: 'CIEE application experience',
+      sourceLabel: 'CIEE application experience (secondary; not an authority)',
       sourceUrl: 'https://www.ciee.org/go-abroad/college-study-abroad/blog/getting-arc-without-hirevisa',
       checkedAt: '2026-07-25',
     },
@@ -197,13 +202,13 @@ const DEPARTURE_ORDER_SOURCE: TaskSourceMetadata = {
   reviewAfter: null,
   finalAuthority: 'your bank branch and your dormitory office',
   conflictNote:
-    'No single authority sets this order. Closing an account generally needs a branch visit, and a deposit may be paid after you fly, so the two tasks pull opposite ways. K-Journey shows both outcomes and leaves the choice to you.',
+    'Fulbright/SUNY Korea guidance is secondary institutional advice, not a bank rule. No single authority sets this order: closing an account generally needs a branch visit, while a dormitory deposit may arrive after departure. Ask your bank branch and dormitory office; K-Journey shows both outcomes and leaves the choice to you.',
   volatility: 'medium',
   owner: UNKNOWN_OWNER,
   conflictValues: [
     {
       value: 'Close the account before departure',
-      sourceLabel: 'Fulbright Korea and SUNY Korea departure guidance',
+      sourceLabel: 'Fulbright Korea and SUNY Korea departure guidance (secondary; not a bank authority)',
       sourceUrl: 'https://www.fulbright.or.kr/en/handbook/leaving-korea/',
       checkedAt: '2026-07-25',
     },
@@ -225,6 +230,9 @@ const DEPARTURE_ORDER_SOURCE: TaskSourceMetadata = {
  */
 export const CORE_TASK_METADATA: readonly TaskMetadata[] = [
   IMMIGRATION_APPOINTMENT_METADATA,
+  IMMIGRATION_JURISDICTION_METADATA,
+  PART_TIME_WORK_METADATA,
+  HEALTH_INSURANCE_METADATA,
   {
     taskId: 'residence-registration',
     title: 'Residence registration',

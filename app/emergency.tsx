@@ -143,6 +143,30 @@ function EmergencyEntry({ item }: { item: EmergencyItem }) {
         </Text>
       </Pressable>
 
+      {item.languageSupport ? (
+        <View style={styles.languageSupport}>
+          <Text role="xs" weight="semibold" color={palette.meok}>
+            Language access · {item.languageSupport.verification === 'verified' ? 'Verified' : 'Check before relying'}
+          </Text>
+          <Text role="xs" color={palette.ash}>
+            {item.languageSupport.detail} Ask {item.languageSupport.finalAuthority} if the call flow has changed.
+          </Text>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={`Open language-access source: ${item.languageSupport.evidence.sourceTitle}`}
+            accessibilityHint="Opens the official language-access source in your browser."
+            onPress={() =>
+              Linking.openURL(item.languageSupport!.evidence.sourceUrl).catch(() => surfaceError('unknown'))
+            }
+            style={({ pressed }) => [styles.evidenceLink, pressed ? styles.itemPressed : null]}
+          >
+            <Text role="xs" color={palette.cheong}>
+              {item.languageSupport.evidence.publisher} · Open language-access source
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       <View style={styles.evidence}>
         <Pressable
           accessibilityRole="link"
@@ -240,5 +264,11 @@ const styles = StyleSheet.create({
   evidenceLink: {
     minHeight: MIN_TARGET,
     justifyContent: 'center',
+  },
+  languageSupport: {
+    gap: 2,
+    paddingLeft: space[3],
+    borderLeftWidth: 2,
+    borderLeftColor: palette.hairline,
   },
 });

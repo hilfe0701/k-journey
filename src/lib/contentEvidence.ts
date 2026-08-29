@@ -25,8 +25,11 @@ export type ContentClass = 'A' | 'B' | 'C';
  *   confirmed (`CONTENT_GOVERNANCE.md` release gate step 5).
  * `editorial` — a Class C judgement that no source can settle, such as a
  *   translation gloss.
+ * `unknown` — no suitable source was identified when the catalogue was
+ *   checked. This is intentionally distinct from editorial guidance: the
+ *   app must not imply that an unlocated source exists.
  */
-export type EvidenceVerification = 'verified' | 'needs_review' | 'editorial';
+export type EvidenceVerification = 'verified' | 'needs_review' | 'editorial' | 'unknown';
 
 export interface ContentEvidence {
   sourceUrl: string;
@@ -65,5 +68,9 @@ export function isEvidenceReviewDue(evidence: ContentEvidence, now: Date = kstNo
  * distinguishable from content that was never confirmed.
  */
 export function evidenceNeedsReview(evidence: ContentEvidence, now: Date = kstNow()): boolean {
-  return evidence.verification === 'needs_review' || isEvidenceReviewDue(evidence, now);
+  return (
+    evidence.verification === 'needs_review' ||
+    evidence.verification === 'unknown' ||
+    isEvidenceReviewDue(evidence, now)
+  );
 }

@@ -21,11 +21,21 @@
  *  - The US embassy carried a separate after-hours number. The embassy's duty
  *    officer is reached on the main line; the second number is not published.
  *
- * Five embassy numbers are kept but marked `needs_review`: their own sites
- * could not be opened on the check date, and the UK has moved to a contact
- * form, so publishing them as confirmed would be a guess. The Ministry of
- * Foreign Affairs directory now leads the section, which is also the only entry
- * that serves a reader whose country is not one of the six.
+ * The five embassies that could not be opened on 2026-08-04 were re-checked on
+ * 2026-08-06 against their own governments' pages, which changed four of them:
+ *
+ *  - Canada's URL 404ed. Global Affairs moved the post page from
+ *    `korea-coree` to `republic_korea-republique_coree`.
+ *  - France's `kr.ambafrance.org` now 301s to `kr.diplomatie.gouv.fr`, and the
+ *    French government directory publishes a duty number the app did not have.
+ *  - Germany and Australia both publish an after-hours line the app omitted.
+ *  - gov.uk publishes no telephone number for the Seoul post at all. It routes
+ *    emergencies through a contact form, so the number the app carried is
+ *    removed rather than re-sourced — the same call made for the US
+ *    after-hours line and LOST112's English support.
+ *
+ * The Ministry of Foreign Affairs directory still leads the section, which is
+ * the only entry that serves a reader whose country is not one of the six.
  */
 
 import type { ContentEvidence } from '../lib/contentEvidence';
@@ -36,6 +46,16 @@ export interface EmergencyItem {
   /** The action the reader takes: `tel:` to dial, `https:` to open a service. */
   href?: string;
   evidence: ContentEvidence;
+  /** Separate provenance for language-access instructions on emergency lines. */
+  languageSupport?: EmergencyLanguageSupport;
+}
+
+export interface EmergencyLanguageSupport {
+  /** `needs_review` is intentional when the official source does not state the current call flow. */
+  verification: Extract<ContentEvidence['verification'], 'verified' | 'needs_review'>;
+  detail: string;
+  evidence: ContentEvidence;
+  finalAuthority: string;
 }
 
 export interface EmergencySection {
@@ -47,6 +67,9 @@ export interface EmergencySection {
 }
 
 const CHECKED = '2026-08-04';
+
+/** The embassy re-check that closed the five `needs_review` entries. */
+const EMBASSY_CHECKED = '2026-08-06';
 
 const POLICE: ContentEvidence = {
   sourceUrl: 'https://112.go.kr/',
@@ -64,6 +87,30 @@ const FIRE_AGENCY: ContentEvidence = {
   sourceTitle: '119 구급신고 요령 (How to report to 119)',
   publisher: 'National Fire Agency (소방청)',
   checkedAt: CHECKED,
+  contentClass: 'A',
+  verification: 'verified',
+  finalAuthority: '119',
+  jurisdiction: 'Republic of Korea',
+};
+
+const POLICE_LANGUAGE_SUPPORT: ContentEvidence = {
+  sourceUrl:
+    'https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1004&q_bbscttSn=20260223174650936',
+  sourceTitle: '112신고 외국어 통역센터 채용 공고',
+  publisher: 'Korean National Police Agency (경찰청)',
+  checkedAt: '2026-08-29',
+  contentClass: 'A',
+  verification: 'verified',
+  finalAuthority: '112',
+  jurisdiction: 'Republic of Korea',
+};
+
+const FIRE_LANGUAGE_SUPPORT: ContentEvidence = {
+  sourceUrl:
+    'https://www.nfa.go.kr/nfa/news/pressrelease/press/?boardId=bbs_0000000000000010&category=&cntId=352&mode=view&pageIdx=++++3',
+  sourceTitle: '119신고앱 영문서비스 시행 및 외국인 신고 안내',
+  publisher: 'National Fire Agency (소방청)',
+  checkedAt: '2026-08-29',
   contentClass: 'A',
   verification: 'verified',
   finalAuthority: '119',
@@ -114,18 +161,19 @@ const MOFA_EMBASSY_DIRECTORY: ContentEvidence = {
   jurisdiction: 'Republic of Korea',
 };
 
-/** Each embassy is its own final authority; only the reachable one is confirmed. */
+/** Each embassy is its own final authority. */
 function embassy(
   sourceUrl: string,
   sourceTitle: string,
   publisher: string,
   verification: EmbassyVerification,
+  checkedAt: string = EMBASSY_CHECKED,
 ): ContentEvidence {
   return {
     sourceUrl,
     sourceTitle,
     publisher,
-    checkedAt: CHECKED,
+    checkedAt,
     contentClass: 'B',
     verification,
     finalAuthority: publisher,
@@ -144,16 +192,30 @@ export const EMERGENCY_SECTIONS: EmergencySection[] = [
       {
         label: '112 — Police (경찰)',
         detail:
-          'Crime, theft, assault, harassment. Free, 24 hours. If you cannot speak Korean, say "English" as soon as the call connects and the operator brings an interpreter onto the line.',
+          'Crime, theft, assault, harassment. Free, 24 hours. If you cannot speak Korean, ask for an interpreter when the call connects. The current languages and connection steps can vary, so confirm with the operator.',
         href: 'tel:112',
         evidence: POLICE,
+        languageSupport: {
+          verification: 'verified',
+          detail:
+            'The National Police Agency publishes a 112 foreign-language interpretation centre. Ask the 112 operator for an interpreter; the source does not promise a fixed language list or a particular phrase.',
+          evidence: POLICE_LANGUAGE_SUPPORT,
+          finalAuthority: '112',
+        },
       },
       {
         label: '119 — Fire and ambulance (소방·구급)',
         detail:
-          'Fire, rescue, and medical emergencies. Free, 24 hours. Give the address first, then whether the person is conscious and breathing. Interpretation is added to the call for non-Korean speakers.',
+          'Fire, rescue, and medical emergencies. Free, 24 hours. Give the address first, then whether the person is conscious and breathing. If speaking Korean is difficult, dial 119 and use the NFA video/app reporting options when available; direct phone interpretation is not confirmed here.',
         href: 'tel:119',
         evidence: FIRE_AGENCY,
+        languageSupport: {
+          verification: 'needs_review',
+          detail:
+            'The National Fire Agency documents an English 119 report app and says video reporting is useful for foreigners. It does not state the current languages or a direct voice-interpreter connection flow on the checked page; ask 119 or 1330 if you need live interpretation.',
+          evidence: FIRE_LANGUAGE_SUPPORT,
+          finalAuthority: '119 and Korea Travel Hotline 1330',
+        },
       },
       {
         label: '1345 — Immigration Contact Center (출입국)',
@@ -362,62 +424,67 @@ export const EMERGENCY_SECTIONS: EmergencySection[] = [
           'Contact us — U.S. Embassy and Consulate in the Republic of Korea',
           'U.S. Embassy Seoul',
           'verified',
+          CHECKED,
         ),
       },
       {
         label: 'United Kingdom',
         detail:
-          'Jung-gu, Sejong-daero 19-gil 24. Tel: 02-3210-5500. The embassy now routes enquiries and emergencies through an online contact form, so use its site first.',
+          'Jung-gu, Sejong-daero 19-gil 24 (04519). gov.uk publishes no telephone number for this post — it says to use its contact form to call in an emergency or send an enquiry, so start there.',
         href: 'https://www.gov.uk/world/organisations/british-embassy-seoul',
         evidence: embassy(
           'https://www.gov.uk/world/organisations/british-embassy-seoul',
           'British Embassy Seoul',
           'British Embassy Seoul',
-          'needs_review',
+          'verified',
         ),
       },
       {
         label: 'Canada',
-        detail: 'Jung-gu, 21 Jeongdong-gil. Tel: 02-3783-6000.',
+        detail:
+          'Jung-gu, 21 Jeongdong-gil (04518). Tel: 02-3783-6000, seoul@international.gc.ca. Emergency consular assistance runs 24/7 — seoul-cs@international.gc.ca outside office hours.',
         href: 'tel:02-3783-6000',
         evidence: embassy(
-          'https://www.international.gc.ca/country-pays/korea-coree/seoul.aspx',
-          'Embassy of Canada to Korea',
-          'Embassy of Canada to Korea',
-          'needs_review',
+          'https://www.international.gc.ca/country-pays/republic_korea-republique_coree/seoul.aspx?lang=eng',
+          'Embassy of Canada to the Republic of Korea, in Seoul',
+          'Embassy of Canada to the Republic of Korea',
+          'verified',
         ),
       },
       {
         label: 'Australia',
-        detail: 'Jongno-gu. Tel: 02-2003-0100.',
+        detail:
+          'Jongno-gu, 19th floor Kyobo Building, 1 Jong-ro (03154). Tel: 02-2003-0100. The 24-hour Consular Emergency Centre is +61 2 6261 3305.',
         href: 'tel:02-2003-0100',
         evidence: embassy(
-          'https://southkorea.embassy.gov.au/',
-          'Australian Embassy, Republic of Korea',
+          'https://southkorea.embassy.gov.au/seol/contact.html',
+          'Contact us — Australian Embassy, Republic of Korea',
           'Australian Embassy Seoul',
-          'needs_review',
+          'verified',
         ),
       },
       {
         label: 'Germany',
-        detail: 'Jung-gu. Tel: 02-748-4114.',
+        detail:
+          'Jung-gu, 8th floor Seoul Square, 416 Hangang-daero (04637). Tel: 02-748-4114. Out of hours the embassy publishes 010-5240-7124 for emergencies.',
         href: 'tel:02-748-4114',
         evidence: embassy(
           'https://seoul.diplo.de/',
+          'Deutsche Botschaft Seoul',
           'German Embassy Seoul',
-          'German Embassy Seoul',
-          'needs_review',
+          'verified',
         ),
       },
       {
         label: 'France',
-        detail: 'Seodaemun-gu. Tel: 02-3149-4300.',
+        detail:
+          'Seodaemun-gu, 43-12 Seosomun-ro (03741). Tel: 02-3149-4300. The emergency number is 010-8753-3276.',
         href: 'tel:02-3149-4300',
         evidence: embassy(
-          'https://kr.ambafrance.org/',
-          'Ambassade de France en Corée',
+          'https://lannuaire.service-public.gouv.fr/ambassades/c06c38df-4ec8-4925-9111-96ec150d294b',
+          'Ambassade de France en Corée du Sud — annuaire officiel',
           'French Embassy Seoul',
-          'needs_review',
+          'verified',
         ),
       },
     ],

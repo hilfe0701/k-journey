@@ -1,6 +1,6 @@
 # K-Journey web deployment
 
-Last verified: 2026-08-02 (Asia/Seoul)
+Last verified: 2026-08-29 (Asia/Seoul)
 
 ## Production
 
@@ -11,22 +11,26 @@ Last verified: 2026-08-02 (Asia/Seoul)
 - Build command: `npm run build:web`
 - Output directory: `dist`
 - Routing mode: Expo Router single-page export with a Vercel catch-all rewrite
-- Source commit: **not recorded for this deployment**
-- Reproducibility: **not proven** — deployment was created from a dirty working tree
+- Source commit: `739c444efb0403e2d8c8d41610de480c3894c7cd` (integrated local release source)
+- Reproducibility: **proven locally** — clean commit, `npm run build:web`, and asset/a11y checks passed
 - Product parity: **stale** — it predates the 2026-08-02 full audit and reinforcement work
 
 Do not promote the existing `dist/` again. It was generated before the current image optimization and UI fixes.
 
 ## Current build measurement
 
-Measured 2026-08-04 from `npm run build:web` on the verification pass described
-in `STATUS.md`:
+Measured 2026-08-29 from `npm run build:web` after the source/content integration
+pass described in `STATUS.md`:
 
 | Item | Size |
 |---|---|
-| `dist/` total | 23 MB (66 files) |
-| Artwork and fonts (`dist/assets`) | 18 MB |
-| JavaScript, one bundle | 4.97 MB raw / 1.02 MB gzipped |
+| `dist/` total | 24 MB (64 files) |
+| Artwork and fonts (`dist/assets`) | 19 MB |
+| JavaScript, one bundle | 5.04 MB raw / 1.04 MB gzipped |
+
+Build verification: `npm run build:web` completed with Expo 52.0.49 from the
+integrated source. The build includes the 24 sliced byeongpung runtime assets and
+the source/freshness UI.
 
 Artwork dominates the payload; the JS bundle is unchanged by this pass.
 
