@@ -34,6 +34,7 @@ npm run build:web
 | official links | browser/dialer action fires and failure is recoverable |
 | export/reset | all supported user-owned data is present; reset returns to onboarding |
 | responsive | 390×844 and 1440×900 first action and artwork hierarchy pass |
+| route boot failure | browser gates fail if the application ErrorBoundary renders |
 
 ## Accessibility checks
 
@@ -47,11 +48,14 @@ npm run build:web
 
 Capture each primary tab and representative details at 390×844 and 1440×900. Compare first-action position, clipping, horizontal overflow, hidden-tab DOM, image seams, and share/export states. A passing static build is not visual evidence.
 
-## Failure injection backlog
+## Failure injection coverage
 
-- MMKV write/read-back mismatch for profile, task, mission, and bucket mutations;
-- malformed and older-version JSON;
-- OS share dismissed/thrown;
-- link/dial handler rejection;
-- photo permission denied;
-- unknown condition combinations.
+- [x] MMKV write/read-back mismatch for profile, task, mission, and bucket mutations (`firebaseFailures.test.ts`);
+- [x] malformed and older-version JSON (`storageMigrations.test.ts`);
+- [x] OS share unavailable/dismissed/thrown and capture failure (`share.test.ts`);
+- [x] external link handler rejection (`linking.test.ts`);
+- [x] photo permission denied plus primary/fallback save failures (`share.test.ts`);
+- [x] unknown condition combinations (condition/admin/task-state suites).
+
+Native permission dialogs, OS share sheets, and process-restart behavior still
+require the signed artifact/device pass; unit failure injection does not replace it.

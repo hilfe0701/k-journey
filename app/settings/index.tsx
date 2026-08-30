@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -18,7 +18,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, ChevronRight, X, Check, Mail, ExternalLink } from 'lucide-react-native';
 import { Calendar } from 'react-native-calendars';
-import { format } from 'date-fns';
 import Constants from 'expo-constants';
 
 import { Text, Button, IconButton, MIN_TARGET } from '../../src/components/ui';
@@ -28,9 +27,12 @@ import {
   UNKNOWN,
   updateUserProfile,
   type ContractHolder,
+  type HomeCountryInsurance,
   type HousingType,
+  type ProgramType,
   type ResidenceCardStatus,
   type UserProfile,
+  type VisaTypeOrStatus,
 } from '../../src/lib/firebase';
 import { clearLocalJourneyData } from '../../src/lib/firebase';
 import { UNIVERSITIES } from '../../src/data/universities';
@@ -38,15 +40,14 @@ import { ERA_LIST } from '../../src/theme/eras';
 import { BYEONGPUNG_PANEL_IMAGES } from '../../src/components/byeongpung/motifs';
 import { calcDatePhase } from '../../src/hooks/usePhase';
 import {
+  cancelScheduledJourneyNotifications,
   getPermissionState,
   rescheduleAllNotifications,
   type PermissionState,
 } from '../../src/lib/notifications';
 import { useNotificationPref, type NotificationPrefKey } from '../../src/state/useNotificationSettings';
 import { showOperationError, surfaceError } from '../../src/lib/errorAlert';
-import { validateDates, validateName } from '../../src/lib/validation';
-import { emitError } from '../../src/lib/errors/host';
-import { ERROR_CATALOG } from '../../src/lib/errors/catalog';
+import { DATE_ERROR_MESSAGES, validateDates, validateName } from '../../src/lib/validation';
 import { track } from '../../src/lib/posthog';
 import { showAlert } from '../../src/lib/alert';
 import { resetAhaMoment } from '../../src/components/onboarding/AhaMomentTour';
@@ -57,6 +58,30 @@ import {
   universityProfilePatch,
 } from '../../src/lib/profileCompat';
 import { a11yState } from '../../src/lib/a11y';
+import { SEOUL_DISTRICT_OPTIONS } from '../../src/data/admin';
+import { formatKstDate, kstCalendarDate, kstNow } from '../../src/lib/dates';
+import {
+  PUBLIC_PRIVACY_POLICY_URL,
+  PUBLIC_SUPPORT_EMAIL,
+} from '../../src/lib/publicContact';
+import {
+  HOME_INSURANCE_OPTIONS,
+  PROGRAM_TYPE_OPTIONS,
+  UNKNOWN_PROFILE_LABEL,
+  VISA_STATUS_OPTIONS,
+  homeInsuranceLabel,
+  knownEditableProfileDate,
+  nationalityLabel,
+  nationalityPatch,
+  profileDateField,
+  profileDateMinimum,
+  programTypeLabel,
+  totalStayDaysLabel,
+  totalStayDaysPatch,
+  visaStatusLabel,
+  type EditableProfileDate,
+  type EditableProfileDateKind,
+} from '../../src/lib/settingsProfile';
 
 type Section =
   | { key: 'notifications'; title: string; data: 'notifications'[] }
@@ -72,9 +97,16 @@ export default function SettingsScreen() {
   const [openSheet, setOpenSheet] = useState<
     | 'name'
     | 'university'
+    | 'programType'
+    | 'visaTypeOrStatus'
     | 'housing'
+    | 'residenceDistrict'
     | 'contractHolder'
     | 'residenceCard'
+    | 'totalStayDays'
+    | 'nationality'
+    | 'homeCountryInsurance'
+    | 'programStart'
     | 'arrival'
     | 'departure'
     | 'era'
@@ -142,6 +174,7 @@ export default function SettingsScreen() {
               return (
                 <NotificationsSection
                   permission={permission}
+                  profile={profile}
                   onPermissionOpen={() => Linking.openSettings().catch(() => {})}
                   onMount={() => trackOpen('notifications')}
                 />
@@ -179,6 +212,22 @@ export default function SettingsScreen() {
                     }}
                   />
                   <SettingsRow
+                    label="Program"
+                    valueText={programTypeLabel(profile?.programType)}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('programType');
+                    }}
+                  />
+                  <SettingsRow
+                    label="Visa or status"
+                    valueText={visaStatusLabel(profile?.visaTypeOrStatus)}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('visaTypeOrStatus');
+                    }}
+                  />
+                  <SettingsRow
                     label="Housing"
                     valueText={housingLabel(
                       profile?.housingType && profile.housingType !== UNKNOWN
@@ -199,11 +248,51 @@ export default function SettingsScreen() {
                     }}
                   />
                   <SettingsRow
+                    label="Total stay"
+                    valueText={totalStayDaysLabel(profile?.totalStayDays)}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('totalStayDays');
+                    }}
+                  />
+                  <SettingsRow
+                    label="Nationality"
+                    valueText={nationalityLabel(profile?.nationality)}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('nationality');
+                    }}
+                  />
+                  <SettingsRow
+                    label="Home-country insurance"
+                    valueText={homeInsuranceLabel(profile?.homeCountryInsurance)}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('homeCountryInsurance');
+                    }}
+                  />
+                  <SettingsRow
+                    label="Registered district"
+                    valueText={profile?.residenceDistrict ?? 'Unknown / not sure'}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('residenceDistrict');
+                    }}
+                  />
+                  <SettingsRow
                     label="Residence card"
                     valueText={residenceCardLabel(profile?.residenceCardStatus)}
                     onPress={() => {
                       trackOpen('profile');
                       setOpenSheet('residenceCard');
+                    }}
+                  />
+                  <SettingsRow
+                    label="Program start date"
+                    valueText={formatDate(profile?.programStartDate)}
+                    onPress={() => {
+                      trackOpen('profile');
+                      setOpenSheet('programStart');
                     }}
                   />
                   <SettingsRow
@@ -293,8 +382,11 @@ export default function SettingsScreen() {
       <PickerSheet
         visible={openSheet === 'university'}
         title="Pick your university"
-        options={UNIVERSITIES.map((u) => ({ value: u.id, label: u.shortName, hint: u.campusArea }))}
-        selected={selectUniversityId(profile)}
+        options={[
+          ...UNIVERSITIES.map((u) => ({ value: u.id, label: u.shortName, hint: u.campusArea })),
+          { value: UNKNOWN, label: UNKNOWN_PROFILE_LABEL, hint: 'You can update this later' },
+        ]}
+        selected={selectUniversityId(profile) ?? UNKNOWN}
         onClose={() => setOpenSheet(null)}
         onSelect={async (value) => {
           try {
@@ -308,6 +400,42 @@ export default function SettingsScreen() {
         }}
       />
 
+      <PickerSheet
+        visible={openSheet === 'programType'}
+        title="Program type"
+        options={[...PROGRAM_TYPE_OPTIONS]}
+        selected={profile?.programType ?? UNKNOWN}
+        onClose={() => setOpenSheet(null)}
+        onSelect={async (value) => {
+          try {
+            await updateUserProfile({ programType: value as ProgramType });
+            track('profile_field_change', { field: 'programType' });
+            setOpenSheet(null);
+            surfaceError('profile-updated');
+          } catch (err) {
+            showOperationError('save your program type', err);
+          }
+        }}
+      />
+
+      <PickerSheet
+        visible={openSheet === 'visaTypeOrStatus'}
+        title="Visa or status"
+        options={[...VISA_STATUS_OPTIONS]}
+        selected={profile?.visaTypeOrStatus ?? UNKNOWN}
+        onClose={() => setOpenSheet(null)}
+        onSelect={async (value) => {
+          try {
+            await updateUserProfile({ visaTypeOrStatus: value as VisaTypeOrStatus });
+            track('profile_field_change', { field: 'visaTypeOrStatus' });
+            setOpenSheet(null);
+            surfaceError('profile-updated');
+          } catch (err) {
+            showOperationError('save your visa or status', err);
+          }
+        }}
+      />
+
       {/* Housing picker */}
       <PickerSheet
         visible={openSheet === 'housing'}
@@ -317,11 +445,12 @@ export default function SettingsScreen() {
           { value: 'own_lease', label: 'Private lease', hint: 'You hold the housing lease' },
           { value: 'third_party_lease', label: 'Shared housing', hint: 'Someone else holds the lease' },
           { value: 'registered_business', label: 'Business accommodation', hint: 'A registered stay provider' },
+          { value: UNKNOWN, label: UNKNOWN_PROFILE_LABEL, hint: 'You can update this later' },
         ]}
         selected={
           profile?.housingType && profile.housingType !== UNKNOWN
             ? profile.housingType
-            : profile?.housing ?? null
+            : profile?.housing ?? UNKNOWN
         }
         onClose={() => setOpenSheet(null)}
         onSelect={async (value) => {
@@ -367,6 +496,27 @@ export default function SettingsScreen() {
       />
 
       <PickerSheet
+        visible={openSheet === 'residenceDistrict'}
+        title="Registered residence district"
+        options={[
+          { value: UNKNOWN, label: 'Unknown / outside Seoul', hint: 'Confirm the responsible office with 1345' },
+          ...SEOUL_DISTRICT_OPTIONS.map((district) => ({ value: district, label: district })),
+        ]}
+        selected={profile?.residenceDistrict ?? UNKNOWN}
+        onClose={() => setOpenSheet(null)}
+        onSelect={async (value) => {
+          try {
+            await updateUserProfile({ residenceDistrict: value === UNKNOWN ? null : value });
+            track('profile_field_change', { field: 'residenceDistrict' });
+            setOpenSheet(null);
+            surfaceError('profile-updated');
+          } catch (err) {
+            showOperationError('save your registered district', err);
+          }
+        }}
+      />
+
+      <PickerSheet
         visible={openSheet === 'residenceCard'}
         title="Residence card status"
         options={[
@@ -390,6 +540,63 @@ export default function SettingsScreen() {
             showOperationError('save your residence card status', err);
           }
         }}
+      />
+
+      <ProfileTextSheet
+        visible={openSheet === 'totalStayDays'}
+        title="Edit total stay"
+        label="Total stay in days"
+        initial={typeof profile?.totalStayDays === 'number' ? String(profile.totalStayDays) : ''}
+        initiallyUnknown={profile?.totalStayDays === UNKNOWN}
+        placeholder="e.g. 120"
+        keyboardType="number-pad"
+        normalizeInput={(value) => value.replace(/[^0-9]/g, '')}
+        buildPatch={(value, markedUnknown) => totalStayDaysPatch(value, markedUnknown)}
+        saveLabel="Save stay length"
+        operation="save your stay length"
+        field="totalStayDays"
+        onClose={() => setOpenSheet(null)}
+      />
+
+      <ProfileTextSheet
+        visible={openSheet === 'nationality'}
+        title="Edit nationality"
+        label="Nationality"
+        initial={profile?.nationality && profile.nationality !== UNKNOWN ? profile.nationality : ''}
+        initiallyUnknown={profile?.nationality === UNKNOWN}
+        placeholder="e.g. Canada"
+        normalizeInput={(value) => value}
+        buildPatch={(value, markedUnknown) => nationalityPatch(value, markedUnknown)}
+        saveLabel="Save nationality"
+        operation="save your nationality"
+        field="nationality"
+        onClose={() => setOpenSheet(null)}
+      />
+
+      <PickerSheet
+        visible={openSheet === 'homeCountryInsurance'}
+        title="Home-country insurance"
+        options={[...HOME_INSURANCE_OPTIONS]}
+        selected={profile?.homeCountryInsurance ?? UNKNOWN}
+        onClose={() => setOpenSheet(null)}
+        onSelect={async (value) => {
+          try {
+            await updateUserProfile({ homeCountryInsurance: value as HomeCountryInsurance });
+            track('profile_field_change', { field: 'homeCountryInsurance' });
+            setOpenSheet(null);
+            surfaceError('profile-updated');
+          } catch (err) {
+            showOperationError('save your home-country insurance', err);
+          }
+        }}
+      />
+
+      <DateSheet
+        visible={openSheet === 'programStart'}
+        kind="programStart"
+        profile={profile}
+        onClose={() => setOpenSheet(null)}
+        onSave={(next) => handleDateSave(profile, 'programStart', next, setOpenSheet)}
       />
 
       {/* Arrival date */}
@@ -432,23 +639,35 @@ export default function SettingsScreen() {
 
 async function handleDateSave(
   profile: UserProfile | null,
-  kind: 'arrival' | 'departure',
-  next: string,
+  kind: EditableProfileDateKind,
+  next: EditableProfileDate,
   setOpenSheet: (v: null) => void,
 ) {
+  const field = profileDateField(kind);
+  if (kind === 'programStart') {
+    try {
+      await updateUserProfile({ [field]: next });
+      track('profile_field_change', { field });
+      setOpenSheet(null);
+      surfaceError('profile-updated');
+    } catch (err) {
+      showOperationError('save your program start date', err);
+    }
+    return;
+  }
+
   const currentArrival = knownProfileDate(profile?.arrivalDate);
   const currentDeparture = knownProfileDate(profile?.departureDate);
-  const arrival = kind === 'arrival' ? next : currentArrival;
-  const departure = kind === 'departure' ? next : currentDeparture;
+  const knownNext = knownEditableProfileDate(next);
+  const arrival = kind === 'arrival' ? knownNext : currentArrival;
+  const departure = kind === 'departure' ? knownNext : currentDeparture;
   if (arrival && departure) {
     const err = validateDates(arrival, departure);
     if (err) {
-      const errorCode =
-        err === 'arrival_after_departure'
-          ? 'validation-arrival-after-departure'
-          : 'validation-departure-too-soon';
-      // Surface the inline-tier validation copy as a T1 toast (user is in a sheet).
-      emitError({ ...ERROR_CATALOG[errorCode], tier: 'T1', autoDismissMs: 5000 });
+      surfaceError('unknown', {
+        messageOverride: DATE_ERROR_MESSAGES[err],
+        contextAction: 'check your dates',
+      });
       return;
     }
   }
@@ -457,15 +676,23 @@ async function handleDateSave(
     departureDate: currentDeparture,
   });
   try {
-    await updateUserProfile({
-      [kind === 'arrival' ? 'arrivalDate' : 'departureDate']: next,
-    });
-    track('profile_field_change', { field: kind === 'arrival' ? 'arrivalDate' : 'departureDate' });
+    await updateUserProfile({ [field]: next });
+    track('profile_field_change', { field });
     setOpenSheet(null);
     if (arrival && departure) {
-      // rescheduleAllNotifications records its own failures and never throws.
-      await rescheduleAllNotifications({ arrivalDate: arrival, departureDate: departure });
-      surfaceError('dates-updated');
+      const scheduleResult = await rescheduleAllNotifications({
+        arrivalDate: arrival,
+        departureDate: departure,
+      });
+      surfaceError(
+        scheduleResult.complete
+          ? 'dates-updated'
+          : !scheduleResult.permissionGranted &&
+              scheduleResult.cancelledExisting &&
+              scheduleResult.failureCount === 0
+            ? 'dates-updated-notifications-off'
+            : 'dates-updated-reminder-warning',
+      );
       // PRD §4.7 — if the new dates move the user to an earlier phase, follow
       // the toast with a modal so the phase shift is not a silent surprise.
       const phaseAfter = calcDatePhase({ arrivalDate: arrival, departureDate: departure });
@@ -474,9 +701,14 @@ async function handleDateSave(
           messageOverride: `Your new dates put you in Phase ${phaseAfter}. Existing missions stay completed.`,
         });
       }
+    } else {
+      const remindersCleared = await cancelScheduledJourneyNotifications();
+      surfaceError(
+        remindersCleared ? 'profile-updated' : 'dates-updated-reminder-warning',
+      );
     }
   } catch (err) {
-    showOperationError(`save your ${kind} date`, err);
+    showOperationError(`save your ${kind === 'arrival' ? 'arrival' : 'departure'} date`, err);
   }
 }
 
@@ -522,7 +754,7 @@ function residenceCardLabel(status: string | null | undefined): string {
 function formatDate(iso: string | null | undefined): string {
   if (!iso || iso === UNKNOWN) return '—';
   try {
-    return format(new Date(iso), 'MMM d, yyyy');
+    return formatKstDate(iso);
   } catch {
     return iso;
   }
@@ -580,31 +812,55 @@ function SettingsRow({
 
 function NotificationsSection({
   permission,
+  profile,
   onPermissionOpen,
   onMount,
 }: {
   permission: PermissionState | null;
+  profile: UserProfile | null;
   onPermissionOpen: () => void;
   onMount: () => void;
 }) {
   useEffect(() => onMount(), [onMount]);
 
   const disabled = permission !== 'granted';
+  const syncLock = useRef(false);
+  const [syncing, setSyncing] = useState(false);
+
+  function beginSync(): boolean {
+    if (syncLock.current) return false;
+    syncLock.current = true;
+    setSyncing(true);
+    return true;
+  }
+
+  function endSync() {
+    syncLock.current = false;
+    setSyncing(false);
+  }
 
   return (
     <View style={styles.card}>
-      <ToggleRow code="dDay30" label="D-30 reminder" disabled={disabled} />
-      <ToggleRow code="dDay14" label="D-14 reminder" disabled={disabled} />
-      <ToggleRow code="dDay7" label="D-7 reminder" disabled={disabled} />
+      <ToggleRow code="dDay30" label="D-30 reminder" disabled={disabled} profile={profile} syncing={syncing} beginSync={beginSync} endSync={endSync} />
+      <ToggleRow code="dDay14" label="D-14 reminder" disabled={disabled} profile={profile} syncing={syncing} beginSync={beginSync} endSync={endSync} />
+      <ToggleRow code="dDay7" label="D-7 reminder" disabled={disabled} profile={profile} syncing={syncing} beginSync={beginSync} endSync={endSync} />
       <ToggleRow
         code="phaseTransitions"
         label="Phase change reminders"
         disabled={disabled}
+        profile={profile}
+        syncing={syncing}
+        beginSync={beginSync}
+        endSync={endSync}
       />
       <ToggleRow
         code="panelUnlocks"
         label="Panel unlock celebrations"
         disabled={disabled}
+        profile={profile}
+        syncing={syncing}
+        beginSync={beginSync}
+        endSync={endSync}
       />
       <View style={[styles.row, styles.rowDivider]}>
         <View style={{ flex: 1 }}>
@@ -652,17 +908,49 @@ function ToggleRow({
   code,
   label,
   disabled,
+  profile,
+  syncing,
+  beginSync,
+  endSync,
 }: {
   code: NotificationPrefKey;
   label: string;
   disabled: boolean;
+  profile: UserProfile | null;
+  syncing: boolean;
+  beginSync: () => boolean;
+  endSync: () => void;
 }) {
   const [value, setValue] = useNotificationPref(code);
+  const unavailable = disabled || syncing;
   const isOn = value && !disabled;
 
-  function toggle(next: boolean) {
+  async function toggle(next: boolean) {
+    const needsScheduleSync = code !== 'panelUnlocks';
+    if (needsScheduleSync && !beginSync()) return;
     setValue(next);
     track('notification_pref_change', { code, value: next });
+    if (!needsScheduleSync) return;
+
+    try {
+      const arrivalDate = knownProfileDate(profile?.arrivalDate);
+      const departureDate = knownProfileDate(profile?.departureDate);
+      if (arrivalDate && departureDate) {
+        const result = await rescheduleAllNotifications({ arrivalDate, departureDate });
+        if (!result.complete) {
+          surfaceError(
+            !result.permissionGranted && result.cancelledExisting && result.failureCount === 0
+              ? 'notification-pref-updated-notifications-off'
+              : 'notification-pref-updated-reminder-warning',
+          );
+        }
+      } else {
+        const cleared = await cancelScheduledJourneyNotifications();
+        if (!cleared) surfaceError('notification-pref-updated-reminder-warning');
+      }
+    } finally {
+      endSync();
+    }
   }
 
   // The `Switch` itself renders at 40×20 — under the 44pt minimum and impossible
@@ -670,18 +958,18 @@ function ToggleRow({
   // is left non-focusable so keyboard users get one stop, not two.
   return (
     <Pressable
-      onPress={() => toggle(!isOn)}
-      disabled={disabled}
+      onPress={() => void toggle(!isOn)}
+      disabled={unavailable}
       accessibilityRole="switch"
       accessibilityLabel={label}
-      {...a11yState({ checked: isOn, disabled })}
+      {...a11yState({ checked: isOn, disabled: unavailable })}
       style={({ pressed }) => [
         styles.row,
         styles.rowDivider,
-        pressed && !disabled ? { backgroundColor: semantic.bg.tertiary } : null,
+        pressed && !unavailable ? { backgroundColor: semantic.bg.tertiary } : null,
       ]}
     >
-      <Text role="body" color={disabled ? palette.stone : palette.meok} style={{ flex: 1 }}>
+      <Text role="body" color={unavailable ? palette.stone : palette.meok} style={{ flex: 1 }}>
         {label}
       </Text>
       {/*
@@ -693,7 +981,7 @@ function ToggleRow({
       */}
       <Switch
         value={isOn}
-        disabled={disabled}
+        disabled={unavailable}
         trackColor={{ false: palette.hairline, true: palette.ink }}
         thumbColor={palette.hanji}
         style={{ pointerEvents: 'none' }}
@@ -708,6 +996,8 @@ function ToggleRow({
 
 function AboutSection({ onMount }: { onMount: () => void }) {
   useEffect(() => onMount(), [onMount]);
+  const supportEmail = PUBLIC_SUPPORT_EMAIL;
+  const privacyPolicyUrl = PUBLIC_PRIVACY_POLICY_URL;
   const version =
     Constants.expoConfig?.version ?? Constants.manifest2?.extra?.expoClient?.version ?? '0.0.0';
   const runtimeVersion =
@@ -721,21 +1011,34 @@ function AboutSection({ onMount }: { onMount: () => void }) {
       ) : null}
       <SettingsRow
         label="Support"
-        onPress={() => {
-          Linking.openURL('mailto:support@kjourney.app?subject=K-Journey%20Support').catch(() => {
-            surfaceError('unknown');
-          });
-        }}
-        right={<Mail size={18} color={palette.ash} />}
+        valueText={supportEmail ? undefined : 'Not published'}
+        readOnly={!supportEmail}
+        onPress={
+          supportEmail
+            ? () => {
+                const address = encodeURIComponent(supportEmail);
+                Linking.openURL(`mailto:${address}?subject=K-Journey%20Support`).catch(() => {
+                  surfaceError('unknown');
+                });
+              }
+            : undefined
+        }
+        right={supportEmail ? <Mail size={18} color={palette.ash} /> : undefined}
       />
       <SettingsRow
         label="Privacy policy"
-        onPress={() => {
-          Linking.openURL('https://kjourney.app/privacy').catch(() => {
-            surfaceError('unknown');
-          });
-        }}
-        right={<ExternalLink size={18} color={palette.ash} />}
+        valueText={privacyPolicyUrl ? undefined : 'Publication pending'}
+        readOnly={!privacyPolicyUrl}
+        onPress={
+          privacyPolicyUrl
+            ? () => {
+                Linking.openURL(privacyPolicyUrl).catch(() => {
+                  surfaceError('unknown');
+                });
+              }
+            : undefined
+        }
+        right={privacyPolicyUrl ? <ExternalLink size={18} color={palette.ash} /> : undefined}
         isLast={!__DEV__}
       />
       {__DEV__ ? (
@@ -770,33 +1073,166 @@ function NameSheet({
   onClose: () => void;
   onSave: (next: string) => Promise<void>;
 }) {
-  const [text, setText] = useState(initial);
-  useEffect(() => {
-    if (visible) setText(initial);
-  }, [visible, initial]);
-  const valid = validateName(text) === null;
   return (
     <SheetFrame visible={visible} title="Edit your name" onClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={{ gap: space[3] }}>
-          <TextInput
-            value={text}
-            onChangeText={setText}
-            placeholder="Your name"
-            placeholderTextColor={palette.stone}
-            autoCapitalize="words"
-            style={styles.input}
-            accessibilityLabel="Your name"
-          />
-          <Button
-            label="Save"
-            fullWidth
-            disabled={!valid}
-            onPress={() => onSave(text.trim())}
-          />
-        </View>
-      </KeyboardAvoidingView>
+      {visible ? <NameEditor key={initial} initial={initial} onSave={onSave} /> : null}
     </SheetFrame>
+  );
+}
+
+function NameEditor({
+  initial,
+  onSave,
+}: {
+  initial: string;
+  onSave: (next: string) => Promise<void>;
+}) {
+  const [text, setText] = useState(initial);
+  const valid = validateName(text) === null;
+  return (
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={{ gap: space[3] }}>
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          placeholder="Your name"
+          placeholderTextColor={palette.stone}
+          autoCapitalize="words"
+          style={styles.input}
+          accessibilityLabel="Your name"
+        />
+        <Button
+          label="Save name"
+          fullWidth
+          disabled={!valid}
+          onPress={() => onSave(text.trim())}
+        />
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+function ProfileTextSheet({
+  visible,
+  title,
+  label,
+  initial,
+  initiallyUnknown,
+  placeholder,
+  keyboardType = 'default',
+  normalizeInput,
+  buildPatch,
+  saveLabel,
+  operation,
+  field,
+  onClose,
+}: {
+  visible: boolean;
+  title: string;
+  label: string;
+  initial: string;
+  initiallyUnknown: boolean;
+  placeholder: string;
+  keyboardType?: 'default' | 'number-pad';
+  normalizeInput: (value: string) => string;
+  buildPatch: (value: string, markedUnknown: boolean) => Partial<UserProfile> | null;
+  saveLabel: string;
+  operation: string;
+  field: 'totalStayDays' | 'nationality';
+  onClose: () => void;
+}) {
+  return (
+    <SheetFrame visible={visible} title={title} onClose={onClose}>
+      {visible ? (
+        <ProfileTextEditor
+          key={`${initial}:${initiallyUnknown}`}
+          label={label}
+          initial={initial}
+          initiallyUnknown={initiallyUnknown}
+          placeholder={placeholder}
+          keyboardType={keyboardType}
+          normalizeInput={normalizeInput}
+          buildPatch={buildPatch}
+          saveLabel={saveLabel}
+          operation={operation}
+          field={field}
+          onClose={onClose}
+        />
+      ) : null}
+    </SheetFrame>
+  );
+}
+
+function ProfileTextEditor({
+  label,
+  initial,
+  initiallyUnknown,
+  placeholder,
+  keyboardType,
+  normalizeInput,
+  buildPatch,
+  saveLabel,
+  operation,
+  field,
+  onClose,
+}: Omit<Parameters<typeof ProfileTextSheet>[0], 'visible' | 'title'>) {
+  const [value, setValue] = useState(initial);
+  const [markedUnknown, setMarkedUnknown] = useState(initiallyUnknown);
+  const patch = buildPatch(value, markedUnknown);
+
+  async function handleSave() {
+    if (!patch) return;
+    try {
+      await updateUserProfile(patch);
+      track('profile_field_change', { field });
+      onClose();
+      surfaceError('profile-updated');
+    } catch (err) {
+      showOperationError(operation, err);
+    }
+  }
+
+  return (
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={{ gap: space[3] }}>
+        <TextInput
+          value={value}
+          onChangeText={(next) => {
+            setMarkedUnknown(false);
+            setValue(normalizeInput(next));
+          }}
+          placeholder={placeholder}
+          placeholderTextColor={palette.stone}
+          keyboardType={keyboardType}
+          autoCapitalize={field === 'nationality' ? 'words' : 'none'}
+          style={styles.input}
+          accessibilityLabel={label}
+        />
+        <Pressable
+          onPress={() => {
+            setValue('');
+            setMarkedUnknown(true);
+          }}
+          accessibilityRole="radio"
+          accessibilityLabel={UNKNOWN_PROFILE_LABEL}
+          {...a11yState({ selected: markedUnknown })}
+          style={({ pressed }) => [
+            styles.pickerRow,
+            {
+              borderColor: markedUnknown ? palette.ink : palette.hairline,
+              borderWidth: markedUnknown ? 2 : 1,
+              backgroundColor: pressed ? palette.cloud : palette.hanji,
+            },
+          ]}
+        >
+          <Text role="body" weight="semibold" style={{ flex: 1 }}>
+            {UNKNOWN_PROFILE_LABEL}
+          </Text>
+          {markedUnknown ? <Check size={20} color={palette.ink} /> : null}
+        </Pressable>
+        <Button label={saveLabel} fullWidth disabled={!patch} onPress={handleSave} />
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -865,71 +1301,121 @@ function DateSheet({
   onSave,
 }: {
   visible: boolean;
-  kind: 'arrival' | 'departure';
+  kind: EditableProfileDateKind;
   profile: UserProfile | null;
   onClose: () => void;
-  onSave: (date: string) => Promise<void> | void;
+  onSave: (date: EditableProfileDate) => Promise<void> | void;
 }) {
-  const initial = knownProfileDate(
-    kind === 'arrival' ? profile?.arrivalDate : profile?.departureDate,
-  );
-  const [selected, setSelected] = useState<string | null>(initial);
-  useEffect(() => {
-    if (visible) setSelected(initial);
-  }, [visible, initial]);
-
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const minDate = kind === 'departure'
-    ? knownProfileDate(profile?.arrivalDate) ?? today
-    : today;
+  const initial: EditableProfileDate =
+    (kind === 'programStart'
+      ? profile?.programStartDate
+      : kind === 'arrival'
+        ? profile?.arrivalDate
+        : profile?.departureDate) ?? UNKNOWN;
+  const title =
+    kind === 'programStart'
+      ? 'Edit program start date'
+      : kind === 'arrival'
+        ? 'Edit arrival date'
+        : 'Edit departure date';
 
   return (
-    <SheetFrame
-      visible={visible}
-      title={kind === 'arrival' ? 'Edit arrival date' : 'Edit departure date'}
-      onClose={onClose}
-    >
-      <View style={{ gap: space[3] }}>
-        <View style={styles.calendarWrap}>
-          <Calendar
-            current={selected ?? today}
-            minDate={minDate}
-            markedDates={selected ? { [selected]: { selected: true, selectedColor: palette.ink } } : {}}
-            onDayPress={(d: { dateString: string }) => setSelected(d.dateString)}
-            theme={{
-              calendarBackground: palette.hanji,
-              monthTextColor: palette.meok,
-              textMonthFontWeight: '700',
-              dayTextColor: palette.meok,
-              todayTextColor: palette.dancheong,
-              arrowColor: palette.meok,
-              textSectionTitleColor: palette.ash,
-            }}
+    <SheetFrame visible={visible} title={title} onClose={onClose}>
+      {visible ? (
+        <DateEditor
+          key={`${kind}:${initial}`}
+          kind={kind}
+          profile={profile}
+          initial={initial}
+          onClose={onClose}
+          onSave={onSave}
+        />
+      ) : null}
+    </SheetFrame>
+  );
+}
+
+function DateEditor({
+  kind,
+  profile,
+  initial,
+  onClose,
+  onSave,
+}: {
+  kind: EditableProfileDateKind;
+  profile: UserProfile | null;
+  initial: EditableProfileDate;
+  onClose: () => void;
+  onSave: (date: EditableProfileDate) => Promise<void> | void;
+}) {
+  const [selected, setSelected] = useState<EditableProfileDate>(initial);
+
+  const today = kstCalendarDate(kstNow());
+  const selectedDate = knownEditableProfileDate(selected);
+  const minDate = profileDateMinimum(kind, profile?.arrivalDate);
+
+  return (
+    <View style={{ gap: space[3] }}>
+      <View style={styles.calendarWrap}>
+        <Calendar
+          current={selectedDate ?? today}
+          minDate={minDate}
+          markedDates={selectedDate ? { [selectedDate]: { selected: true, selectedColor: palette.ink } } : {}}
+          onDayPress={(d: { dateString: string }) => setSelected(d.dateString)}
+          theme={{
+            calendarBackground: palette.hanji,
+            monthTextColor: palette.meok,
+            textMonthFontWeight: '700',
+            dayTextColor: palette.meok,
+            todayTextColor: palette.dancheong,
+            arrowColor: palette.meok,
+            textSectionTitleColor: palette.ash,
+          }}
+        />
+      </View>
+      <Pressable
+        onPress={() => setSelected(UNKNOWN)}
+        accessibilityRole="radio"
+        accessibilityLabel={UNKNOWN_PROFILE_LABEL}
+        {...a11yState({ selected: selected === UNKNOWN })}
+        style={({ pressed }) => [
+          styles.pickerRow,
+          {
+            borderColor: selected === UNKNOWN ? palette.ink : palette.hairline,
+            borderWidth: selected === UNKNOWN ? 2 : 1,
+            backgroundColor: pressed ? palette.cloud : palette.hanji,
+          },
+        ]}
+      >
+        <Text role="body" weight="semibold" style={{ flex: 1 }}>
+          {UNKNOWN_PROFILE_LABEL}
+        </Text>
+        {selected === UNKNOWN ? <Check size={20} color={palette.ink} /> : null}
+      </Pressable>
+      <View style={styles.confirmCard}>
+        <Text role="body" weight="semibold">
+          {kind === 'programStart' ? 'Update program start date?' : 'Update your journey dates?'}
+        </Text>
+        <Text role="sm" color={palette.ash}>
+          {kind === 'programStart'
+            ? 'This updates guidance that depends on your program schedule.'
+            : 'Your phase, missions, and reminders will be recalculated.'}
+        </Text>
+      </View>
+      <View style={{ flexDirection: 'row', gap: space[3] }}>
+        <View style={{ flex: 1 }}>
+          <Button label="Cancel" variant="secondary" fullWidth onPress={onClose} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button
+            label="Update date"
+            fullWidth
+            disabled={selected === initial}
+            onPress={() => onSave(selected)}
           />
         </View>
-        <View style={styles.confirmCard}>
-          <Text role="body" weight="semibold">
-            Update your journey dates?
-          </Text>
-          <Text role="sm" color={palette.ash}>
-            Your phase, missions, and reminders will be recalculated.
-          </Text>
-        </View>
-        <View style={{ flexDirection: 'row', gap: space[3] }}>
-          <View style={{ flex: 1 }}>
-            <Button label="Cancel" variant="secondary" fullWidth onPress={onClose} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Button
-              label="Update"
-              fullWidth
-              disabled={!selected || selected === initial}
-              onPress={() => selected && onSave(selected)}
-            />
-          </View>
-        </View>
       </View>
-    </SheetFrame>
+    </View>
   );
 }
 
@@ -944,13 +1430,26 @@ function EraSheet({
   onClose: () => void;
   onSelect: (value: 'joseon' | 'silla' | 'goryeo') => void;
 }) {
-  const [pending, setPending] = useState<'joseon' | 'silla' | 'goryeo'>(currentEra);
-  useEffect(() => {
-    if (visible) setPending(currentEra);
-  }, [visible, currentEra]);
-
   return (
     <SheetFrame visible={visible} title="Choose your era" onClose={onClose}>
+      {visible ? (
+        <EraPicker key={currentEra} currentEra={currentEra} onSelect={onSelect} />
+      ) : null}
+    </SheetFrame>
+  );
+}
+
+function EraPicker({
+  currentEra,
+  onSelect,
+}: {
+  currentEra: 'joseon' | 'silla' | 'goryeo';
+  onSelect: (value: 'joseon' | 'silla' | 'goryeo') => void;
+}) {
+  const [pending, setPending] = useState<'joseon' | 'silla' | 'goryeo'>(currentEra);
+
+  return (
+    <>
       <Text role="sm" color={palette.ash}>
         Your byeongpung swaps to the new theme. Your progress stays.
       </Text>
@@ -991,7 +1490,7 @@ function EraSheet({
         })}
         <Button label="Use this era" fullWidth onPress={() => onSelect(pending)} />
       </View>
-    </SheetFrame>
+    </>
   );
 }
 

@@ -134,6 +134,7 @@ function auditPage() {
   };
 
   return {
+    errorBoundary: document.body.innerText.includes('Something went wrong'),
     controlCount: controls.length,
     undersized: controls
       .filter(visible)
@@ -227,6 +228,9 @@ async function main() {
       }
       if (result.horizontalOverflow) {
         failures.push(`${where}: the page scrolls horizontally`);
+      }
+      if (result.errorBoundary) {
+        failures.push(`${where}: the application error boundary rendered`);
       }
       console.log(
         `${where.padEnd(34)} ${String(result.controlCount).padStart(3)} controls  ` +

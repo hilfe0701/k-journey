@@ -10,8 +10,7 @@
  * See PRD v1.1 §4.2.1 and §5.6.
  */
 
-import { isAfter, isBefore, isValid, parseISO } from 'date-fns';
-import { kstNow } from './dates';
+import { kstCalendarDate, kstDatePlusYears, kstNow, toKstStartOfDay } from './dates';
 
 export type DateValidationError =
   | 'arrival_required'
@@ -29,21 +28,23 @@ export function validateDates(
   if (!arrivalIso) return 'arrival_required';
   if (!departureIso) return 'departure_required';
 
-  const arrival = parseISO(arrivalIso);
-  const departure = parseISO(departureIso);
-  if (!isValid(arrival)) return 'arrival_invalid';
-  if (!isValid(departure)) return 'departure_invalid';
+  try {
+    toKstStartOfDay(arrivalIso);
+  } catch {
+    return 'arrival_invalid';
+  }
+  try {
+    toKstStartOfDay(departureIso);
+  } catch {
+    return 'departure_invalid';
+  }
 
-  if (isAfter(arrival, departure)) return 'arrival_after_departure';
+  if (arrivalIso > departureIso) return 'arrival_after_departure';
 
-  const now = kstNow();
-  const oneYearAgo = new Date(now);
-  oneYearAgo.setFullYear(now.getFullYear() - 1);
-  if (isBefore(arrival, oneYearAgo)) return 'arrival_too_far_past';
+  const today = kstCalendarDate(kstNow());
+  if (arrivalIso < kstDatePlusYears(today, -1)) return 'arrival_too_far_past';
 
-  const twoYearsAhead = new Date(now);
-  twoYearsAhead.setFullYear(now.getFullYear() + 2);
-  if (isAfter(departure, twoYearsAhead)) return 'departure_too_far_future';
+  if (departureIso > kstDatePlusYears(today, 2)) return 'departure_too_far_future';
 
   return null;
 }

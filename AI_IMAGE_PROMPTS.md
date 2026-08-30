@@ -869,7 +869,7 @@ the artwork, white margins or empty borders.
 
 - **출력**: 600 × 2040 PNG, 1:3.4 portrait
 - **시대**: 조선 19세기 민화
-- **모티프**: 학 (Crane) — 장수, 평화. 조선 민화의 송학도(松鶴圖) 풍
+- **모티프**: 학 (Crane) — 장수. 조선 민화의 송학도(松鶴圖) 풍
 
 #### 프롬프트
 
@@ -962,7 +962,7 @@ the artwork, white margins or empty borders.
 
 - **출력**: 600 × 2040 PNG, 1:3.4 portrait
 - **시대**: 조선 19세기 민화
-- **모티프**: 책가도 (Chaekgeori) — 조선 후기 학문/호기심 상징의 정수
+- **모티프**: 책가도 (Chaekgeori) — 조선 후기 독서·학문·수양의 이미지
 
 #### 프롬프트
 
@@ -1315,7 +1315,7 @@ the artwork, white margins or empty borders.
 
 - **출력**: 1024 × 1024 PNG, 1:1 square
 - **저장 경로**: `assets/bucket-templates/chaekgeori.png`
-- **컨셉**: 조선 민화 책가도 — "학문, 호기심, 공부". 책/수업/언어 버킷
+- **컨셉**: 조선 민화 책가도 — "독서, 학문, 수양". 책/수업/언어 버킷
 
 #### 프롬프트
 
@@ -1850,7 +1850,7 @@ the artwork, white margins or empty borders.
 
 - **출력**: 1024 × 1024 PNG, 1:1 square
 - **저장 경로**: `assets/bucket-templates/sansuhwa.png`
-- **컨셉**: 조선 민화 산수화 — "방랑, 자연, 길". 여행/등산/자연 버킷
+- **컨셉**: 조선 민화 산수화 — "자연 애호, 관조, 이상 경관". 여행/등산/자연 버킷
 
 #### 프롬프트
 

@@ -1,12 +1,11 @@
 // Screen ID: ONB-03 — Program and visa.
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import {
   ChoiceCard,
   OnboardingStepShell,
-  UNKNOWN_LABEL,
   useOnboardingStepGuard,
 } from '../../src/components/onboarding/ConditionStep';
 import { UNKNOWN, type ProgramType, type VisaTypeOrStatus } from '../../src/lib/firebase';
@@ -16,35 +15,33 @@ import { showOperationError } from '../../src/lib/errorAlert';
 import { track } from '../../src/lib/posthog';
 import { space } from '../../design-tokens';
 import { Text } from '../../src/components/ui';
-
-const PROGRAM_OPTIONS = [
-  { value: 'exchange', label: 'Exchange student' },
-  { value: 'visiting', label: 'Visiting student' },
-  { value: UNKNOWN, label: UNKNOWN_LABEL },
-] satisfies readonly { value: ProgramType; label: string }[];
-
-const VISA_OPTIONS = [
-  { value: 'D-2-6', label: 'D-2-6' },
-  { value: 'D-2-8', label: 'D-2-8' },
-  { value: 'visa_free', label: 'Visa-free stay' },
-  { value: 'other', label: 'Another visa or status' },
-  { value: UNKNOWN, label: UNKNOWN_LABEL },
-] satisfies readonly { value: VisaTypeOrStatus; label: string }[];
+import { PROGRAM_TYPE_OPTIONS, VISA_STATUS_OPTIONS } from '../../src/lib/settingsProfile';
 
 export default function ProgramScreen() {
-  const router = useRouter();
   const profile = useOnboardingStepGuard('program');
-  const [programType, setProgramType] = useState<ProgramType>(UNKNOWN);
-  const [visaTypeOrStatus, setVisaTypeOrStatus] = useState<VisaTypeOrStatus>(UNKNOWN);
-  const [saving, setSaving] = useState(false);
-  const profileProgramType = profile?.programType;
-  const profileVisaTypeOrStatus = profile?.visaTypeOrStatus;
+  const initialProgramType = profile?.programType ?? UNKNOWN;
+  const initialVisaTypeOrStatus = profile?.visaTypeOrStatus ?? UNKNOWN;
 
-  useEffect(() => {
-    if (!profile) return;
-    setProgramType(profileProgramType ?? UNKNOWN);
-    setVisaTypeOrStatus(profileVisaTypeOrStatus ?? UNKNOWN);
-  }, [profile, profileProgramType, profileVisaTypeOrStatus]);
+  return (
+    <ProgramForm
+      key={JSON.stringify([!!profile, initialProgramType, initialVisaTypeOrStatus])}
+      initialProgramType={initialProgramType}
+      initialVisaTypeOrStatus={initialVisaTypeOrStatus}
+    />
+  );
+}
+
+function ProgramForm({
+  initialProgramType,
+  initialVisaTypeOrStatus,
+}: {
+  initialProgramType: ProgramType;
+  initialVisaTypeOrStatus: VisaTypeOrStatus;
+}) {
+  const router = useRouter();
+  const [programType, setProgramType] = useState<ProgramType>(initialProgramType);
+  const [visaTypeOrStatus, setVisaTypeOrStatus] = useState<VisaTypeOrStatus>(initialVisaTypeOrStatus);
+  const [saving, setSaving] = useState(false);
 
   async function handleContinue() {
     setSaving(true);
@@ -71,7 +68,7 @@ export default function ProgramScreen() {
     >
       <View style={{ gap: space[2], marginTop: space[5] }}>
         <ChoiceGroupLabel label="Program" />
-        {PROGRAM_OPTIONS.map((option) => (
+        {PROGRAM_TYPE_OPTIONS.map((option) => (
           <ChoiceCard
             key={option.value}
             option={option}
@@ -80,7 +77,7 @@ export default function ProgramScreen() {
           />
         ))}
         <ChoiceGroupLabel label="Visa or status" />
-        {VISA_OPTIONS.map((option) => (
+        {VISA_STATUS_OPTIONS.map((option) => (
           <ChoiceCard
             key={option.value}
             option={option}

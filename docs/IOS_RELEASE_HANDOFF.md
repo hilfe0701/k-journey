@@ -11,12 +11,16 @@ Web is the active release target. iOS is deferred and has not been submitted to 
 
 ## Required before the first external iOS build
 
-1. Complete the Expo 52-to-current framework migration in a dedicated branch, resolve the transitive audit findings, and rerun the complete test suite.
+1. ~~Complete the Expo 52-to-current framework migration.~~ Done 2026-08-30:
+   Expo 57 / RN 0.86 / React 19, Expo Doctor 21/21, 38 suites / 338 tests,
+   web route/a11y/E2E gates, and clean iOS/Android prebuild pass. The remaining
+   runtime audit is 14 moderate Expo build-tooling findings, with no high/critical.
 2. Provision the production Firebase iOS app and upload its `GoogleService-Info.plist` as the EAS file secret `GOOGLE_SERVICES_PLIST`.
 3. Add the public PostHog production key if analytics are required for launch validation.
 4. Confirm Apple Developer team access, distribution certificate, App Store provisioning profile, App Store Connect app record, agreements, tax, and banking state.
 5. Add an iOS `submit.production` configuration only after the App Store Connect app and credentials exist.
-6. Build a physical-device preview and validate sign-in/data persistence, notifications, Crashlytics, camera, photo-library save, deep links, and all onboarding branches.
+6. Build a physical-device preview and validate local persistence, notifications,
+   Crashlytics, photo-library add-only save, deep links, and all onboarding branches.
 7. Run TestFlight internal testing, accessibility checks, privacy-manifest/data-use review, screenshots/metadata review, and release-candidate acceptance before App Review submission.
 
 ## Release commands after provisioning

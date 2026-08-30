@@ -1,5 +1,5 @@
 // Screen ID: ONB-02 — University.
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View } from 'react-native';
 
 import { ChoiceCard, OnboardingStepShell, UNKNOWN_LABEL, useOnboardingStepGuard } from '../../src/components/onboarding/ConditionStep';
@@ -13,14 +13,21 @@ import { space } from '../../design-tokens';
 import { useRouter } from 'expo-router';
 
 export default function UniversityScreen() {
-  const router = useRouter();
   const profile = useOnboardingStepGuard('university');
-  const [universityId, setUniversityId] = useState<string>(UNKNOWN);
-  const [saving, setSaving] = useState(false);
+  const initialUniversityId = profile?.universityId ?? UNKNOWN;
 
-  useEffect(() => {
-    if (profile?.universityId) setUniversityId(profile.universityId);
-  }, [profile?.universityId]);
+  return (
+    <UniversityForm
+      key={JSON.stringify([!!profile, initialUniversityId])}
+      initialUniversityId={initialUniversityId}
+    />
+  );
+}
+
+function UniversityForm({ initialUniversityId }: { initialUniversityId: string }) {
+  const router = useRouter();
+  const [universityId, setUniversityId] = useState(initialUniversityId);
+  const [saving, setSaving] = useState(false);
 
   async function handleContinue() {
     setSaving(true);

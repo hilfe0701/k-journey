@@ -37,8 +37,8 @@ K-Journey is about Korea. **All time semantics anchor to Korea Standard Time (UT
 | D-Day countdown | `kstDifferenceInDays(departure, kstNow())` |
 | Phase transition fire date | KST midnight |
 | D-30 / D-14 / D-7 notification | `scheduleAtKstMidnight(departure, -30)` etc. — fires at **KST 09:00** to avoid waking sleeping users |
-| Mission completion time (stored) | Firestore `serverTimestamp()` (server-truth, not device clock) |
-| Mission completion time (displayed) | Convert server timestamp → KST for "completed on Mar 15, 2026" labels |
+| Mission completion time (stored) | Local ISO timestamp in MMKV; informational, not a trusted legal timestamp |
+| Mission completion time (displayed) | Convert the stored instant to KST for date labels |
 
 ### 4.1 Helpers
 
@@ -59,10 +59,15 @@ Users in DST-observing locales (Sydney, Berlin, New York…) are unaffected by t
 
 ### 4.3 Clock manipulation
 
-`src/lib/clockGuard.ts` (Part E.8) detects ≥ ±2-day jumps between boots. On detection:
-* Crashlytics `recordError` with category "clock_skew".
-* PostHog event `clock_skew_detected` (not in the canonical `KJEvent` list — diagnostic only).
-* **UI is not blocked** — false-positive risk is high (legitimate travel, OS sync hiccup). Server timestamps already neutralise the worst outcomes.
+`src/lib/clockGuard.ts` compares wall-clock elapsed time with monotonic elapsed time
+once per minute during a continuous foreground interval. Leaving `active` discards
+the baseline because native monotonic clocks may pause during device suspend. A
+normal background gap or a gap between launches is therefore never treated as
+clock manipulation because that gap alone proves nothing.
+
+On a detected jump it records the optional `clock_skew_detected` diagnostic and
+shows a dismissible clock warning. Phase progress still uses KST helpers; local
+completion timestamps are informational rather than server-authoritative.
 
 ## 5. Migration from local time (Round 2 Part E.1)
 

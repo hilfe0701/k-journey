@@ -3,9 +3,9 @@
  * the immigration appointment as an independent task that precedes document
  * preparation.
  *
- * The ordering exists because appointment slots, not paperwork, are the scarce
- * resource: `14-k-journey-source-verification-registration-documents.md` §4·§7
- * found the booking constrained while the documents themselves are not.
+ * The ordering is a product workflow: check the official reservation service
+ * before preparing documents so the user can plan against real availability.
+ * It is not a claim that slots follow a fixed release cadence.
  *
  * What that source does *not* give is a lead time. No waiting period is
  * generated here — `appointmentLeadTimeDays` is permanently unknown rather than
@@ -20,13 +20,13 @@ const UNKNOWN_VALUE_LABEL = 'Not confirmed (미확인)';
 export const IMMIGRATION_APPOINTMENT_TASK_ID = 'immigration-appointment';
 
 const APPOINTMENT_SOURCE: TaskSourceMetadata = {
-  sourceUrl: 'https://www.hikorea.go.kr/Main.pt',
+  sourceUrl: 'https://www.hikorea.go.kr/resv/ResvIntroR.pt',
   sourceLabel: 'HiKorea visit reservation service',
-  checkedAt: '2026-07-25',
+  checkedAt: '2026-08-30',
   reviewAfter: null,
   finalAuthority: 'HiKorea and your local immigration office',
   conflictNote:
-    'Waiting time and the rule for rebooking after a rejected application are not confirmed. Check availability directly.',
+    'HiKorea says same-day reservations are unavailable and the earliest selectable visit is the next day. A fixed slot-release cadence and actual waiting time are not confirmed because they are not published; check live availability directly.',
   volatility: 'high',
   owner: UNKNOWN_VALUE_LABEL,
   conflictValues: [],
@@ -42,7 +42,7 @@ export const APPOINTMENT_LEAD_TIME_DAYS: UnknownValue = UNKNOWN;
 export const IMMIGRATION_APPOINTMENT_METADATA: TaskMetadata = {
   taskId: IMMIGRATION_APPOINTMENT_TASK_ID,
   title: 'Book your immigration appointment',
-  summary: 'Secure a visit slot before you start preparing the registration documents.',
+  summary: 'Check HiKorea availability and reserve a visit before preparing the registration documents.',
   source: APPOINTMENT_SOURCE,
 };
 

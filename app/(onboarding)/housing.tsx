@@ -1,5 +1,5 @@
 // Screen ID: ONB-04 — Housing and contract holder.
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -40,19 +40,30 @@ const CONTRACT_OPTIONS = [
 ] satisfies readonly { value: ContractHolder; label: string }[];
 
 export default function HousingScreen() {
-  const router = useRouter();
   const profile = useOnboardingStepGuard('housing');
-  const [housingType, setHousingType] = useState<HousingType>(UNKNOWN);
-  const [contractHolder, setContractHolder] = useState<ContractHolder>(UNKNOWN);
-  const [saving, setSaving] = useState(false);
-  const profileHousingType = profile?.housingType;
-  const profileContractHolder = profile?.contractHolder;
+  const initialHousingType = profile?.housingType ?? UNKNOWN;
+  const initialContractHolder = profile?.contractHolder ?? UNKNOWN;
 
-  useEffect(() => {
-    if (!profile) return;
-    setHousingType(profileHousingType ?? UNKNOWN);
-    setContractHolder(profileContractHolder ?? UNKNOWN);
-  }, [profile, profileContractHolder, profileHousingType]);
+  return (
+    <HousingForm
+      key={JSON.stringify([!!profile, initialHousingType, initialContractHolder])}
+      initialHousingType={initialHousingType}
+      initialContractHolder={initialContractHolder}
+    />
+  );
+}
+
+function HousingForm({
+  initialHousingType,
+  initialContractHolder,
+}: {
+  initialHousingType: HousingType;
+  initialContractHolder: ContractHolder;
+}) {
+  const router = useRouter();
+  const [housingType, setHousingType] = useState<HousingType>(initialHousingType);
+  const [contractHolder, setContractHolder] = useState<ContractHolder>(initialContractHolder);
+  const [saving, setSaving] = useState(false);
 
   async function handleContinue() {
     setSaving(true);

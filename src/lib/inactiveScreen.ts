@@ -25,7 +25,7 @@ import { useEffect, useRef } from 'react';
 import { Platform, type View } from 'react-native';
 
 export interface InactiveScreenProps {
-  ref: React.RefObject<View>;
+  ref: React.RefObject<View | null>;
   accessibilityElementsHidden: boolean;
   importantForAccessibility: 'auto' | 'no-hide-descendants';
   'aria-hidden': boolean;

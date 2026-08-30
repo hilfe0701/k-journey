@@ -7,7 +7,9 @@ import { resolveIcon } from '../src/lib/icons';
 
 import { Text, IconButton, MIN_TARGET } from '../src/components/ui';
 import { palette, space, radius } from '../design-tokens';
-import { EMERGENCY_SECTIONS } from '../src/data/emergency';
+import { EMERGENCY_SECTIONS, type EmergencyItem } from '../src/data/emergency';
+import { isEvidenceReviewDue } from '../src/lib/contentEvidence';
+import { formatKstDate } from '../src/lib/dates';
 import { setJson, getJson, KEYS } from '../src/lib/storage';
 import { track } from '../src/lib/posthog';
 import { surfaceError } from '../src/lib/errorAlert';
@@ -87,25 +89,7 @@ export default function Emergency() {
               {isOpen ? (
                 <View style={styles.sectionItems}>
                   {section.items.map((item, idx) => (
-                    <Pressable
-                      key={idx}
-                      disabled={!item.href}
-                      accessibilityRole={item.href ? 'link' : undefined}
-                      accessibilityLabel={item.href ? `Call ${item.label}` : undefined}
-                      accessibilityHint={item.href ? 'Opens your phone dialer.' : undefined}
-                      onPress={() => {
-                        if (!item.href) return;
-                        Linking.openURL(item.href).catch(() => surfaceError('unknown'));
-                      }}
-                      style={({ pressed }) => [styles.item, item.href && pressed ? styles.itemPressed : null]}
-                    >
-                      <Text role="body" weight="semibold" color={item.href ? palette.cheong : undefined}>
-                        {item.label}
-                      </Text>
-                      <Text role="sm" color={palette.ash}>
-                        {item.detail}
-                      </Text>
-                    </Pressable>
+                    <EmergencyEntry key={idx} item={item} />
                   ))}
                 </View>
               ) : null}
@@ -114,6 +98,98 @@ export default function Emergency() {
         })}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+/**
+ * One entry, plus the provenance MUST 12 requires of it: a source that can
+ * actually be opened, the date it was last checked, and the authority to ask
+ * when this screen is wrong.
+ *
+ * A claim that is unconfirmed or past its review date says so in words. This
+ * screen is read in a hurry, and "we have not verified this number" is not
+ * something a reader should have to infer from a colour.
+ */
+function EmergencyEntry({ item }: { item: EmergencyItem }) {
+  const { evidence } = item;
+  const isDial = item.href?.startsWith('tel:') ?? false;
+  const isStale = isEvidenceReviewDue(evidence);
+  const wasNeverConfirmed = evidence.verification === 'needs_review';
+
+  return (
+    <View style={styles.item}>
+      <Pressable
+        disabled={!item.href}
+        accessibilityRole={item.href ? 'link' : undefined}
+        accessibilityLabel={item.href ? `${isDial ? 'Call' : 'Open'} ${item.label}` : undefined}
+        accessibilityHint={
+          item.href
+            ? isDial
+              ? 'Opens your phone dialer.'
+              : 'Opens the service in your browser.'
+            : undefined
+        }
+        onPress={() => {
+          if (!item.href) return;
+          Linking.openURL(item.href).catch(() => surfaceError('unknown'));
+        }}
+        style={({ pressed }) => [styles.itemBody, item.href && pressed ? styles.itemPressed : null]}
+      >
+        <Text role="body" weight="semibold" color={item.href ? palette.cheong : undefined}>
+          {item.label}
+        </Text>
+        <Text role="sm" color={palette.ash}>
+          {item.detail}
+        </Text>
+      </Pressable>
+
+      {item.languageSupport ? (
+        <View style={styles.languageSupport}>
+          <Text role="xs" weight="semibold" color={palette.meok}>
+            Language access · {item.languageSupport.verification === 'verified' ? 'Verified' : 'Check before relying'}
+          </Text>
+          <Text role="xs" color={palette.ash}>
+            {item.languageSupport.detail} Ask {item.languageSupport.finalAuthority} if the call flow has changed.
+          </Text>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={`Open language-access source: ${item.languageSupport.evidence.sourceTitle}`}
+            accessibilityHint="Opens the official language-access source in your browser."
+            onPress={() =>
+              Linking.openURL(item.languageSupport!.evidence.sourceUrl).catch(() => surfaceError('unknown'))
+            }
+            style={({ pressed }) => [styles.evidenceLink, pressed ? styles.itemPressed : null]}
+          >
+            <Text role="xs" color={palette.cheong}>
+              {item.languageSupport.evidence.publisher} · Open language-access source
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      <View style={styles.evidence}>
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={`Official source: ${evidence.sourceTitle}, ${evidence.publisher}`}
+          accessibilityHint="Opens the official source in your browser."
+          onPress={() =>
+            Linking.openURL(evidence.sourceUrl).catch(() => surfaceError('unknown'))
+          }
+          style={({ pressed }) => [styles.evidenceLink, pressed ? styles.itemPressed : null]}
+        >
+          <Text role="xs" color={palette.muted}>
+            Source: {evidence.publisher} · checked {formatKstDate(evidence.checkedAt)}
+          </Text>
+        </Pressable>
+        <Text role="xs" color={palette.muted}>
+          {wasNeverConfirmed
+            ? `Not confirmed at the source. Check with ${evidence.finalAuthority} before relying on it.`
+            : isStale
+              ? `Past its review date. Check with ${evidence.finalAuthority} before relying on it.`
+              : `If this is wrong, ${evidence.finalAuthority} decides.`}
+        </Text>
+      </View>
+    </View>
   );
 }
 
@@ -170,9 +246,29 @@ const styles = StyleSheet.create({
     backgroundColor: palette.cloud,
   },
   item: {
+    gap: space[2],
+    paddingVertical: space[1],
+  },
+  itemBody: {
     gap: 2,
   },
   itemPressed: {
     opacity: 0.72,
+  },
+  evidence: {
+    gap: 2,
+    paddingLeft: space[3],
+    borderLeftWidth: 2,
+    borderLeftColor: palette.hairline,
+  },
+  evidenceLink: {
+    minHeight: MIN_TARGET,
+    justifyContent: 'center',
+  },
+  languageSupport: {
+    gap: 2,
+    paddingLeft: space[3],
+    borderLeftWidth: 2,
+    borderLeftColor: palette.hairline,
   },
 });

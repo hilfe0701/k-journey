@@ -9,7 +9,7 @@
  * `options.onPrimary` to make the T1 "Retry" / T2 "Try again" button re-run
  * the failed operation (ADR-0028 retry contract). `options.messageOverride`
  * substitutes a dynamic body for catalog rows with a placeholder value
- * (phase-changed, export-already-queued) — the rows stay static + testable.
+ * (for example, phase-changed) — the rows stay static + testable.
  */
 
 import { Linking } from 'react-native';

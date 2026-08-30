@@ -1,5 +1,5 @@
 // Screen ID: ONB-08 — Optional era choice.
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Check } from 'lucide-react-native';
@@ -20,21 +20,28 @@ import { showOperationError } from '../../src/lib/errorAlert';
 import { a11yState } from '../../src/lib/a11y';
 
 export default function EraScreen() {
-  const router = useRouter();
   const profile = useOnboardingStepGuard('era');
   const isEditing = !!profile?.onboardingCompletedAt;
-  const profileEra = profile?.era;
-  const [selected, setSelected] = useState<EraKey | null>(null);
-  const [saving, setSaving] = useState(false);
+  const initialSelected = profile?.era ?? null;
 
-  useEffect(() => {
-    if (profile) setSelected(profileEra ?? null);
-  }, [profile, profileEra]);
+  return (
+    <EraForm
+      key={JSON.stringify([!!profile, initialSelected, isEditing])}
+      initialSelected={initialSelected}
+      isEditing={isEditing}
+    />
+  );
+}
+
+function EraForm({ initialSelected, isEditing }: { initialSelected: EraKey | null; isEditing: boolean }) {
+  const router = useRouter();
+  const [selected, setSelected] = useState<EraKey | null>(initialSelected);
+  const [saving, setSaving] = useState(false);
 
   async function handleContinue() {
     setSaving(true);
     try {
-      const previousEra = profile?.era ?? null;
+      const previousEra = initialSelected;
       await updateUserProfile({
         era: selected,
         ...(isEditing ? {} : { onboardingCompletedAt: kstNow().toISOString() }),

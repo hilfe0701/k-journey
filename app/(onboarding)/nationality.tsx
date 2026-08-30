@@ -1,5 +1,5 @@
 // Screen ID: ONB-06 — Nationality and home-country insurance.
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -16,35 +16,39 @@ import { updateUserProfile } from '../../src/lib/firebase';
 import { setOnboardingProgress } from '../../src/lib/storage';
 import { showOperationError } from '../../src/lib/errorAlert';
 import { track } from '../../src/lib/posthog';
-
-// REQ-DAR-004 · POL-003 · POL-005: collect the minimum NHIS exclusion inputs.
-const INSURANCE_OPTIONS = [
-  { value: 'yes', label: 'Yes' },
-  { value: 'no', label: 'No' },
-  { value: UNKNOWN, label: UNKNOWN_LABEL },
-] satisfies readonly { value: HomeCountryInsurance; label: string }[];
+import { HOME_INSURANCE_OPTIONS } from '../../src/lib/settingsProfile';
 
 export default function NationalityScreen() {
-  const router = useRouter();
   const profile = useOnboardingStepGuard('nationality');
-  const [nationality, setNationality] = useState('');
-  const [nationalityUnknown, setNationalityUnknown] = useState(false);
-  const [homeCountryInsurance, setHomeCountryInsurance] = useState<HomeCountryInsurance>(UNKNOWN);
-  const [saving, setSaving] = useState(false);
   const profileNationality = profile?.nationality;
-  const profileHomeCountryInsurance = profile?.homeCountryInsurance;
+  const initialNationalityUnknown = profileNationality === UNKNOWN;
+  const initialNationality = initialNationalityUnknown ? '' : (profileNationality ?? '');
+  const initialHomeCountryInsurance = profile?.homeCountryInsurance ?? UNKNOWN;
 
-  useEffect(() => {
-    if (!profile) return;
-    if (profileNationality === UNKNOWN) {
-      setNationalityUnknown(true);
-      setNationality('');
-    } else {
-      setNationalityUnknown(false);
-      setNationality(profileNationality ?? '');
-    }
-    setHomeCountryInsurance(profileHomeCountryInsurance ?? UNKNOWN);
-  }, [profile, profileHomeCountryInsurance, profileNationality]);
+  return (
+    <NationalityForm
+      key={JSON.stringify([!!profile, initialNationality, initialNationalityUnknown, initialHomeCountryInsurance])}
+      initialNationality={initialNationality}
+      initialNationalityUnknown={initialNationalityUnknown}
+      initialHomeCountryInsurance={initialHomeCountryInsurance}
+    />
+  );
+}
+
+function NationalityForm({
+  initialNationality,
+  initialNationalityUnknown,
+  initialHomeCountryInsurance,
+}: {
+  initialNationality: string;
+  initialNationalityUnknown: boolean;
+  initialHomeCountryInsurance: HomeCountryInsurance;
+}) {
+  const router = useRouter();
+  const [nationality, setNationality] = useState(initialNationality);
+  const [nationalityUnknown, setNationalityUnknown] = useState(initialNationalityUnknown);
+  const [homeCountryInsurance, setHomeCountryInsurance] = useState<HomeCountryInsurance>(initialHomeCountryInsurance);
+  const [saving, setSaving] = useState(false);
 
   const canContinue = (nationalityUnknown || nationality.trim().length > 0) && !!homeCountryInsurance;
 
@@ -96,7 +100,7 @@ export default function NationalityScreen() {
         />
         <View style={{ gap: space[2], marginTop: space[3] }}>
           <InputLabel label="Home-country insurance" />
-          {INSURANCE_OPTIONS.map((option) => (
+          {HOME_INSURANCE_OPTIONS.map((option) => (
             <ChoiceCard
               key={option.value}
               option={option}

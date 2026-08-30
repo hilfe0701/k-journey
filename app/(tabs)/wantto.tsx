@@ -1,9 +1,8 @@
 import React from 'react';
 import { View, ScrollView, StyleSheet, Pressable, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useIsFocused, useRouter } from 'expo-router';
 import { Plus, BookmarkPlus } from 'lucide-react-native';
-import { useIsFocused } from '@react-navigation/native';
 
 import { Text, ProgressBar, EmptyState, IconButton } from '../../src/components/ui';
 import { palette, space, radius } from '../../design-tokens';

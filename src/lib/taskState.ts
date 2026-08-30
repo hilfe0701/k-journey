@@ -9,6 +9,11 @@ import { kstDifferenceInDays, kstNow, toKstStartOfDay } from './dates';
 import { DEPARTURE_TASK_METADATA } from './departureTasks';
 import { DORMITORY_APPLICATION_METADATA } from './dormitoryApplication';
 import {
+  HEALTH_INSURANCE_METADATA,
+  IMMIGRATION_JURISDICTION_METADATA,
+  PART_TIME_WORK_METADATA,
+} from '../data/admin';
+import {
   IMMIGRATION_APPOINTMENT_METADATA,
   IMMIGRATION_APPOINTMENT_TASK_ID,
 } from './immigrationAppointment';
@@ -123,38 +128,19 @@ const UNKNOWN_OWNER = UNKNOWN_SOURCE_VALUE;
 const RESIDENCE_REGISTRATION_SOURCE: TaskSourceMetadata = {
   sourceUrl: 'https://www.immigration.go.kr/bbs/immigration/47/590299/artclView.do',
   sourceLabel: 'Ministry of Justice Foreign Residence Card fee notice',
-  checkedAt: '2026-07-27',
-  reviewAfter: null,
+  checkedAt: '2026-08-30',
+  reviewAfter: '2027-08-30',
   finalAuthority: 'the Ministry of Justice and HiKorea',
   conflictNote:
-    'Registration fees differ by source and route. Check the final authority before paying.',
+    'The government issuance or reissuance fee is 35,000 won. A university, delivery service, or application agent may quote a different total because separate service or delivery charges are not part of the government fee; confirm those charges with that provider.',
   volatility: 'high',
   owner: UNKNOWN_OWNER,
   conflictValues: [
     {
-      value: '30,000 won',
-      sourceLabel: 'University guidance',
-      sourceUrl:
-        'https://gsc.korea.ac.kr/gsc/ExchangeVisitingProgram/Visa_Immigration/Visa/Visa.do',
-      checkedAt: '2026-07-25',
-    },
-    {
-      value: '34,000 won',
-      sourceLabel: 'CIEE application experience',
-      sourceUrl: 'https://www.ciee.org/go-abroad/college-study-abroad/blog/getting-arc-without-hirevisa',
-      checkedAt: '2026-07-25',
-    },
-    {
       value: '35,000 won',
-      sourceLabel: 'Ministry of Justice notice',
-      sourceUrl: 'https://www.immigration.go.kr/bbs/immigration_eng/229/590314/artclView.do',
-      checkedAt: '2026-07-25',
-    },
-    {
-      value: '40,000 won',
-      sourceLabel: 'HiKorea application route',
-      sourceUrl: 'https://www.hikorea.go.kr/board/BoardApplicationListR.pt',
-      checkedAt: '2026-07-25',
+      sourceLabel: 'Ministry of Justice statutory fee notice',
+      sourceUrl: 'https://www.immigration.go.kr/bbs/immigration/47/590299/artclView.do',
+      checkedAt: '2026-08-30',
     },
   ],
 };
@@ -178,27 +164,57 @@ const UNIVERSITY_GROUP_SOURCE: TaskSourceMetadata = {
   finalAuthority: 'your university international office',
 };
 
-const UNCONFIRMED_SOURCE: TaskSourceMetadata = {
-  sourceUrl: '',
-  sourceLabel: UNKNOWN_SOURCE_VALUE,
-  checkedAt: null,
+/**
+ * `departure-order` is a decision aid, not a claim: it orders two tasks that
+ * each answer to a different office. It previously carried an empty source,
+ * which read as an oversight rather than as the truth that no single authority
+ * settles the order.
+ *
+ * So the provenance names both sides instead. Neither is primary — the bank
+ * side rests on institutional departure guidance, and the dormitory side on
+ * regulations that differ per hall — and the note says so, because this task
+ * tells the user to make a choice and they are entitled to know how thin the
+ * ground under it is.
+ */
+const DEPARTURE_ORDER_SOURCE: TaskSourceMetadata = {
+  sourceUrl: 'https://www.fulbright.or.kr/en/handbook/leaving-korea/',
+  sourceLabel: 'Fulbright Korea leaving-Korea handbook (institutional guidance, not a primary authority)',
+  checkedAt: '2026-07-25',
   reviewAfter: null,
-  finalAuthority: 'your university international office',
-  conflictNote: null,
-  volatility: 'unknown',
+  finalAuthority: 'your bank branch and your dormitory office',
+  conflictNote:
+    'Fulbright/SUNY Korea guidance is secondary institutional advice, not a bank rule. No single authority sets this order: closing an account generally needs a branch visit, while a dormitory deposit may arrive after departure. Ask your bank branch and dormitory office; K-Journey shows both outcomes and leaves the choice to you.',
+  volatility: 'medium',
   owner: UNKNOWN_OWNER,
-  conflictValues: [],
+  conflictValues: [
+    {
+      value: 'Close the account before departure',
+      sourceLabel: 'Fulbright Korea and SUNY Korea departure guidance (secondary; not a bank authority)',
+      sourceUrl: 'https://www.fulbright.or.kr/en/handbook/leaving-korea/',
+      checkedAt: '2026-07-25',
+    },
+    {
+      value: 'Keep the account until the deposit arrives',
+      sourceLabel: 'Dormitory residence regulations — set per hall, no national rule',
+      sourceUrl: '',
+      checkedAt: null,
+    },
+  ],
 };
 
 /**
  * REQ-DAR-002 · REQ-DAR-006 · REQ-DAR-007 · POL-007 · POL-008:
  * shared task metadata for TASK-03 and Journey Home source evidence.
  *
- * REQ-SFR-007 puts the immigration appointment ahead of `housing-proof`:
- * appointment slots, not paperwork, are the scarce resource.
+ * REQ-SFR-007 puts the immigration appointment ahead of `housing-proof` as a
+ * planning workflow. Availability is read live from HiKorea; the app does not
+ * assert a fixed release cadence or invent a lead time.
  */
 export const CORE_TASK_METADATA: readonly TaskMetadata[] = [
   IMMIGRATION_APPOINTMENT_METADATA,
+  IMMIGRATION_JURISDICTION_METADATA,
+  PART_TIME_WORK_METADATA,
+  HEALTH_INSURANCE_METADATA,
   {
     taskId: 'residence-registration',
     title: 'Residence registration',
@@ -223,7 +239,7 @@ export const CORE_TASK_METADATA: readonly TaskMetadata[] = [
     taskId: 'departure-order',
     title: 'Departure order',
     summary: 'Choose how to handle your deposit and account before leaving Korea.',
-    source: UNCONFIRMED_SOURCE,
+    source: DEPARTURE_ORDER_SOURCE,
   },
 ] as const;
 

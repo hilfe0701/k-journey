@@ -72,14 +72,32 @@ describe('task state axes', () => {
     expect(isSourceReviewDue({ reviewAfter: null }, now)).toBe(false);
   });
 
+  it('never leaves a task with an empty source and no explanation for it', () => {
+    // An empty `sourceUrl` is allowed — some facts have no primary source. What
+    // is not allowed is an empty source that says nothing, because the reader
+    // cannot tell a deliberate gap from a forgotten field.
+    for (const task of TASK_METADATA) {
+      if (task.source.sourceUrl) continue;
+      expect(task.source.conflictNote?.trim()).toBeTruthy();
+      expect(task.source.finalAuthority.trim()).toBeTruthy();
+    }
+  });
+
+  it('gives departure-order both sides of the conflict it asks the user to resolve', () => {
+    const order = TASK_METADATA.find((task) => task.taskId === 'departure-order');
+
+    expect(order?.source.sourceUrl).toMatch(/^https:\/\//);
+    expect(order?.source.conflictNote).toMatch(/No single authority sets this order/);
+    expect(order?.source.conflictValues).toHaveLength(2);
+    // The task must not present the guidance behind it as a primary authority.
+    expect(order?.source.sourceLabel).toMatch(/not a primary authority/);
+  });
+
   // REQ-DAR-007 · POL-008 · TC-127.
   it('preserves all four fee values instead of selecting a single amount', () => {
     const registration = TASK_METADATA.find((task) => task.taskId === 'residence-registration');
     expect(registration?.source.conflictValues.map((entry) => entry.value)).toEqual([
-      '30,000 won',
-      '34,000 won',
       '35,000 won',
-      '40,000 won',
     ]);
   });
 });

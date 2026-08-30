@@ -1,144 +1,141 @@
 # K-Journey current status
 
-- Updated: 2026-08-04
+- Updated: 2026-08-30
 - Branch: `v2-conditional-orchestration`
-- Base HEAD before the current working changes: `9ccba15`
+- Base HEAD before this release-candidate work: `e9add7dfd63ffd245a15192c24013318eb34c44d`
+- Release-candidate source SHA: `dd7c63d41e998f0c55aa0d22f9b55cd9369dae8c`
+- Pre-candidate rollback SHA: `29bdced736bf36b8b9c274b05547c6a54b10c2e5`
 - Product SSOT: `reference/K-Journey_PRD_v2_0_KR.md` + `DEC-040`
 - Current model: unified local-first product; no account or per-user server data
 
 ## Product
 
-The current working tree unifies two axes:
+- Journey → Essentials: condition-based administrative guidance.
+- Journey → Culture: 55 cultural/life missions across four phases.
+- Byeongpung: eight-panel progress from cultural missions and completed Want-to items.
+- Want to: six image-led templates, optional editorial suggestions, and user-authored lists.
+- More: campus, gallery, emergency guide, settings, text export, and local reset.
 
-- Journey → Essentials: condition-based administrative checklist
-- Journey → Culture: 55 cultural/life missions across four phases
-- Byeongpung: eight-panel progress from cultural missions + completed Want-to items
-- Want to: six image-led templates and user-authored lists
-- More: campus, gallery, emergency guide, settings, and data controls
+Administrative state does not unlock artwork. User-owned journey state is stored
+on the current device through MMKV.
 
-Administrative task status does not unlock artwork. User-owned state is stored in MMKV on the current device.
+## Release-candidate changes
 
-## Quality work in this working tree
+- fixed KST calendar math so D-Day, scheduling, validation, and holiday behavior
+  are independent of the device timezone and DST;
+- added Sydney, Auckland, and Los Angeles timezone checks to CI;
+- added the registered Seoul district input and connected it to immigration and
+  local-office jurisdiction resolution;
+- prevented unresolved review tasks from creating ghost completion state and
+  exposed the actual jurisdiction, 1345, work-permission, and NHIS routes;
+- fixed Jungnang-gu/Jung-gu parsing and hid internal production error messages;
+- replaced the three Culture items that duplicated visa/card/bank administration
+  while preserving their legacy IDs for existing device data;
+- added typed official-link, save-place, and reservation mission actions, with
+  recoverable platform-link failures;
+- added optional Want-to suggestions and seasonal metadata for festival, Hangang,
+  and hiking missions;
+- corrected current official facts: 35,000 won residence-card fee, 15-day
+  residence-change filing, HiKorea reservation scope, NHIS foreign-language
+  extension 6, and D-2-6/D-2-8 labels;
+- replaced cross-carrier telecom and dormitory refund assumptions with official
+  carrier-specific conflicts and current-office confirmation;
+- limited map actions to stable single places and corrected Gyeongbokgung access;
+- added versioned portable-backup/import design without promising an unshipped
+  import feature;
+- removed unused Android read/write-storage and overlay permissions through
+  Expo `blockedPermissions`, and removed unused iOS camera/photo-read descriptions;
+- added least-privilege, SHA-pinned GitHub Actions quality gates;
+- added failure-injection coverage for verified MMKV writes, malformed data,
+  capture/share/save failures, denied photo permission, and link-handler rejection;
+- migrated Expo 52 / React Native 0.76 to Expo 57 / React Native 0.86 and
+  React 19, including the new architecture, Android SDK 36, Router/Reanimated
+  compatibility, and React compiler lint rules;
+- moved the function-based media-save flow to the SDK 57 legacy entry point so
+  web routes do not load the native-only next API, and made both browser gates
+  fail if the application error boundary renders;
+- reduced the runtime dependency audit from 45 findings (3 critical) to 14
+  moderate findings, with zero high or critical findings.
+- completed post-onboarding editing for every guidance condition, including an
+  explicit Unknown state and safe journey-date reminder refresh;
+- made notification refresh permission-aware, duplicate-safe, and serialized
+  across rapid preference changes;
+- replaced the invalid cross-launch clock-gap heuristic with foreground-only
+  wall/monotonic sampling that discards background and suspend intervals;
+- added current 2026 and official 2027 Korean public-holiday tables, including
+  the 2026 Labor Day and Constitution Day amendment;
+- added Android full-screen or per-panel byeongpung save selection, current
+  cultural-source notes, and a no-alpha 1024×500 Play feature-graphic draft;
+- made support and privacy rows actionable only for validated, explicitly
+  configured public destinations, rather than invented placeholder contacts.
 
-- consolidated missing-date UX and surfaced a first Culture action;
-- added responsive 760px web shell;
-- improved physical byeongpung framing, locked-state visibility, progress, and export affordances;
-- replaced Want-to color swatches with artwork thumbnails and preselected templates;
-- added mission completion criteria and changeable-information notice;
-- made official sources and emergency numbers actionable;
-- preserved browser deep links on refresh and detached inactive tabs;
-- added residence-card editing and corrected unknown-state warning behavior;
-- expanded text export to cultural missions and Want-to lists;
-- exposed production local-data deletion;
-- disabled session replay and documented the real local-data boundary;
-- optimized 24 panel and 6 bucket images from about 76MB to about 17MB combined.
-- subset runtime fonts from about 35MB to about 0.8MB; fresh web output is 23MB with
-  4.96MB raw / 1.02MB gzip JavaScript.
+## Verification evidence — 2026-08-30
 
-## Accessibility pass
-
-Three React Native Web behaviours had been silently voiding accepted criteria in
-`docs/ACCESSIBILITY.md`. Each was verified in Chrome before and after; the native
-build was unaffected in all three cases, which is why none surfaced in review.
-
-- **No focus indicator at all.** RNW sets `outline-style: none` on every
-  `Pressable`, so the web build shipped with nothing for keyboard users.
-  `src/lib/webFocusRing.ts` installs a `:focus-visible` ring — a `meok` outline
-  plus a `hanji` halo, because no single token clears 3:1 on both the hanji
-  surfaces and the dark gallery/overlay headers.
-- **`accessibilityState` dropped on web.** RNW's `Pressable` never forwards it,
-  so 27 selected/checked/expanded states announced nothing — including the
-  Essentials/Culture switch, the phase tabs, and every onboarding radio. Added
-  `a11yState()` in `src/lib/a11y.ts`, which emits both dialects, and applied it
-  at every call site.
-- **`hitSlop` does not exist on web.** Icon controls sized to 44pt via `hitSlop`
-  measured 24×24 in a browser. Added the `IconButton` primitive, which lays down
-  a real 44×44 box and requires an `accessibilityLabel`, and converted every
-  icon-only control to it.
-
-Also fixed alongside: the tab bar overwrote its own bottom safe-area inset;
-the Essentials/Culture buttons were 42pt; the gallery share button exposed no
-disabled reason; bucket chips, template cards, item checkboxes, and the
-notification switches carried no role, name, or state.
-
-`DESIGN.md` §13.2 previously instructed using `hitSlop` to reach the 44pt floor —
-the direct source of that defect class — and now says the opposite.
-
-Verified across twelve routes at 500px and 1440px: zero undersized targets, zero
-unnamed controls, zero stateful roles missing state. `npm run check` passes
-(237 tests). Not yet re-verified: native iOS/Android and a real screen reader.
-
-## Release verification pass — 2026-08-04
-
-`npm run check` (30 suites, 253 tests, no lint warnings) and a fresh
-`npm run build:web` both pass. The static export was then served with the
-production catch-all rewrite and swept in Chromium at 390×844 and 1440×900.
-Fourteen routes were entered by direct URL — the refresh case — and all
-fourteen rendered their own screen: `/`, `/checklist`, `/byeongpung`,
-`/wantto`, `/more`, `/mission/p1_pack`, two task routes, `/bucket/new`, a
-created `/bucket/<id>`, `/campus`, `/emergency`, `/gallery`, `/settings`,
-`/settings/export`. Zero undersized targets, unnamed controls, stateless roles,
-horizontal overflow, or console errors at either width.
-
-Exercised end to end in the browser: official-source links (open, 44pt),
-emergency call controls, the residence-card unknown state, bucket creation plus
-detail refresh, the full text export, and local-data deletion.
-
-Four defects were found and fixed in this pass. Each one is invisible from the
-code and correct on native:
-
-- **Tab order walked into the inactive tab screen.** `aria-hidden` hides a
-  subtree from a screen reader but leaves it focusable. On Byeongpung the
-  accessibility tree exposed six controls while Tab reached the Journey task
-  list, the Essentials/Culture switch, and "Emergency guide". Root views now
-  spread `useInactiveScreen()`, which adds `inert` on web.
-- **`Alert.alert` is an empty function in React Native Web.** "Delete all local
-  data" therefore did nothing at all in a browser — the only local-erase
-  control the product offers was unusable — as did deleting a Want-to list, the
-  T2/T3 error tiers, and every share/save result. `src/lib/alert.ts` +
-  `AlertHost` render them; deletion is verified working on web.
-- **Analytics contacted PostHog with no key configured.** `disabled: true`
-  stops capture but not the remote-config fetch, so every page load sent
-  `GET .../array/phc_analytics_disabled/config` — a 404 per route. The client is
-  no longer constructed without a real key.
-- **Undersized web targets survived the last pass.** Official-source links were
-  17px tall (`hitSlop` again), the notification "Open Settings" button 36pt.
-  The gallery's 720px off-screen capture canvas sat at `left: 0`, so the page
-  scrolled sideways at phone width. The emergency screen had no heading.
-
-`scripts/a11y-audit.mjs` (`npm run audit:a11y`) now runs the whole sweep and
-exits non-zero on any of these, so this class of defect fails a command instead
-of waiting for a manual browser pass.
-
-Final build: `dist` 23 MB total, artwork 18 MB, one JS bundle at 4.97 MB raw /
-1.02 MB gzipped, 66 files.
-
-Still not verified: native iOS/Android and a real screen reader.
+- `npm run check`: **41 suites / 353 tests**, typecheck and lint pass.
+- `npm run build:web`: pass; `dist/` **25MB / 65 files**.
+- JavaScript: **5,747,403 bytes raw / 1,129,378 bytes gzip**.
+- Runtime panel + template art: **about 18.7MiB**, inside the 20MB budget.
+- `npx expo-doctor`: **21/21 checks passed**.
+- `npm audit --omit=dev`: **14 moderate, 0 high, 0 critical**; the remaining
+  `xcode → uuid` path is Expo build tooling, and `npm audit fix --force` would
+  incorrectly downgrade current Expo packages.
+- `npm run audit:a11y`: 14 direct routes at 390×844 and 1440×900,
+  zero undersized/unnamed/stateless controls, no horizontal overflow, and no
+  inactive-tab focus leaks.
+- `npm run test:e2e:web`: 5→6 panel unlock, undo, opt-in Want-to suggestion,
+  direct bucket refresh, export scope, and confirmed reset all pass.
+- Visual pass: connected art and locked-state legibility checked at both viewport
+  sizes; evidence is stored in `docs/evidence/web-2026-08-30/`. The generated
+  Play feature graphic was inspected at its exact 1024×500 RGB/no-alpha output.
+- Independent final review: no blocking, high, or medium findings after the
+  notification, clock, holiday, Settings, contact, and Android-save fixes.
+- GitHub Quality run `33264883881`: all remote gates passed for source
+  `dd7c63d41e998f0c55aa0d22f9b55cd9369dae8c`.
+- Clean Expo 57 Android/iOS prebuild: Android compile/target SDK 36 and new
+  architecture enabled; no advertising ID, media-read, location, contact,
+  camera, microphone, or account permission. Legacy storage, selected-media
+  read, and overlay permissions are explicitly removed. iOS contains only the
+  photo-library add description and initializes Firebase. The signed-artifact
+  check is still required.
+- Linked Vercel production environment: no environment variables, therefore no
+  PostHog project key or custom host.
 
 ## Deployment
 
-The previously deployed web version is [k-journey-three.vercel.app](https://k-journey-three.vercel.app), deployment `dpl_6DHArMDvrJvYYWakQ4TenHDVKrPC`.
+The public alias is [k-journey-three.vercel.app](https://k-journey-three.vercel.app),
+currently deployment `dpl_ACc75Xqubs9nbDWZp2nKfGbvoHc7` (`READY`). It was
+promoted from the verified preview with user approval at 2026-08-30 12:50 KST.
+The rollback deployment is `dpl_CAW2wJRHYnzUxjyXmuRkD3JBaDcv`.
 
-That deployment predates the current audit and reinforcement changes. Do not describe it as equivalent to this working tree. Nothing from this pass has been redeployed.
+The protected release-candidate preview is
+[k-journey-6ozpe5y4f-wodbs990701-3298s-projects.vercel.app](https://k-journey-6ozpe5y4f-wodbs990701-3298s-projects.vercel.app),
+deployment `dpl_HfcpA2j1tqiUiJB3mNPjUU7zuA5E`. Vercel's clean `npm ci` and
+Expo export passed; authenticated direct requests to `/`, mission, task,
+bucket, byeongpung, and gallery routes plus the exact JS bundle all returned
+HTTP 200. The preview was verified at 2026-08-30 02:14 KST. Production has not
+been rebuilt independently: Vercel promoted the identical verified artifact,
+and unauthenticated production requests returned HTTP 200 for every recorded
+route, favicon, and the exact 5,747,403-byte bundle.
 
-## Known release blockers
+## External release blockers
 
-Cleared on 2026-08-04: `npm run check`, the rebuilt static export, and the
-390×844 / 1440×900 browser pass over routes, refresh, tabs, links, export, and
-deletion. Remaining:
+These cannot be invented or completed from the repository alone:
 
-- pin a clean commit SHA to any new deployment, and deploy only the `dist/`
-  built from it;
-- finish production privacy operator/contact/processor details;
-- complete source metadata audit for volatile cultural, university, and
-  emergency content;
-- replace the independent-panel artwork with connected 8-panel masters when art
-  production is authorized — three concept masters are staged, unapproved and
-  not wired to runtime, under `assets/byeongpung/masters/`;
-- verify on native iOS/Android with a real screen reader; every web fix in this
-  pass was a browser-only behaviour, but the native paths have not been
-  re-walked.
+- legal operator name, address, contact, effective date, governing law,
+  processor region/retention, and legal approval for the privacy notice;
+- named human content owners, later one-off holidays, and the official 2028+
+  Korean holiday tables;
+- carrier/plan-specific overseas or proxy cancellation, the user's assigned
+  dormitory schedule, and remaining high-volatility `needs_review` records;
+- cultural/historical approval of the generated era artwork and motif copy;
+- native VoiceOver/TalkBack, 200% text, Save/Share, and process-restart checks on
+  real iOS/Android devices;
+- exact signed-store-artifact Crashlytics behavior, retention, and final Play/App
+  Store privacy forms;
+- a real support email and public hosted privacy-policy URL.
 
 ## Historical documents
 
-Old Auth/Firestore/EAS instructions, PRD v1.x, and `DEC-024` cultural `Won't` language are historical. `CLAUDE.md` explains precedence. Do not execute those instructions as current release work.
+Old Auth/Firestore/EAS instructions, PRD v1.x, phase-plan checkboxes, and
+`DEC-024` cultural `Won't` language are historical. `CLAUDE.md` explains
+precedence; do not execute them as current work.

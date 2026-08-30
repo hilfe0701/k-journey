@@ -45,7 +45,7 @@ type TextRole =
 
 interface KJTextProps extends Omit<RNTextProps, 'role'> {
   role?: TextRole;
-  color?: string;
+  color?: TextStyle['color'];
   weight?: keyof typeof typography.weight;
   align?: 'auto' | 'left' | 'center' | 'right';
 }

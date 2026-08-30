@@ -10,7 +10,9 @@ import type { RefObject } from 'react';
 import type { View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
-import * as MediaLibrary from 'expo-media-library';
+// SDK 57's default class-based media API has no web module. This flow uses the
+// stable function API, whose legacy entry point keeps route imports safe on web.
+import * as MediaLibrary from 'expo-media-library/legacy';
 import { showAlert } from './alert';
 import { surfaceError } from './errorAlert';
 
@@ -20,7 +22,7 @@ interface CaptureOptions {
 }
 
 async function captureViewToFile(
-  viewRef: RefObject<View>,
+  viewRef: RefObject<View | null>,
   options: CaptureOptions = {},
 ): Promise<string | null> {
   if (!viewRef.current) return null;
@@ -38,7 +40,7 @@ async function captureViewToFile(
 }
 
 export async function shareByeongpungImage(
-  viewRef: RefObject<View>,
+  viewRef: RefObject<View | null>,
   dialogTitle: string = 'Share your byeongpung',
 ): Promise<boolean> {
   const uri = await captureViewToFile(viewRef);
@@ -47,7 +49,14 @@ export async function shareByeongpungImage(
     return false;
   }
 
-  const available = await Sharing.isAvailableAsync();
+  let available = false;
+  try {
+    available = await Sharing.isAvailableAsync();
+  } catch (err) {
+    console.warn('[share] isAvailableAsync failed', err);
+    showAlert('Sharing not available', 'Please try again in a moment.');
+    return false;
+  }
   if (!available) {
     showAlert('Sharing not available', 'This device does not support sharing.');
     return false;
@@ -66,14 +75,21 @@ export async function shareByeongpungImage(
   }
 }
 
-export async function saveByeongpungImage(viewRef: RefObject<View>): Promise<boolean> {
+export async function saveByeongpungImage(viewRef: RefObject<View | null>): Promise<boolean> {
   const uri = await captureViewToFile(viewRef);
   if (!uri) {
     showAlert('Could not capture image', 'Please try again in a moment.');
     return false;
   }
 
-  const perm = await MediaLibrary.requestPermissionsAsync(true);
+  let perm: Awaited<ReturnType<typeof MediaLibrary.requestPermissionsAsync>>;
+  try {
+    perm = await MediaLibrary.requestPermissionsAsync(true, []);
+  } catch (err) {
+    console.warn('[share] requestPermissionsAsync failed', err);
+    showAlert('Could not request photo access', 'Please try again in a moment.');
+    return false;
+  }
   if (!perm.granted) {
     // T3 — Settings deep-link (ADR-0028). messageOverride keeps the catalog
     // row generic while giving this flow byeongpung-save-specific copy.

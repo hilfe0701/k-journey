@@ -1,5 +1,5 @@
 // Screen ID: ONB-07 — Arrival and departure dates.
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Calendar } from 'react-native-calendars';
@@ -11,7 +11,7 @@ import { palette, radius, semantic, space, typography } from '../../design-token
 import { UNKNOWN, type UnknownValue } from '../../src/lib/firebase';
 import { updateUserProfile } from '../../src/lib/firebase';
 import { setOnboardingProgress } from '../../src/lib/storage';
-import { kstNow } from '../../src/lib/dates';
+import { kstCalendarDate, kstNow } from '../../src/lib/dates';
 import { rescheduleAllNotifications, getPermissionState } from '../../src/lib/notifications';
 import {
   NotificationPriming,
@@ -26,27 +26,39 @@ type DateSelection = string | UnknownValue | null;
 type DateField = 'programStart' | 'arrival' | 'departure';
 
 export default function DatesScreen() {
-  const router = useRouter();
   const profile = useOnboardingStepGuard('dates');
+  const initialProgramStartDate = profile?.programStartDate ?? null;
+  const initialArrivalDate = profile?.arrivalDate ?? null;
+  const initialDepartureDate = profile?.departureDate ?? null;
+
+  return (
+    <DatesForm
+      key={JSON.stringify([!!profile, initialProgramStartDate, initialArrivalDate, initialDepartureDate])}
+      initialProgramStartDate={initialProgramStartDate}
+      initialArrivalDate={initialArrivalDate}
+      initialDepartureDate={initialDepartureDate}
+    />
+  );
+}
+
+function DatesForm({
+  initialProgramStartDate,
+  initialArrivalDate,
+  initialDepartureDate,
+}: {
+  initialProgramStartDate: DateSelection;
+  initialArrivalDate: DateSelection;
+  initialDepartureDate: DateSelection;
+}) {
+  const router = useRouter();
   const [pickingFor, setPickingFor] = useState<DateField>('programStart');
-  const [programStartDate, setProgramStartDate] = useState<DateSelection>(null);
-  const [arrivalDate, setArrivalDate] = useState<DateSelection>(null);
-  const [departureDate, setDepartureDate] = useState<DateSelection>(null);
+  const [programStartDate, setProgramStartDate] = useState<DateSelection>(initialProgramStartDate);
+  const [arrivalDate, setArrivalDate] = useState<DateSelection>(initialArrivalDate);
+  const [departureDate, setDepartureDate] = useState<DateSelection>(initialDepartureDate);
   const [saving, setSaving] = useState(false);
   const [primingVisible, setPrimingVisible] = useState(false);
-  const profileProgramStartDate = profile?.programStartDate;
-  const profileArrivalDate = profile?.arrivalDate;
-  const profileDepartureDate = profile?.departureDate;
 
-  useEffect(() => {
-    if (!profile) return;
-    setProgramStartDate(profileProgramStartDate ?? null);
-    setArrivalDate(profileArrivalDate ?? null);
-    setDepartureDate(profileDepartureDate ?? null);
-    if (profileProgramStartDate) setPickingFor('programStart');
-  }, [profile, profileArrivalDate, profileDepartureDate, profileProgramStartDate]);
-
-  const today = format(kstNow(), 'yyyy-MM-dd');
+  const today = kstCalendarDate(kstNow());
   const selected = selectedDateFor(pickingFor, programStartDate, arrivalDate, departureDate);
   const selectedCalendarDate = isRealDate(selected) ? selected : today;
   const departureIsDate = isRealDate(departureDate);

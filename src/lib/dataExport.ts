@@ -20,6 +20,8 @@ import { ALL_TASK_IDS, taskMetadata } from './taskState';
 const UNKNOWN_VALUE_LABEL = 'Not confirmed (미확인)';
 
 export type ConditionGroupKey = (typeof CONDITION_AXIS_GROUPS)[number];
+export type ExportConditionKey = ConditionGroupKey | 'residenceDistrict';
+export type ExportProfile = ConditionProfile & { residenceDistrict?: string | null };
 
 const CONDITION_GROUP_LABELS: Record<ConditionGroupKey, string> = {
   universityId: 'University',
@@ -35,7 +37,7 @@ const CONDITION_GROUP_LABELS: Record<ConditionGroupKey, string> = {
 };
 
 export interface ExportedCondition {
-  key: ConditionGroupKey;
+  key: ExportConditionKey;
   label: string;
   value: string;
 }
@@ -118,7 +120,7 @@ function taskStateFor(
 
 /** AC1 · AC2 · AC5 · TC-056 · TC-057 · TC-060. */
 export function buildExportPayload(
-  profile: ConditionProfile | null,
+  profile: ExportProfile | null,
   progress: LocalTaskProgress,
   culture: CultureExportInput = {},
 ): ExportPayload {
@@ -127,6 +129,13 @@ export function buildExportPayload(
     label: CONDITION_GROUP_LABELS[key],
     value: profile ? readGroupValue(profile, key) : UNKNOWN_VALUE_LABEL,
   }));
+  if (profile?.residenceDistrict) {
+    conditions.push({
+      key: 'residenceDistrict',
+      label: 'Registered residence district',
+      value: profile.residenceDistrict,
+    });
+  }
 
   const tasks: ExportedTask[] = ALL_TASK_IDS.map((taskId) => ({
     taskId,
@@ -160,7 +169,9 @@ export function buildExportPayload(
   // group renders as "arrival … · departure … · program start …", which never
   // equals the unknown label even when all three are unknown. Comparing
   // rendered strings marked a fully empty profile as ready to export.
-  const hasCondition = profile !== null && CONDITION_AXES.some((axis) => hasValue(profile[axis]));
+  const hasCondition =
+    profile !== null &&
+    (CONDITION_AXES.some((axis) => hasValue(profile[axis])) || hasValue(profile.residenceDistrict));
   const hasTaskActivity = tasks.some((task) => task.state !== 'not_started');
   const hasCultureActivity = missions.length > 0 || buckets.length > 0;
   const status: ExportStatus = hasCondition || hasTaskActivity || hasCultureActivity ? 'ready' : 'empty';

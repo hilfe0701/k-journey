@@ -1,9 +1,8 @@
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowRight, ShieldAlert, Sparkles } from 'lucide-react-native';
-import { useIsFocused } from '@react-navigation/native';
 
 import { IconButton, NetworkIndicator, Text } from '../../src/components/ui';
 import { ByeongpungStrip } from '../../src/components/byeongpung/ByeongpungStrip';
@@ -43,18 +42,11 @@ export default function JourneyHome() {
   const inactiveProps = useInactiveScreen(isFocused);
   const router = useRouter();
   const { view } = useLocalSearchParams<{ view?: string }>();
-  const [mode, setMode] = React.useState<'essentials' | 'culture'>(
-    view === 'culture' ? 'culture' : 'essentials',
-  );
-
-  React.useEffect(() => {
-    if (view === 'culture') setMode('culture');
-  }, [view]);
+  const mode: 'essentials' | 'culture' = view === 'culture' ? 'culture' : 'essentials';
 
   function changeMode(next: 'essentials' | 'culture') {
     if (next === mode) return;
     track('journey_view_change', { from: mode, to: next });
-    setMode(next);
     router.setParams({ view: next === 'culture' ? 'culture' : undefined });
   }
 
@@ -85,11 +77,12 @@ function CultureJourneyHome({ onShowEssentials }: { onShowEssentials: () => void
   const revealedPanels = Math.min(8, Math.floor(totalCompleted / 6));
 
   useJourneyMilestones({ computedPhase, departureDate });
-  const [activePhase, setActivePhase] = React.useState<Phase>(selectedPhase);
-
-  React.useEffect(() => {
-    setActivePhase(selectedPhase);
-  }, [selectedPhase]);
+  const [phaseSelection, setPhaseSelection] = React.useState<{
+    baseline: Phase;
+    active: Phase;
+  }>(() => ({ baseline: selectedPhase, active: selectedPhase }));
+  const activePhase =
+    phaseSelection.baseline === selectedPhase ? phaseSelection.active : selectedPhase;
 
   const countsByPhase = useMemo(() => {
     const counts: Record<Phase, { done: number; total: number }> = {
@@ -127,7 +120,7 @@ function CultureJourneyHome({ onShowEssentials }: { onShowEssentials: () => void
   }, [phaseMissions]);
 
   function handlePhaseChange(phase: Phase) {
-    setActivePhase(phase);
+    setPhaseSelection({ baseline: selectedPhase, active: phase });
     if (phase !== computedPhase) {
       setPhaseOverride(phase);
       track('phase_manual_override', { from: computedPhase, to: phase });

@@ -3,11 +3,11 @@ import { View, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMMKVBoolean } from 'react-native-mmkv';
 import { Image as ImageIcon } from 'lucide-react-native';
-import { differenceInCalendarDays, parseISO, startOfDay } from 'date-fns';
 
 import { Text, Button } from '../ui';
 import { palette, space, radius } from '../../../design-tokens';
 import { storage, KEYS } from '../../lib/storage';
+import { kstDifferenceInDays, kstNow, toKstStartOfDay } from '../../lib/dates';
 
 interface Props {
   departureDate: string | null;
@@ -23,9 +23,9 @@ export function JourneyCompletePrompt({ departureDate }: Props) {
   const [dismissed, setDismissed] = useMMKVBoolean(KEYS.galleryDismissed, storage);
 
   if (!departureDate || dismissed) return null;
-  const today = startOfDay(new Date());
-  const departure = startOfDay(parseISO(departureDate));
-  if (differenceInCalendarDays(today, departure) < 0) return null;
+  const today = toKstStartOfDay(kstNow());
+  const departure = toKstStartOfDay(departureDate);
+  if (kstDifferenceInDays(today, departure) < 0) return null;
 
   return (
     <View style={styles.wrap}>

@@ -1,6 +1,7 @@
 # Store listing copy & asset checklist
 
-> ⛔ **(legacy — not injected into harness steps by default.)** account-bound progress, "sign-in required", and the reviewer credentials contradict `DEC-001`. Store submission is out of scope for this pass anyway. Basis: `CLAUDE.md` Decision precedence · `.work/pmjob/k-journey/45-k-journey-adr-dec-reconciliation-2026-07-27.md` (2026-07-27).
+> Current local-first draft. Store submission remains blocked on final legal,
+> device, signed-artifact, listing-asset, and operator approval gates.
 
 > Source copy for **Google Play Console → Store listing** (and reusable for App
 > Store Connect). Voice follows `docs/MICROCOPY.md`: English-first, sentence
@@ -47,8 +48,8 @@ Built for international students
 - University-specific tips for campuses in Seoul.
 - A D-Day counter and gentle, behavior-based reminders — never daily spam.
 - An emergency guide for the moments you need it.
-- Works offline; your progress is bound to your account, so it follows you to a
-  new phone.
+- Works offline; your progress stays on this device and can be exported as a
+  readable snapshot from Settings.
 
 K-Journey is curation, not a checklist app. It is the souvenir you make by
 simply living your semester well.
@@ -74,7 +75,7 @@ korea,exchange,study abroad,seoul,student,byeongpung,semester,travel,bucket list
 | Asset | Spec | Status |
 |---|---|---|
 | Hi-res app icon | 512×512 PNG (32-bit) | ✅ Generated → `store-assets/play-store-icon-512.png` (verify it reads as opaque) |
-| Feature graphic | 1024×500 PNG/JPG, no alpha | ❌ Needs design — required by Play. Use the 도장 seal on hanji per `DESIGN.md` |
+| Feature graphic | 1024×500 PNG/JPG, no alpha | ✅ Draft generated → `store-assets/play-feature-graphic-1024x500-v1.png` (human brand/cultural approval pending) |
 | Phone screenshots | 2–8, 16:9 or 9:16, ≥ 320px | ❌ Capture once a build runs (home phases, mission complete, byeongpung, gallery) |
 | 7" / 10" tablet shots | optional | App is phone-only (`supportsTablet: false`) — skip |
 | Promo video | optional (YouTube URL) | Skip for v1 |
@@ -82,7 +83,7 @@ korea,exchange,study abroad,seoul,student,byeongpung,semester,travel,bucket list
 ## Other listing requirements (Play)
 - **Privacy policy URL** — host `docs/PRIVACY_POLICY.md` and paste the URL.
 - **Data safety** — fill from `docs/PLAY_DATA_SAFETY.md`.
-- **App access** — sign-in required; provide **demo Apple/Google test credentials**
-  (or note the `[Dev] Skip auth` build) so reviewers can get past the auth wall.
-  ⚠️ Reviewers cannot review behind a login without this — common rejection cause.
+- **App access** — no account or sign-in is required. Reviewers can complete the
+  local onboarding directly; provide concise review notes for reaching each tab
+  and resetting local data.
 - **Contact details** — support email + (optional) website.

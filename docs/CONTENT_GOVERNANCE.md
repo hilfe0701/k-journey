@@ -17,18 +17,15 @@ Administrative and cultural guidance can become wrong while the app still builds
 
 High-consequence content must be representable with:
 
-```ts
-type ContentEvidence = {
-  sourceUrl: string;
-  sourceTitle: string;
-  publisher: string;
-  checkedAt: string; // YYYY-MM-DD
-  jurisdiction?: string;
-  verification: 'verified' | 'needs_review' | 'editorial';
-};
-```
+This schema is implemented in `src/lib/contentEvidence.ts`. It adds `contentClass` and `finalAuthority` to the fields above, and derives the review date from the class rather than storing it, so a hand-written date cannot disagree with the cadence it belongs to.
 
-The current static cultural catalog predates this schema. Until metadata is added, mission details must avoid guarantees and display that prices, hours, requirements, and local rules can change.
+The emergency guide carries it on every item (`src/data/emergency.ts`), and
+all 55 cultural missions now carry it through `Mission.evidence` (see
+`docs/MISSION_SOURCE_LEDGER.md`). Mission details must still avoid guarantees,
+must display that prices, hours, requirements, and local rules can change, and
+must not restate an administrative fact that the Essentials track derives from
+conditions. A blank source URL is allowed only when verification is explicitly
+`unknown` or `editorial`.
 
 ## Writing rules
 
@@ -44,11 +41,13 @@ The current static cultural catalog predates this schema. Until metadata is adde
 2. Re-check all changed Class A/B claims at their primary sources.
 3. Run tests for counts, IDs, phase/category validity, and duplicate IDs.
 4. Spot-check every mission detail for completion criteria and stale exact numbers.
-5. Record unresolved claims as `needs_review`; do not silently publish them as verified.
+5. Record unresolved claims as `needs_review` or `unknown`; do not silently publish them as verified.
 
 ## Non-interview validation backlog
 
-- Create a source ledger for all 55 missions and university records.
+- Create a source ledger for all 55 missions and university records. The
+  mission portion is tracked in `docs/MISSION_SOURCE_LEDGER.md`; university
+  records remain in the university verification backlog.
 - Replace unqualified exact processing times and “mandatory/universal” wording.
 - Conduct an expert desk review for immigration and insurance content.
 - Run scenario walkthroughs for unknown nationality, unknown housing, no dates, and conflicting university guidance.

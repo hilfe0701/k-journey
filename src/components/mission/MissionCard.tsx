@@ -5,7 +5,7 @@ import { Check, ChevronRight } from 'lucide-react-native';
 import { Text } from '../ui/Text';
 import { palette, space, radius } from '../../../design-tokens';
 import { Mission, MissionCategory } from '../../data/missions';
-import { resolveIcon } from '../../lib/icons';
+import { iconElement } from '../../lib/icons';
 import { a11yState } from '../../lib/a11y';
 
 interface MissionCardProps {
@@ -31,7 +31,6 @@ const CATEGORY_NAME: Record<MissionCategory, string> = {
  * the heart save state.
  */
 export function MissionCard({ mission, completed, onPress }: MissionCardProps) {
-  const IconComp = resolveIcon(mission.icon);
   const a11yLabel = `${mission.titleEn}. ${CATEGORY_NAME[mission.category]} category.${completed ? ' Completed.' : ''}`;
 
   return (
@@ -47,11 +46,11 @@ export function MissionCard({ mission, completed, onPress }: MissionCardProps) {
       ]}
     >
       <View style={styles.iconBox}>
-        <IconComp
-          size={22}
-          color={completed ? palette.muted : palette.ink}
-          strokeWidth={1.7}
-        />
+        {iconElement(mission.icon, {
+          size: 22,
+          color: completed ? palette.muted : palette.ink,
+          strokeWidth: 1.7,
+        })}
       </View>
       <View style={styles.body}>
         <Text

@@ -21,7 +21,7 @@ describe('errorAlert 4-tier routing', () => {
   it('routes a T4 code onto the banner bus', () => {
     const events: ErrorEvent[] = [];
     const unsub = subscribeErrors((e) => events.push(e));
-    surfaceError('auth-expired');
+    surfaceError('clock-jump');
     unsub();
     expect(events).toHaveLength(1);
     expect(events[0].row.tier).toBe('T4');
@@ -29,9 +29,9 @@ describe('errorAlert 4-tier routing', () => {
 
   it('routes a T2 code to Alert.alert with the catalog title', () => {
     const spy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    surfaceError('save-failed');
+    surfaceError('unknown');
     expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy.mock.calls[0][0]).toBe("Couldn't save");
+    expect(spy.mock.calls[0][0]).toBe("Couldn't complete that");
     spy.mockRestore();
   });
 
@@ -50,12 +50,11 @@ describe('errorAlert 4-tier routing', () => {
     spy.mockRestore();
   });
 
-  it('produces no surface for inline or silent codes', () => {
+  it('produces no surface for inline codes', () => {
     const spy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const events: ErrorEvent[] = [];
     const unsub = subscribeErrors((e) => events.push(e));
-    surfaceError('auth-cancelled'); // silent
-    surfaceError('image-load-fail'); // inline
+    surfaceError('validation-arrival-after-departure');
     unsub();
     expect(events).toHaveLength(0);
     expect(spy).not.toHaveBeenCalled();

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
 import type { ImageSourcePropType } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, MapPin, Lightbulb, Check, Building2, X, CircleCheckBig } from 'lucide-react-native';
-import { resolveIcon } from '../../src/lib/icons';
+import { ChevronLeft, MapPin, Lightbulb, Check, Building2, X, CircleCheckBig, ExternalLink } from 'lucide-react-native';
+import { iconElement } from '../../src/lib/icons';
 
 import { Text, Button, Badge, IconButton, MIN_TARGET } from '../../src/components/ui';
 import { palette, space, radius, categoryColors } from '../../design-tokens';
@@ -21,6 +21,9 @@ import { useTheme } from '../../src/theme/ThemeProvider';
 import { MissionCompleteOverlay } from '../../src/components/mission/MissionCompleteOverlay';
 import { BYEONGPUNG_PANEL_IMAGES } from '../../src/components/byeongpung/motifs';
 import { selectUniversityId } from '../../src/lib/profileCompat';
+import { evidenceNeedsReview } from '../../src/lib/contentEvidence';
+import { formatKstDate } from '../../src/lib/dates';
+import { openExternalLink } from '../../src/lib/linking';
 
 interface OverlayState {
   iconName: string;
@@ -119,7 +122,6 @@ export default function MissionDetail() {
 
   const isCompleted = completedSet.has(mission.id);
   const color = categoryColors[mission.category];
-  const Icon = resolveIcon(mission.icon);
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -136,7 +138,7 @@ export default function MissionDetail() {
 
       <ScrollView contentContainerStyle={styles.body}>
         <View style={[styles.iconHero, { backgroundColor: color + '14' }]}>
-          <Icon size={48} color={color} strokeWidth={1.4} />
+          {iconElement(mission.icon, { size: 48, color, strokeWidth: 1.4 })}
         </View>
 
         <View style={{ gap: space[2] }}>
@@ -183,6 +185,36 @@ export default function MissionDetail() {
           </Text>
         </View>
 
+        <MissionEvidenceBlock mission={mission} />
+
+        {mission.seasonal ? (
+          <View style={styles.seasonalBlock}>
+            <Text role="body" weight="semibold">Seasonal check</Text>
+            <Text role="sm" color={palette.meokMid}>{mission.seasonal.note}</Text>
+          </View>
+        ) : null}
+
+        {mission.actions.length ? (
+          <View style={styles.actionBlock}>
+            <Text role="body" weight="semibold">Next action</Text>
+            {mission.actions.map((action) => (
+              <Pressable
+                key={`${action.type}-${action.href}`}
+                accessibilityRole="link"
+                accessibilityLabel={action.label}
+                accessibilityHint="Opens an external guide or map."
+                onPress={() => void openExternalLink(action.href)}
+                style={({ pressed }) => [styles.actionLink, pressed ? styles.evidencePressed : null]}
+              >
+                <Text role="sm" color={palette.cheong} weight="semibold" style={{ flex: 1 }}>
+                  {action.label}
+                </Text>
+                <ExternalLink size={17} color={palette.cheong} strokeWidth={1.6} />
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
         {mission.mapHint ? (
           <View style={styles.mapBlock}>
             <View style={styles.sectionHead}>
@@ -226,25 +258,42 @@ export default function MissionDetail() {
 }
 
 function completionStandard(mission: Mission): string {
-  if (mission.id === 'p1_pack') {
-    return 'You have created and saved a packing list that matches your travel dates.';
-  }
-  if (mission.id === 'p1_visa') {
-    return 'You have checked the current requirements with the Korean mission handling your application.';
-  }
-  if (mission.id === 'p1_apps') {
-    return 'The apps you need are installed and you can open them before travel.';
-  }
-  if (mission.category === 'food') {
-    return 'You have tried the food or place yourself—not only read the guide.';
-  }
-  if (mission.category === 'activity') {
-    return 'You have taken part in the activity or completed the visit.';
-  }
-  if (mission.category === 'culture') {
-    return 'You have practiced, visited, or experienced this cultural moment.';
-  }
-  return 'You have finished the preparation and saved any details you will need later.';
+  return mission.completeWhen;
+}
+
+function MissionEvidenceBlock({ mission }: { mission: Mission }) {
+  const evidence = mission.evidence;
+  const needsReview = evidenceNeedsReview(evidence);
+  return (
+    <View style={[styles.evidenceBlock, needsReview ? styles.evidenceNeedsReview : null]}>
+      <View style={styles.sectionHead}>
+        <Text role="body" weight="semibold">Source and owner</Text>
+      </View>
+      <Text role="xs" color={palette.ash}>
+        {evidence.verification === 'verified' ? 'Primary source checked' : 'This guidance needs confirmation'} · checked {formatKstDate(evidence.checkedAt)}
+      </Text>
+      <Text role="xs" color={palette.meokMid}>
+        Owner: {mission.owner}. If this card conflicts with current rules, ask {evidence.finalAuthority}.
+      </Text>
+      {evidence.sourceUrl ? (
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={`Open mission source: ${evidence.sourceTitle}`}
+          accessibilityHint="Opens the source in your browser."
+          onPress={() => void openExternalLink(evidence.sourceUrl, 'open the mission source')}
+          style={({ pressed }) => [styles.evidenceLink, pressed ? styles.evidencePressed : null]}
+        >
+          <Text role="xs" color={palette.cheong}>
+            {evidence.publisher} · Open source
+          </Text>
+        </Pressable>
+      ) : (
+        <Text role="xs" color={palette.dancheong}>
+          No primary source recorded yet; confirm this step with the final authority before acting.
+        </Text>
+      )}
+    </View>
+  );
 }
 
 function UniversityContextBlock({
@@ -306,11 +355,11 @@ function UniversityContextBlock({
         <View style={styles.sectionHead}>
           <Building2 size={18} color={palette.hwanggeumDeep} strokeWidth={1.6} />
           <Text role="body" weight="semibold">
-            {uni.shortName} dorm desk
+            {uni.shortName} dorm checkout
           </Text>
         </View>
         <Text role="sm" color={palette.meokMid} style={{ marginTop: space[2] }}>
-          Hand the key in at the same desk you checked in: {uni.dorm.checkin}
+          Check the current dormitory notice or ask the residence office where and when to return the key. The check-in guidance is context only: {uni.dorm.checkin}
         </Text>
       </View>
     );
@@ -384,6 +433,48 @@ const styles = StyleSheet.create({
     backgroundColor: palette.hwanggeum + '14',
     borderWidth: 1,
     borderColor: palette.hwanggeum + '55',
+  },
+  evidenceBlock: {
+    gap: space[2],
+    padding: space[4],
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: palette.hairline,
+    backgroundColor: palette.cloud,
+  },
+  evidenceNeedsReview: {
+    borderColor: palette.hwanggeum + '66',
+  },
+  evidenceLink: {
+    minHeight: MIN_TARGET,
+    justifyContent: 'center',
+  },
+  evidencePressed: {
+    opacity: 0.72,
+  },
+  actionBlock: {
+    gap: space[2],
+    padding: space[4],
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: palette.hairline,
+    backgroundColor: palette.hanji,
+  },
+  seasonalBlock: {
+    gap: space[2],
+    padding: space[4],
+    borderRadius: radius.card,
+    backgroundColor: palette.cloud,
+  },
+  actionLink: {
+    minHeight: MIN_TARGET,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[2],
+    paddingHorizontal: space[3],
+    paddingVertical: space[2],
+    borderRadius: radius.md,
+    backgroundColor: palette.cloud,
   },
   bullet: {
     flexDirection: 'row',

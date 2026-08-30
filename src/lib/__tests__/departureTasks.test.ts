@@ -36,12 +36,9 @@ describe('REQ-SFR-002 pre-departure stage', () => {
   });
 
   it('TC-006 / AC1: splits the nine across before, at, and after departure', () => {
-    expect(departureTasksForTiming('before_departure')).toHaveLength(6);
+    expect(departureTasksForTiming('before_departure')).toHaveLength(7);
     expect(departureTasksForTiming('at_departure').map((task) => task.sourceId)).toEqual(['G1']);
-    expect(departureTasksForTiming('after_departure').map((task) => task.sourceId)).toEqual([
-      'G3',
-      'G6',
-    ]);
+    expect(departureTasksForTiming('after_departure').map((task) => task.sourceId)).toEqual(['G6']);
   });
 
   it('TC-006 / AC1: three prerequisites gate the account closure', () => {
@@ -125,17 +122,35 @@ describe('REQ-SFR-002 pre-departure stage', () => {
     expect(evaluateResidenceCardReturn('temporary', 'no').status).toBe('return_required');
   });
 
-  it('keeps unconfirmed sources empty instead of plausible', () => {
-    // G3 and G6 were never confirmed against a university source. The record
-    // must carry the gap and the office to ask, not an invented link.
-    for (const taskId of [
-      DEPARTURE_TASK_IDS.dormitoryDeposit,
-      DEPARTURE_TASK_IDS.transcript,
-    ]) {
-      const spec = departureTaskSpec(taskId);
-      expect(spec?.source.sourceUrl).toBe('');
-      expect(spec?.source.checkedAt).toBeNull();
-      expect(spec?.source.finalAuthority.trim().length).toBeGreaterThan(0);
-    }
+  it('G3 keeps an empty source and explains the gap instead of inventing a link', () => {
+    // No national rule governs a dormitory deposit refund — each hall sets its
+    // own residence regulations — so the record must carry the gap, the reason
+    // for it, and the office to ask.
+    const spec = departureTaskSpec(DEPARTURE_TASK_IDS.dormitoryDeposit);
+
+    expect(spec?.source.sourceUrl).toBe('');
+    expect(spec?.source.checkedAt).toBeNull();
+    expect(spec?.source.finalAuthority.trim().length).toBeGreaterThan(0);
+    expect(spec?.source.conflictNote).toMatch(/not by a national rule/);
+  });
+
+  it('G3 does not state when the refund arrives', () => {
+    // The old summary asserted the refund "may be paid after you leave" with
+    // nothing behind it. The task may raise the possibility as a reason to keep
+    // an account open; it may not present a timing as established.
+    const summary = departureTaskSpec(DEPARTURE_TASK_IDS.dormitoryDeposit)?.summary ?? '';
+
+    expect(summary).toMatch(/dormitory decides/i);
+    expect(summary).not.toMatch(/is paid after|will be paid after/);
+  });
+
+  it('G6 carries the national transcript listing and names the registrar', () => {
+    const spec = departureTaskSpec(DEPARTURE_TASK_IDS.transcript);
+
+    expect(spec?.source.sourceUrl).toMatch(/^https:\/\/www\.gov\.kr\//);
+    expect(spec?.source.checkedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(spec?.source.finalAuthority).toMatch(/registrar/);
+    // The listing covers the certificate, not overseas dispatch or fees.
+    expect(spec?.source.conflictNote).toMatch(/each university/);
   });
 });

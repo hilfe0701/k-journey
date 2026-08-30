@@ -39,12 +39,12 @@ export function AhaMomentTour({
   onDismiss: () => void;
 }) {
   const reduceMotion = useReduceMotion();
-  const reveal = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
-  const [mountedAt, setMountedAt] = useState<number | null>(null);
+  const [reveal] = useState(() => new Animated.Value(reduceMotion ? 1 : 0));
+  const mountedAt = useRef<number | null>(null);
 
   useEffect(() => {
     if (!visible) return;
-    setMountedAt(Date.now());
+    mountedAt.current = Date.now();
     track('tour_aha_moment_shown');
     if (reduceMotion) {
       reveal.setValue(1);
@@ -61,7 +61,7 @@ export function AhaMomentTour({
   }, [visible, reduceMotion, reveal]);
 
   function handleDismiss() {
-    const secondsViewed = mountedAt ? (Date.now() - mountedAt) / 1000 : 0;
+    const secondsViewed = mountedAt.current ? (Date.now() - mountedAt.current) / 1000 : 0;
     track('tour_aha_moment_dismissed', { secondsViewed: Math.round(secondsViewed * 10) / 10 });
     markAhaMomentShown();
     onDismiss();

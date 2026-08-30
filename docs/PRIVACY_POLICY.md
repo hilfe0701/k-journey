@@ -40,7 +40,7 @@ Notifications are local journey reminders when enabled. They are not marketing m
 
 - You may edit local profile and journey settings in the app.
 - You may reset K-Journey’s local data from Settings after confirmation, or uninstall the app.
-- The current text export is a readable copy of supported condition and administrative task data. It is not an importable backup and does not include every cultural or Want-to record.
+- The current text export is a readable copy of profile conditions, administrative task state, cultural mission completions, Want-to lists and items, and the selected era. It is not an importable backup.
 - You may deny notifications or photo-library access; the related optional feature will not work.
 
 There is no account to delete. For questions about an analytics or diagnostic record, contact **[support email]** after the operator details are published.

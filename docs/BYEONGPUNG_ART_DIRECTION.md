@@ -22,6 +22,14 @@ The byeongpung is the emotional payoff of K-Journey, not a decorative gallery. I
 
 Historical labels describe an art-direction interpretation, not authenticated period artifacts. Marketing and UI copy must not call generated images “traditional originals.”
 
+Chaekgeori emerged and became established in late Joseon, certainly by the
+late eighteenth century; it is not period-authentic Silla or Goryeo imagery.
+The Silla panel deliberately substitutes Buddhist sutra scrolls and ritual
+objects, while the Goryeo panel substitutes Tripitaka woodblocks and Buddhist
+scrolls. Those two panels are contemporary thematic adaptations of “books and
+learning,” not reconstructions of chaekgeori from those periods. The detailed
+mapping is preserved in `AI_IMAGE_PROMPTS.md` §§5.10 and 7.5.
+
 ## Reveal states
 
 - Locked: artwork remains legible at roughly 30–40% visual presence with a translucent hanji wash.
@@ -39,13 +47,16 @@ Historical labels describe an art-direction interpretation, not authenticated pe
 
 ## QA checklist
 
-- [ ] One continuous scene reads at phone and desktop widths.
-- [ ] No repeated watermark or accidental glyph.
-- [ ] Faces, hands, architecture, Korean text, and animal anatomy have no obvious generation artifacts.
-- [ ] Seams do not cut the main focal subject awkwardly.
-- [ ] Locked art remains distinguishable without looking completed.
+- [x] One continuous scene reads at phone and desktop widths. (2026-08-30, 390×844 and 1440×900 captures plus all three masters)
+- [x] No repeated watermark or accidental glyph. (2026-08-30 visual pass)
+- [x] Faces, hands, architecture, Korean text, and animal anatomy have no obvious generation artifacts. (2026-08-30 visual pass; formal cultural approval remains separate)
+- [x] Seams do not cut the main focal subject awkwardly. (2026-08-30 assembled-view pass)
+- [x] Locked art remains distinguishable without looking completed. (2026-08-30, 5/48 state)
 - [ ] 8-panel export and single-panel export crop correctly.
-- [ ] Three eras are distinguishable without reading the label.
-- [ ] Asset budget and first-load performance pass.
+- [x] Three eras are distinguishable without reading the label. (Silla gold/crown, Goryeo celadon, Joseon ink/minhwa treatment)
+- [x] Asset budget and first-load performance pass. (18.7MiB combined runtime art; see `docs/PERFORMANCE.md`)
 
-The current assets have been resized and edge-cropped for runtime quality. A future connected-master redraw is a visual-content upgrade, not a prerequisite for the current interaction contract.
+The current runtime panels are slices of the three connected masters recorded in
+`assets/byeongpung/masters/README.md`; they have been resized and edge-cropped
+for runtime quality. The remaining export-crop checkbox requires a native
+Save/Share artifact, not another connected-master redraw.

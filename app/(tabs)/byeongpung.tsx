@@ -6,16 +6,17 @@ import {
   Pressable,
   Image,
   ActionSheetIOS,
+  Modal,
   Platform,
   useWindowDimensions,
 } from 'react-native';
 import type { RefObject } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Share2, Download, Sparkles } from 'lucide-react-native';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused } from 'expo-router';
 
 import { ProgressBar, Text } from '../../src/components/ui';
-import { palette, space, radius } from '../../design-tokens';
+import { palette, space, radius, SCRIM } from '../../design-tokens';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useTotalCompletions } from '../../src/hooks/useTotalCompletions';
 import {
@@ -38,6 +39,7 @@ export default function ByeongpungTab() {
   const shareRef = useRef<View>(null);
   const panelRefs = useRef<(View | null)[]>([null, null, null, null, null, null, null, null]);
   const [busy, setBusy] = useState<'share' | 'save' | null>(null);
+  const [savePickerVisible, setSavePickerVisible] = useState(false);
 
   const panels = BYEONGPUNG_PANEL_IMAGES[theme.era.key];
 
@@ -61,7 +63,7 @@ export default function ByeongpungTab() {
     }
   }
 
-  async function captureAndSave(ref: RefObject<View>, panelIndex: number | null) {
+  async function captureAndSave(ref: RefObject<View | null>, panelIndex: number | null) {
     setBusy('save');
     try {
       const ok = await saveByeongpungImage(ref);
@@ -89,7 +91,7 @@ export default function ByeongpungTab() {
     }
     const node = panelRefs.current[panelIdx];
     if (!node) return;
-    const ref = { current: node } as RefObject<View>;
+    const ref = { current: node } as RefObject<View | null>;
     captureAndSave(ref, panelIdx);
   }
 
@@ -115,9 +117,19 @@ export default function ByeongpungTab() {
           }
         },
       );
+    } else if (Platform.OS === 'android') {
+      setSavePickerVisible(true);
     } else {
-      // Android fallback: save full byeongpung. Per-panel picker TBD.
       captureAndSave(shareRef, null);
+    }
+  }
+
+  function chooseAndroidSave(panelIndex: number | null) {
+    setSavePickerVisible(false);
+    if (panelIndex === null) {
+      captureAndSave(shareRef, null);
+    } else {
+      tryPanelSave(panelIndex);
     }
   }
 
@@ -271,6 +283,71 @@ export default function ByeongpungTab() {
             : `${completedPanels}/8 panels unlocked. ${6 - (totalCompleted % 6)} more to reveal panel ${completedPanels + 1}.`}
         </Text>
       </View>
+
+      <Modal
+        visible={savePickerVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSavePickerVisible(false)}
+      >
+        <View style={styles.saveSheetBackdrop}>
+          <SafeAreaView
+            edges={['bottom']}
+            style={styles.saveSheet}
+            accessibilityViewIsModal
+          >
+            <View style={styles.saveSheetHeader}>
+              <View style={{ flex: 1 }}>
+                <Text role="h4">Save image</Text>
+                <Text role="sm" color={palette.ash}>
+                  Choose the full screen or an unlocked panel.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setSavePickerVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel saving image"
+                style={styles.cancelButton}
+              >
+                <Text role="sm" weight="semibold">
+                  Cancel
+                </Text>
+              </Pressable>
+            </View>
+            <ScrollView style={styles.saveOptions}>
+              <Pressable
+                onPress={() => chooseAndroidSave(null)}
+                accessibilityRole="button"
+                accessibilityLabel="Save full folding screen"
+                style={({ pressed }) => [styles.saveOption, pressed && styles.saveOptionPressed]}
+              >
+                <Text role="body" weight="semibold">
+                  Full byeongpung
+                </Text>
+                <Text role="sm" color={palette.ash}>
+                  All eight panels in one image
+                </Text>
+              </Pressable>
+              {PANEL_MOTIF_NAMES.slice(0, completedPanels).map((name, index) => (
+                <Pressable
+                  key={name}
+                  onPress={() => chooseAndroidSave(index)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Save panel ${index + 1}, ${name}`}
+                  style={({ pressed }) => [styles.saveOption, pressed && styles.saveOptionPressed]}
+                >
+                  <Text role="body" weight="semibold">
+                    Panel {index + 1}: {name}
+                  </Text>
+                  <Text role="sm" color={palette.ash}>
+                    Save this unlocked panel
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -334,13 +411,13 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   panelImage: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     width: '100%',
     height: '100%',
     transform: [{ scale: 1.035 }],
   },
   lockedWash: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   panelLabel: {
     padding: space[2],
@@ -383,5 +460,45 @@ const styles = StyleSheet.create({
     width: 600,
     height: 2040,
     overflow: 'hidden',
+  },
+  saveSheetBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: SCRIM,
+  },
+  saveSheet: {
+    maxHeight: '78%',
+    paddingTop: space[4],
+    paddingHorizontal: space[5],
+    backgroundColor: palette.hanji,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+  },
+  saveSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[3],
+    paddingBottom: space[4],
+  },
+  cancelButton: {
+    minWidth: 64,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveOptions: {
+    marginBottom: space[3],
+  },
+  saveOption: {
+    minHeight: 64,
+    justifyContent: 'center',
+    gap: space[1],
+    paddingHorizontal: space[4],
+    paddingVertical: space[3],
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: palette.hairline,
+  },
+  saveOptionPressed: {
+    backgroundColor: palette.cloud,
   },
 });

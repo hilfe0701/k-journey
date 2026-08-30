@@ -46,14 +46,9 @@ describe('resolveErrorRow', () => {
     expect(resolveErrorRow(new Error('mystery')).code).toBe('unknown');
   });
 
-  it('maps Firebase permission-denied to firestore-rules-fail-owner', () => {
-    const err = Object.assign(new Error('denied'), { code: 'firestore/permission-denied' });
-    expect(resolveErrorRow(err).code).toBe('firestore-rules-fail-owner');
-  });
-
-  it('maps auth/network-request-failed to network-offline', () => {
-    const err = Object.assign(new Error('offline'), { code: 'auth/network-request-failed' });
-    expect(resolveErrorRow(err).code).toBe('network-offline');
+  it('resolves an explicit current catalog code on an error-shaped object', () => {
+    const err = Object.assign(new Error('permission denied'), { code: 'permission-photos-denied' });
+    expect(resolveErrorRow(err).code).toBe('permission-photos-denied');
   });
 
   it('detects "Network request failed" message string', () => {

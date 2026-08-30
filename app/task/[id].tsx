@@ -67,6 +67,11 @@ import { buildHomeTasks, type HomeTask } from '../(tabs)/checklist';
 import { palette, radius, semantic, space } from '../../design-tokens';
 import { KST, toKstStartOfDay } from '../../src/lib/dates';
 import { a11yState } from '../../src/lib/a11y';
+import {
+  evaluateHealthInsuranceForProfile,
+  evaluatePartTimeWorkForProfile,
+  resolveAdministrativeAuthorities,
+} from '../../src/data/admin';
 
 const DOCUMENT_SPECIFICATIONS: Record<string, string> = {
   'dormitory-confirmation': 'Full confirmation with the residence address and official stamp.',
@@ -257,7 +262,6 @@ export default function TaskDetail() {
   const canToggleStatus =
     task.status === 'available' ||
     task.status === 'in_progress' ||
-    task.status === 'review_required' ||
     task.status === 'completed';
   const statusColor = statusAccent(task);
   const statusLabel = statusLabelFor(task);
@@ -306,6 +310,12 @@ export default function TaskDetail() {
         />
 
         <SourceSection metadata={metadata} />
+
+        {task.taskId === 'immigration-jurisdiction' ||
+        task.taskId === 'part-time-work-permission' ||
+        task.taskId === 'health-insurance-enrollment' ? (
+          <AdministrativeGuidanceSection taskId={task.taskId} profile={profile} />
+        ) : null}
 
         {task.taskId === 'housing-proof' ? (
           <HousingDocumentsSection
@@ -364,6 +374,8 @@ export default function TaskDetail() {
           accessibilityHint={
             task.status === 'completed'
               ? 'Remove the completed status from this task.'
+              : task.status === 'review_required'
+                ? 'Complete the missing profile field before marking this task complete.'
               : 'Save this task as complete on this device.'
           }
         />
@@ -608,16 +620,101 @@ function ConflictValueRow({ value }: { value: TaskSourceValue }) {
           {value.sourceLabel} · checked {formatSourceDate(value.checkedAt)}
         </Text>
       </View>
-      <Pressable
-        accessibilityRole="link"
-        accessibilityLabel={`Open source from ${value.sourceLabel}`}
-        onPress={() => Linking.openURL(value.sourceUrl).catch((error) => showOperationError('open the source', error))}
-        style={styles.sourceLink}
-      >
-        <Text role="xs" color={palette.cheong} selectable>
-          {value.sourceUrl}
-        </Text>
-      </Pressable>
+      {value.sourceUrl ? (
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={`Open source from ${value.sourceLabel}`}
+          onPress={() => Linking.openURL(value.sourceUrl).catch((error) => showOperationError('open the source', error))}
+          style={styles.sourceLink}
+        >
+          <Text role="xs" color={palette.cheong} selectable>
+            {value.sourceUrl}
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function AdministrativeGuidanceSection({
+  taskId,
+  profile,
+}: {
+  taskId: string;
+  profile: UserProfile;
+}) {
+  if (taskId === 'immigration-jurisdiction') {
+    const resolution = resolveAdministrativeAuthorities({
+      universityId: profile.universityId,
+      housingType: profile.housingType,
+      residenceDistrict: profile.residenceDistrict,
+    });
+    return (
+      <View style={styles.section}>
+        <SectionHeading icon={<FileText size={19} color={palette.cheong} strokeWidth={1.5} />} title="Authority route" />
+        <Text role="sm" color={palette.meokMid}>{resolution.reason}</Text>
+        {resolution.immigrationOffice ? (
+          <View style={styles.factList}>
+            <SourceField label="Office" value={`${resolution.immigrationOffice.nameEn} (${resolution.immigrationOffice.nameKo})`} />
+            <SourceField label="Address" value={resolution.immigrationOffice.address} selectable />
+            <SourceField label="Phone" value={resolution.immigrationOffice.phone} selectable />
+          </View>
+        ) : null}
+        <Button
+          label="Call 1345 to confirm"
+          variant="secondary"
+          onPress={() => Linking.openURL(resolution.confirmationHref).catch((error) => showOperationError('call 1345', error))}
+          fullWidth
+        />
+      </View>
+    );
+  }
+
+  if (taskId === 'part-time-work-permission') {
+    const evaluation = evaluatePartTimeWorkForProfile(profile);
+    return (
+      <View style={styles.section}>
+        <SectionHeading icon={<FileText size={19} color={palette.cheong} strokeWidth={1.5} />} title="Permission route" />
+        <Text role="sm" color={palette.meokMid}>{evaluation.reason}</Text>
+        <View style={styles.factList}>
+          {evaluation.applicationRoutes.map((route) => (
+            <SourceField key={route} label="Application route" value={route} />
+          ))}
+        </View>
+        <Button
+          label="Call 1345 before paid work"
+          variant="secondary"
+          onPress={() => Linking.openURL(evaluation.confirmationHref).catch((error) => showOperationError('call 1345', error))}
+          fullWidth
+        />
+      </View>
+    );
+  }
+
+  const evaluation = evaluateHealthInsuranceForProfile(profile);
+  return (
+    <View style={styles.section}>
+      <SectionHeading icon={<FileText size={19} color={palette.cheong} strokeWidth={1.5} />} title="NHIS route" />
+      <Text role="sm" color={palette.meokMid}>{evaluation.reason}</Text>
+      <View style={styles.factList}>
+        <SourceField
+          label="Published student guide"
+          value={evaluation.mandatoryAfterMonths ? `General six-month enrollment reference; individual effective date must be confirmed` : 'Individual assessment required'}
+        />
+        <SourceField
+          label="Published student reduction"
+          value={evaluation.studentReductionPercent ? `${evaluation.studentReductionPercent}% reference; confirm current eligibility and contribution` : 'Individual assessment required'}
+        />
+        {evaluation.exemptionDocuments.map((document) => (
+          <SourceField key={document} label="Possible exclusion evidence" value={document} />
+        ))}
+      </View>
+      <Button
+        label="Call NHIS foreign-language line"
+        variant="secondary"
+        onPress={() => Linking.openURL(evaluation.confirmationHref).catch((error) => showOperationError('call NHIS', error))}
+        fullWidth
+      />
     </View>
   );
 }
@@ -1129,7 +1226,7 @@ function MissingTask({ onBack }: { onBack: () => void }) {
   );
 }
 
-function whyForTask(taskId: string, profile: UserProfile): {
+export function whyForTask(taskId: string, profile: UserProfile): {
   headline: string;
   facts: readonly { label: string; value: string }[];
 } {
@@ -1167,6 +1264,36 @@ function whyForTask(taskId: string, profile: UserProfile): {
       facts: [
         { label: 'University', value: displayConditionValue('universityId', profile.universityId) },
         { label: 'Application deadline', value: verdict.deadlineLabel },
+      ],
+    };
+  }
+
+  if (taskId === 'immigration-jurisdiction') {
+    return {
+      headline: 'Your registered residence, not the university name, decides the responsible immigration office.',
+      facts: [
+        { label: 'Housing type', value: displayConditionValue('housingType', profile.housingType) },
+        { label: 'Registered district', value: profile.residenceDistrict ?? 'Unknown / not sure' },
+      ],
+    };
+  }
+
+  if (taskId === 'part-time-work-permission') {
+    return {
+      headline: 'A student status does not authorise paid work by itself. Confirm and obtain permission before starting.',
+      facts: [
+        { label: 'Visa status', value: displayConditionValue('visaTypeOrStatus', profile.visaTypeOrStatus) },
+        { label: 'Final authority', value: '1345 and your responsible immigration office' },
+      ],
+    };
+  }
+
+  if (taskId === 'health-insurance-enrollment') {
+    return {
+      headline: 'Your visa status and home-country medical coverage determine which NHIS review path to follow.',
+      facts: [
+        { label: 'Visa status', value: displayConditionValue('visaTypeOrStatus', profile.visaTypeOrStatus) },
+        { label: 'Home-country insurance', value: displayConditionValue('homeCountryInsurance', profile.homeCountryInsurance) },
       ],
     };
   }

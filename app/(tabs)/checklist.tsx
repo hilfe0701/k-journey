@@ -31,6 +31,7 @@ import {
 import { KST, kstDifferenceInDays, kstNow, scheduleAtKstMorning, toKstStartOfDay } from '../../src/lib/dates';
 import { track } from '../../src/lib/posthog';
 import { surfaceError } from '../../src/lib/errorAlert';
+import { governmentDayStatus, koreanPublicHolidayFor } from '../../src/lib/holidays';
 import {
   DEPARTURE_TASKS,
   DEPARTURE_TASK_IDS,
@@ -48,6 +49,11 @@ import {
 import { UNKNOWN, type LocalTaskProgress, type UserProfile } from '../../src/lib/firebase';
 import { palette, radius, semantic, space } from '../../design-tokens';
 import { a11yState } from '../../src/lib/a11y';
+import {
+  evaluateHealthInsuranceForProfile,
+  evaluatePartTimeWorkForProfile,
+  resolveAdministrativeAuthorities,
+} from '../../src/data/admin';
 
 const PHASE_LABEL: Record<Phase, string> = {
   1: 'Pre-arrival',
@@ -295,6 +301,9 @@ function CurrentPhaseCard({
 /** REQ-SFR-005 · POL-009 · HOME-02: show the arrival-plus-90-day deadline. */
 function RegistrationDeadlineCard({ arrivalDate }: { arrivalDate: string }) {
   const deadline = scheduleAtKstMorning(arrivalDate, -90);
+  const deadlineIso = formatInTimeZone(deadline, KST, 'yyyy-MM-dd');
+  const holiday = koreanPublicHolidayFor(deadlineIso);
+  const dayStatus = governmentDayStatus(deadlineIso);
   const daysRemaining = kstDifferenceInDays(
     toKstStartOfDay(deadline),
     toKstStartOfDay(kstNow()),
@@ -326,6 +335,17 @@ function RegistrationDeadlineCard({ arrivalDate }: { arrivalDate: string }) {
           <Text role="body" color={palette.ash}>
             {`90 days after arrival · ${formatInTimeZone(deadline, KST, 'MMM d, yyyy')}`}
           </Text>
+          {holiday || dayStatus === 'weekend' ? (
+            <Text role="xs" color={palette.dancheong}>
+              {holiday
+                ? `${holiday.nameEn} — government counters may be closed; ask the office whether to submit earlier.`
+                : 'This date falls on a weekend — government counters may be closed; ask the office whether to submit earlier.'}
+            </Text>
+          ) : dayStatus === 'unknown' ? (
+            <Text role="xs" color={palette.ash}>
+              The government calendar for this year is not loaded. Confirm office hours before relying on this date.
+            </Text>
+          ) : null}
         </View>
         <Text role="badge" color={accent}>
           {overdue ? 'OVERDUE' : imminent ? 'DUE SOON' : 'ON TRACK'}
@@ -577,12 +597,38 @@ export function buildHomeTasks(
     progress,
   );
 
+  // These two high-consequence routes are always visible. They never infer
+  // eligibility; an unknown status stays a review task until the responsible
+  // authority confirms the user's case.
+  const partTimeTask = buildGuidanceTask(
+    {
+      taskId: 'part-time-work-permission',
+      title: 'Check part-time work permission',
+      summary: 'Confirm permission before doing any paid work in Korea.',
+    },
+    evaluatePartTimeWorkForProfile(profile),
+    progress,
+  );
+  const jurisdictionTask = buildJurisdictionTask(profile, progress);
+  const healthInsuranceTask = buildGuidanceTask(
+    {
+      taskId: 'health-insurance-enrollment',
+      title: 'Check National Health Insurance enrollment',
+      summary: 'Understand when NHIS enrollment applies and ask about any documented exemption.',
+    },
+    evaluateHealthInsuranceForProfile(profile),
+    progress,
+  );
+
   const registrationTasks = [
     dormitoryTask,
     appointmentTask,
     registrationTask,
     housingTask,
     groupTask,
+    jurisdictionTask,
+    partTimeTask,
+    healthInsuranceTask,
   ];
 
   if (phase !== 4) return registrationTasks;
@@ -825,6 +871,84 @@ function taskFromVerdict(
   };
 }
 
+type GuidanceEvaluation = {
+  status: string;
+  reason: string;
+  pendingFields: readonly string[];
+  source: { sourceUrl: string };
+};
+
+function buildGuidanceTask(
+  base: Pick<HomeTask, 'taskId' | 'title' | 'summary'>,
+  evaluation: GuidanceEvaluation,
+  progress: LocalTaskProgress,
+): HomeTask {
+  if (evaluation.status === 'review_required') {
+    return {
+      ...base,
+      status: 'review_required',
+      kind: 'review',
+      reason: evaluation.reason,
+      unlocksWhen: evaluation.pendingFields.length
+        ? `Provide ${evaluation.pendingFields.map(conditionAxisLabel).join(' and ')} to reassess this task.`
+        : undefined,
+      sourceUrl: evaluation.source.sourceUrl || undefined,
+    };
+  }
+
+  return taskWithProgress(
+    {
+      ...base,
+      status: 'available',
+      reason: evaluation.reason,
+      sourceUrl: evaluation.source.sourceUrl || undefined,
+    },
+    progress,
+  );
+}
+
+function buildJurisdictionTask(profile: UserProfile, progress: LocalTaskProgress): HomeTask {
+  const resolution = resolveAdministrativeAuthorities({
+    universityId: profile.universityId,
+    housingType: profile.housingType,
+    residenceDistrict: profile.residenceDistrict,
+  });
+
+  if (resolution.status === 'review_required') {
+    return {
+      taskId: 'immigration-jurisdiction',
+      title: 'Find your responsible immigration office',
+      summary: 'Use your registered residence, not just your university, to choose the office.',
+      status: 'review_required',
+      kind: 'review',
+      reason: resolution.reason,
+      unlocksWhen: resolution.pendingFields.length
+        ? `Provide ${resolution.pendingFields.map(conditionAxisLabel).join(' and ')} to reassess this task.`
+        : undefined,
+    };
+  }
+
+  const office = resolution.immigrationOffice;
+  const civilService = resolution.civilService;
+  const reason = office
+    ? `${office.nameEn} (${office.nameKo}) · ${office.address} · ${office.phone}${
+        civilService ? ` · ${civilService.label}` : ''
+      }${resolution.usesCampusProxy ? ' · campus address proxy — confirm your registered residence' : ''}`
+    : resolution.reason;
+
+  return taskWithProgress(
+    {
+      taskId: 'immigration-jurisdiction',
+      title: 'Find your responsible immigration office',
+      summary: 'Use your registered residence, not just your university, to choose the office.',
+      status: 'available',
+      reason,
+      sourceUrl: office?.href,
+    },
+    progress,
+  );
+}
+
 function conditionAxisLabel(axis: string): string {
   const labels: Record<string, string> = {
     universityId: 'your university',
@@ -839,6 +963,7 @@ function conditionAxisLabel(axis: string): string {
     arrivalDate: 'your arrival date',
     departureDate: 'your departure date',
     programStartDate: 'your program start date',
+    residenceDistrict: 'your registered residence district',
   };
   return labels[axis] ?? axis;
 }

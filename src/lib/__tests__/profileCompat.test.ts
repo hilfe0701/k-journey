@@ -28,6 +28,11 @@ describe('profile compatibility', () => {
     expect(selectMissionHousing(profile)).toBe('off-campus');
   });
 
+  it('preserves a registered district without treating it as a global condition axis', () => {
+    const profile = normalizeUserProfile({ residenceDistrict: 'Mapo-gu' });
+    expect(profile.residenceDistrict).toBe('Mapo-gu');
+  });
+
   it('mirrors canonical edits into cultural compatibility fields', () => {
     expect(universityProfilePatch('yonsei')).toEqual({
       universityId: 'yonsei',
