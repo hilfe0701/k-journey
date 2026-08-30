@@ -103,8 +103,9 @@ on the current device through MMKV.
 ## Deployment
 
 The public alias is [k-journey-three.vercel.app](https://k-journey-three.vercel.app),
-currently deployment `dpl_CAW2wJRHYnzUxjyXmuRkD3JBaDcv` (created 2026-08-04).
-It predates this release candidate and must not be described as current parity.
+currently deployment `dpl_ACc75Xqubs9nbDWZp2nKfGbvoHc7` (`READY`). It was
+promoted from the verified preview with user approval at 2026-08-30 12:50 KST.
+The rollback deployment is `dpl_CAW2wJRHYnzUxjyXmuRkD3JBaDcv`.
 
 The protected release-candidate preview is
 [k-journey-6ozpe5y4f-wodbs990701-3298s-projects.vercel.app](https://k-journey-6ozpe5y4f-wodbs990701-3298s-projects.vercel.app),
@@ -112,7 +113,9 @@ deployment `dpl_HfcpA2j1tqiUiJB3mNPjUU7zuA5E`. Vercel's clean `npm ci` and
 Expo export passed; authenticated direct requests to `/`, mission, task,
 bucket, byeongpung, and gallery routes plus the exact JS bundle all returned
 HTTP 200. The preview was verified at 2026-08-30 02:14 KST. Production has not
-been promoted.
+been rebuilt independently: Vercel promoted the identical verified artifact,
+and unauthenticated production requests returned HTTP 200 for every recorded
+route, favicon, and the exact 5,747,403-byte bundle.
 
 ## External release blockers
 

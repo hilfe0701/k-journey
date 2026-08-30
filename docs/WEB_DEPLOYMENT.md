@@ -1,21 +1,22 @@
 # K-Journey web deployment
 
-Last verified: 2026-08-29 (Asia/Seoul)
+Last verified: 2026-08-30 12:50 KST (Asia/Seoul)
 
 ## Production
 
 - Public URL: https://k-journey-three.vercel.app
 - Vercel project: `wodbs990701-3298s-projects/k-journey`
-- Production deployment: `dpl_CAW2wJRHYnzUxjyXmuRkD3JBaDcv`
-- Previous production deployment (rollback): `dpl_6DHArMDvrJvYYWakQ4TenHDVKrPC`
+- Production deployment: `dpl_ACc75Xqubs9nbDWZp2nKfGbvoHc7` (`READY`)
+- Previous production deployment (rollback): `dpl_CAW2wJRHYnzUxjyXmuRkD3JBaDcv`
 - Build command: `npm run build:web`
 - Output directory: `dist`
 - Routing mode: Expo Router single-page export with a Vercel catch-all rewrite
-- Source commit: not recorded in Vercel metadata for this 2026-08-04 CLI deployment
-- Reproducibility: **proven locally** — clean commit, `npm run build:web`, and asset/a11y checks passed
-- Product parity: **stale** — it predates the 2026-08-02 full audit and reinforcement work
-
-Do not promote the existing `dist/` again. It was generated before the current image optimization and UI fixes.
+- Source commit: `dd7c63d41e998f0c55aa0d22f9b55cd9369dae8c`
+- Promoted from verified preview: `dpl_HfcpA2j1tqiUiJB3mNPjUU7zuA5E`
+- Reproducibility: **proven locally and remotely** — clean `npm ci`, production
+  export, asset/a11y checks, and stateful E2E passed
+- Product parity: **current** — the public bundle exactly matches the verified
+  preview bundle described below
 
 ## Release candidate
 
@@ -34,7 +35,10 @@ Do not promote the existing `dist/` again. It was generated before the current i
   independently passed the same source through all remote gates. The
   preview is team-login protected, so anonymous curl correctly redirects to
   Vercel SSO.
-- Production promotion: requires explicit approval after preview verification
+- Production promotion: completed with user approval at 2026-08-30 12:50 KST;
+  Vercel created production deployment `dpl_ACc75Xqubs9nbDWZp2nKfGbvoHc7`
+- Public smoke: unauthenticated requests to the production alias returned HTTP
+  200 for the same routes, favicon, and exact 5,747,403-byte bundle
 
 ## Current build measurement
 
